@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_advance_payment_inv_inherit_progress" model="ir.ui.view">
+        <field name="name">sale.advance.payment.inv.inherit.progress</field>
+        <field name="model">sale.advance.payment.inv</field>
+        <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="invisible">advance_payment_method not in ('percentage', 'percentage_progress')</attribute>
+            </xpath>
+            
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="string">Porcentaje (%)</attribute>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

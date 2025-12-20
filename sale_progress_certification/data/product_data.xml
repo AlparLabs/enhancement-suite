@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="product_product_certification" model="product.product">
+            <field name="name">Certificación de Obra</field>
+            <field name="default_code">CERT-OBRA</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field> <field name="list_price">0.0</field>
+            <field name="standard_price">0.0</field>
+            <field name="taxes_id" eval="[(6, 0, [])]"/> </record>
+    </data>
+</odoo>
