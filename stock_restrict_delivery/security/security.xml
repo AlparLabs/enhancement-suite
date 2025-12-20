@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="group_manager_force_delivery" model="res.groups">
+            <field name="name">Gerente: Autorizar entrega sin factura</field>
+            <field name="category_id" ref="base.module_category_operations_inventory"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Permite ver el checkbox para forzar entregas sin factura.</field>
+        </record>
+    </data>
+</odoo>
