@@ -4,10 +4,21 @@ import json
 import base64
 import io
 import re  # <--- IMPORTANTE: Necesario para la limpieza con Regex
-import fitz  # PyMuPDF
-from PIL import Image
 from odoo import models, _
 from odoo.exceptions import UserError
+
+# Importaciones seguras de librerías externas
+try:
+    import fitz  # PyMuPDF
+    HAS_FITZ = True
+except ImportError:
+    HAS_FITZ = False
+
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
 
 # Intentamos importar las librerías de IA de manera segura
 try:
@@ -50,21 +61,60 @@ class ExtractMixin(models.AbstractModel):
         return "Analiza este documento y extrae los datos clave (emisor, fecha, total, líneas) en JSON."
 
     def _process_file_content(self, attachment):
-        """Convierte PDF/Imagen a un formato amigable para la IA (base64 image)"""
+        """
+        Convierte PDF/Imagen a un formato amigable para la IA (base64 image).
+        Soporta PDFs de múltiples páginas unificándolas en una sola imagen vertical.
+        """
+        if not HAS_FITZ:
+            raise UserError("La librería 'PyMuPDF' (fitz) no está instalada. Contacte al administrador.")
+        if not HAS_PIL:
+            raise UserError("La librería 'Pillow' (PIL) no está instalada. Contacte al administrador.")
+
         file_content = base64.b64decode(attachment.datas)
         mime_type = attachment.mimetype
 
         if 'pdf' in mime_type:
-            # Convertir primera página de PDF a Imagen usando PyMuPDF
             try:
                 doc = fitz.open(stream=file_content, filetype="pdf")
-                page = doc.load_page(0)  # Primera página
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2)) # Zoom 2x para mejor calidad OCR
-                img_data = pix.tobytes("png")
-                return base64.b64encode(img_data).decode('utf-8'), "image/png"
+                images = []
+                
+                # Iterar sobre todas las páginas
+                for page_num in range(len(doc)):
+                    page = doc.load_page(page_num)
+                    # Zoom 2x para mejor calidad OCR
+                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                    img_data = pix.tobytes("png")
+                    images.append(Image.open(io.BytesIO(img_data)))
+                
+                if not images:
+                    raise UserError("El PDF parece estar vacío o no se pudo leer ninguna página.")
+
+                # Si es una sola página, retornamos directo
+                if len(images) == 1:
+                    buffered = io.BytesIO()
+                    images[0].save(buffered, format="PNG")
+                    return base64.b64encode(buffered.getvalue()).decode('utf-8'), "image/png"
+
+                # Si son múltiples páginas, las unimos verticalmente
+                total_width = max(img.width for img in images)
+                total_height = sum(img.height for img in images)
+                
+                combined_image = Image.new('RGB', (total_width, total_height), (255, 255, 255))
+                
+                y_offset = 0
+                for img in images:
+                    # Centrar imagen si es más angosta que el ancho total
+                    x_offset = (total_width - img.width) // 2
+                    combined_image.paste(img, (x_offset, y_offset))
+                    y_offset += img.height
+                
+                buffered = io.BytesIO()
+                combined_image.save(buffered, format="PNG")
+                return base64.b64encode(buffered.getvalue()).decode('utf-8'), "image/png"
+
             except Exception as e:
                 _logger.error(f"OCR Manager: Error convirtiendo PDF: {e}")
-                raise UserError("Error procesando el PDF. Asegúrate de que no esté encriptado.")
+                raise UserError(f"Error procesando el PDF: {str(e)}")
         
         # Si ya es imagen, devolvemos tal cual
         return attachment.datas.decode('utf-8'), mime_type
