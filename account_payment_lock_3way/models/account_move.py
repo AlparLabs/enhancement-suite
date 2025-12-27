@@ -64,3 +64,19 @@ class AccountMove(models.Model):
                 ))
 
         return super(AccountMove, self).action_register_payment()
+
+
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
+
+    # Campos espejo para poder usarlos en la vista XML (JavaScript)
+    x_purchase_price_unit = fields.Float(
+        related='purchase_line_id.price_unit', 
+        string="Precio Original PO",
+        readonly=True
+    )
+    x_purchase_qty_received = fields.Float(
+        related='purchase_line_id.qty_received', 
+        string="Cant. Recibida PO",
+        readonly=True
+    )

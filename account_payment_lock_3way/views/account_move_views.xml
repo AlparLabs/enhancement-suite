@@ -35,12 +35,16 @@
                 </xpath>
 
                 <xpath expr="//field[@name='invoice_line_ids']/list" position="attributes">
-                    <attribute name="decoration-danger">purchase_line_id and price_unit &gt; purchase_line_id.price_unit</attribute>
-                    <attribute name="decoration-warning">purchase_line_id and quantity &gt; purchase_line_id.qty_received</attribute>
+                    <attribute name="decoration-danger">purchase_line_id and price_unit &gt; x_purchase_price_unit</attribute>
+                    <attribute name="decoration-warning">purchase_line_id and quantity &gt; x_purchase_qty_received</attribute>
                 </xpath>
 
                 <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='price_unit']" position="after">
-                    <field name="purchase_line_id" invisible="1"/> 
+                    <field name="purchase_line_id" invisible="1"/>
+                    
+                    <field name="x_purchase_price_unit" invisible="1"/>
+                    <field name="x_purchase_qty_received" invisible="1"/>
+                    
                     <field name="purchase_order_id" optional="hide"/>
                 </xpath>
 
