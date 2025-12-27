@@ -1,6 +1,7 @@
 # account_payment_lock_3way/models/account_move.py
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from odoo.tools import float_compare
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
