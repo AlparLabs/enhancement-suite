@@ -69,14 +69,28 @@ class AccountMove(models.Model):
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
-    # Campos espejo para poder usarlos en la vista XML (JavaScript)
-    x_purchase_price_unit = fields.Float(
-        related='purchase_line_id.price_unit', 
-        string="Precio Original PO",
-        readonly=True
+    # Campo "Semáforo": El backend decide si esta línea es problemática
+    is_3way_discrepancy = fields.Boolean(
+        string="Discrepancia 3-Way",
+        compute="_compute_3way_discrepancy",
+        store=False  # No hace falta guardarlo en BD, se calcula al vuelo
     )
-    x_purchase_qty_received = fields.Float(
-        related='purchase_line_id.qty_received', 
-        string="Cant. Recibida PO",
-        readonly=True
-    )
+
+    @api.depends('price_unit', 'quantity', 'purchase_line_id', 'purchase_line_id.price_unit', 'purchase_line_id.qty_received')
+    def _compute_3way_discrepancy(self):
+        for line in self:
+            # Por defecto todo está bien
+            is_problem = False
+            
+            if line.purchase_line_id:
+                # 1. Chequeo de Precio (Usamos float_compare para evitar errores de redondeo como 10.0000001)
+                # Si precio_factura > precio_compra (con precisión de 2 decimales)
+                if float_compare(line.price_unit, line.purchase_line_id.price_unit, precision_digits=2) == 1:
+                    is_problem = True
+                
+                # 2. Chequeo de Cantidad
+                # Si cantidad_factura > cantidad_recibida
+                elif float_compare(line.quantity, line.purchase_line_id.qty_received, precision_digits=2) == 1:
+                    is_problem = True
+            
+            line.is_3way_discrepancy = is_problem
