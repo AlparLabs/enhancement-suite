@@ -7,11 +7,19 @@
             <field name="inherit_id" ref="account.view_move_form"/>
             <field name="arch" type="xml">
 
-                <xpath expr="//field[@name='state']" position="before">
-                    <field name="x_discrepancy_state" widget="badge"
-                           decoration-danger="x_discrepancy_state == 'discrepancy'"
-                           decoration-success="x_discrepancy_state == 'clean'"
-                           invisible="move_type != 'in_invoice'"/>
+                <xpath expr="//header" position="after">
+                    <div class="alert alert-danger" role="alert" style="margin-bottom: 10px;"
+                         invisible="move_type != 'in_invoice' or x_discrepancy_state != 'discrepancy' or x_force_payment_approved == True">
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-exclamation-triangle fa-2x me-3" title="Alerta de Discrepancia"/>
+                            <div>
+                                <strong>¡ATENCIÓN! Bloqueo de 3-Way Match</strong><br/>
+                                El precio o la cantidad facturada no coinciden con la Orden de Compra.
+                                <br/>
+                                <em>Vea las líneas resaltadas en rojo abajo. Se requiere Nota de Crédito o Aprobación.</em>
+                            </div>
+                        </div>
+                    </div>
                 </xpath>
 
                 <xpath expr="//field[@name='invoice_date']" position="after">
@@ -38,7 +46,7 @@
             <field name="model">account.move</field>
             <field name="inherit_id" ref="account.view_invoice_tree"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='state']" position="before">
+                <xpath expr="//field[@name='payment_state']" position="before">
                      <field name="x_discrepancy_state" widget="badge"
                            decoration-danger="x_discrepancy_state == 'discrepancy'"
                            decoration-success="x_discrepancy_state == 'clean'"
