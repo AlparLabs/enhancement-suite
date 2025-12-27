@@ -93,27 +93,39 @@ class AccountMoveLine(models.Model):
         store=True # Guardado para permitir búsquedas rápidas y rendimiento
     )
 
-    @api.depends('price_unit', 'quantity', 'purchase_line_id', 
-                 'purchase_line_id.price_unit', 'purchase_line_id.qty_received')
+    @api.depends('price_unit', 'quantity', 'product_id', # Agregamos product_id a las dependencias
+                 'purchase_line_id', 'purchase_line_id.price_unit', 
+                 'purchase_line_id.qty_received', 'purchase_line_id.product_qty')
     def _compute_3way_discrepancy(self):
         """
-        Compara Precio y Cantidad contra la línea de la Orden de Compra (PO).
-        Usa float_compare para precisión decimal exacta.
+        Lógica mejorada: Se adapta a la política de control del producto (Pedido vs Recibido).
         """
         for line in self:
             is_problem = False
             
-            # Solo validamos si hay una Orden de Compra vinculada
             if line.purchase_line_id:
                 
-                # Comparación de Precio: ¿Precio Factura > Precio PO?
-                # float_compare(a, b, precision) devuelve 1 si a > b
+                # 1. Validar Precio (Siempre igual: Factura vs PO)
                 if float_compare(line.price_unit, line.purchase_line_id.price_unit, precision_digits=2) == 1:
                     is_problem = True
                 
-                # Comparación de Cantidad: ¿Cantidad Factura > Cantidad Recibida?
-                # OJO: Comparamos contra lo RECIBIDO (qty_received), no lo ordenado, para ser estrictos.
-                elif float_compare(line.quantity, line.purchase_line_id.qty_received, precision_digits=2) == 1:
-                    is_problem = True
+                # 2. Validar Cantidad (INTELIGENTE)
+                else:
+                    # Determinamos contra qué comparar según la configuración del producto
+                    # purchase_method: 'purchase' (Sobre pedido) | 'receive' (Sobre recibido)
+                    
+                    target_qty = 0.0
+                    
+                    # Si el producto se controla por "Cantidades Pedidas" (Servicios usualmente)
+                    if line.product_id.purchase_method == 'purchase':
+                        target_qty = line.purchase_line_id.product_qty
+                    
+                    # Si el producto se controla por "Cantidades Recibidas" (Stock)
+                    else:
+                        target_qty = line.purchase_line_id.qty_received
+
+                    # Comparación final
+                    if float_compare(line.quantity, target_qty, precision_digits=2) == 1:
+                        is_problem = True
 
             line.is_3way_discrepancy = is_problem
