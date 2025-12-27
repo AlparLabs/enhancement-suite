@@ -38,12 +38,12 @@
             <field name="model">account.move</field>
             <field name="inherit_id" ref="account.view_invoice_tree"/>
             <field name="arch" type="xml">
-                <field name="state" position="before">
+                <xpath expr="//field[@name='state']" position="before">
                      <field name="x_discrepancy_state" widget="badge"
                            decoration-danger="x_discrepancy_state == 'discrepancy'"
                            decoration-success="x_discrepancy_state == 'clean'"
                            optional="show"/>
-                </field>
+                </xpath>
             </field>
         </record>
 
