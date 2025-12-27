@@ -7,31 +7,18 @@
             <field name="inherit_id" ref="account.view_move_form"/>
             <field name="arch" type="xml">
 
-                <xpath expr="//header" position="before">
-                    <widget name="web_ribbon" title="DISCREPANCIA" bg_color="bg-danger"
-                            invisible="move_type != 'in_invoice' or release_to_pay != 'exception' or x_force_payment_approved == True"/>
-                </xpath>
-
-                <xpath expr="//header" position="after">
-                    <div class="alert alert-danger" role="alert" style="margin-bottom: 10px;"
-                         invisible="move_type != 'in_invoice' or release_to_pay != 'exception' or x_force_payment_approved == True">
-                        <div class="d-flex align-items-center">
-                            <i class="fa fa-exclamation-triangle fa-2x me-3" title="Alerta de Discrepancia"/>
-                            <div>
-                                <strong>¡ATENCIÓN! Bloqueo de 3-Way Match</strong><br/>
-                                El precio o la cantidad facturada no coinciden con la Orden de Compra.
-                                <br/>
-                                <em>Vea las líneas resaltadas en rojo abajo. Se requiere Nota de Crédito o Aprobación.</em>
-                            </div>
-                        </div>
-                    </div>
+                <xpath expr="//field[@name='state']" position="before">
+                    <field name="x_discrepancy_state" widget="badge"
+                           decoration-danger="x_discrepancy_state == 'discrepancy'"
+                           decoration-success="x_discrepancy_state == 'clean'"
+                           invisible="move_type != 'in_invoice'"/>
                 </xpath>
 
                 <xpath expr="//field[@name='invoice_date']" position="after">
                     <field name="x_force_payment_approved" 
                            widget="boolean_toggle"
                            groups="account.group_account_manager"
-                           invisible="move_type != 'in_invoice' or release_to_pay != 'exception'"/>
+                           invisible="x_discrepancy_state != 'discrepancy'"/>
                 </xpath>
 
                 <xpath expr="//field[@name='invoice_line_ids']/list" position="attributes">
@@ -45,5 +32,34 @@
 
             </field>
         </record>
+        
+        <record id="view_invoice_tree_inherit_discrepancy" model="ir.ui.view">
+            <field name="name">account.move.tree.discrepancy</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_invoice_tree"/>
+            <field name="arch" type="xml">
+                <field name="state" position="before">
+                     <field name="x_discrepancy_state" widget="badge"
+                           decoration-danger="x_discrepancy_state == 'discrepancy'"
+                           decoration-success="x_discrepancy_state == 'clean'"
+                           optional="show"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_account_invoice_filter_inherit_discrepancy" model="ir.ui.view">
+            <field name="name">account.invoice.select.discrepancy</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='closed']" position="after">
+                    <separator/>
+                    <filter string="Con Discrepancias (3-Way)" name="discrepancy_filter" 
+                            domain="[('x_discrepancy_state', '=', 'discrepancy')]"/>
+                    <separator/>
+                </xpath>
+            </field>
+        </record>
+
     </data>
 </odoo>

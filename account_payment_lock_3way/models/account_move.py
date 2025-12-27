@@ -1,4 +1,3 @@
-# account_payment_lock_3way/models/account_move.py
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare
@@ -6,63 +5,80 @@ from odoo.tools import float_compare
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    # Campo de control para gerentes
+    # 1. Campo para "forzar" el pago manualmente (Solo Gerentes)
     x_force_payment_approved = fields.Boolean(
         string="Autorizar Pago (Forzar)",
         tracking=True,
         help="Permite registrar el pago aunque existan discrepancias en el 3-Way Match."
     )
 
-    def action_register_payment(self):
+    # 2. Estado general de discrepancia (Para filtros, búsquedas y el Badge de colores)
+    x_discrepancy_state = fields.Selection([
+        ('clean', 'Correcto'),
+        ('discrepancy', 'Discrepancia')
+    ], string="Estado 3-Way", compute="_compute_discrepancy_state", store=True)
+
+    @api.depends('invoice_line_ids.is_3way_discrepancy')
+    def _compute_discrepancy_state(self):
         """
-        Intercepta el botón de pagar.
-        Verifica:
-        1. ¿Es factura de proveedor?
-        2. ¿Tiene excepción de 3-way match?
-        3. ¿Tiene aprobación manual O corrección aplicada (NC/ND)?
+        Calcula si la factura en general tiene problemas.
+        Si al menos una línea tiene discrepancia, toda la factura se marca como 'discrepancy'.
         """
         for move in self:
-            # Solo actuamos en Facturas de Proveedor con estado 'Excepción'
+            # Buscamos si existe alguna línea con el flag en True
+            if any(move.invoice_line_ids.mapped('is_3way_discrepancy')):
+                move.x_discrepancy_state = 'discrepancy'
+            else:
+                move.x_discrepancy_state = 'clean'
+
+    def action_register_payment(self):
+        """
+        Intercepta el botón de pagar para bloquear si hay discrepancias no resueltas.
+        """
+        for move in self:
+            # Solo actuamos en Facturas de Proveedor con estado de excepción de Odoo
             if move.move_type == 'in_invoice' and move.release_to_pay == 'exception':
                 
-                # --- VÍA 1: Aprobación Gerencial ---
+                # A. Válvula de escape: Aprobación Gerencial
                 if move.x_force_payment_approved:
-                    continue  # Pasa al siguiente o al super()
+                    continue 
 
-                # --- VÍA 2: Corrección Contable (NC/ND Aplicada) ---
-                has_corrective_doc = False
-                
-                # Obtenemos las líneas de deuda (payable)
-                payable_lines = move.line_ids.filtered(lambda l: l.account_type == 'liability_payable')
-                
-                # Buscamos en los pagos/cruces parciales ya conciliados
-                # matched_debit_ids = Documentos que reducen la deuda de esta factura
-                partials = payable_lines.mapped('matched_debit_ids')
-                
-                for partial in partials:
-                    # Buscamos el documento que originó este cruce (la contraparte)
-                    # En un cruce, debit_move_id es la factura, credit_move_id es el pago/NC
-                    counterpart_move = partial.credit_move_id.move_id
+                # B. Verificación de Corrección Contable (NC/ND Aplicada)
+                # Si el sistema marca discrepancia visualmente, verificamos si ya se "pagó" con una NC
+                if move.x_discrepancy_state == 'discrepancy':
                     
-                    # Verificamos el tipo de documento de la contraparte
-                    # 'in_refund': Nota de Crédito de Proveedor
-                    # 'out_invoice': Factura a Cliente (si le facturamos al proveedor para cruzar cuentas)
-                    if counterpart_move.move_type in ['in_refund', 'out_invoice']:
-                        has_corrective_doc = True
-                        break
-                
-                if has_corrective_doc:
-                    continue  # Se encontró una corrección aplicada, permitimos pagar el resto.
+                    has_corrective_doc = False
+                    
+                    # Obtenemos las líneas de deuda (payable)
+                    payable_lines = move.line_ids.filtered(lambda l: l.account_type == 'liability_payable')
+                    
+                    # Buscamos en los cruces parciales (pagos/NCs ya aplicados)
+                    partials = payable_lines.mapped('matched_debit_ids')
+                    
+                    for partial in partials:
+                        # Buscamos la contraparte (el documento que está ajustando esta factura)
+                        counterpart_move = partial.credit_move_id.move_id
+                        
+                        # Tipos de documentos que consideramos "Corrección Válida":
+                        # 'in_refund': Nota de Crédito de Proveedor
+                        # 'out_invoice': Factura a Cliente (Factura Cruzada / Nota de Débito propia)
+                        if counterpart_move.move_type in ['in_refund', 'out_invoice']:
+                            has_corrective_doc = True
+                            break
+                    
+                    if has_corrective_doc:
+                        continue  # Se encontró corrección, permitimos pagar el saldo restante.
 
-                # --- BLOQUEO ---
-                raise UserError(_(
-                    "⛔ PAGO BLOQUEADO POR DISCREPANCIA (3-Way Match)\n\n"
-                    "El sistema detectó diferencias en Precio o Cantidad respecto a la Orden de Compra.\n"
-                    "Para proceder, realice una de las siguientes acciones:\n"
-                    "1. Aplique (concilie) una Nota de Crédito del proveedor a esta factura.\n"
-                    "2. Aplique una Factura Cruzada (Nota de Débito).\n"
-                    "3. Solicite autorización marcando 'Autorizar Pago' (Solo Gerentes)."
-                ))
+                    # C. BLOQUEO FINAL
+                    raise UserError(_(
+                        "⛔ PAGO BLOQUEADO POR DISCREPANCIA (3-Way Match)\n\n"
+                        "El sistema detectó diferencias en Precio o Cantidad respecto a la Orden de Compra.\n"
+                        "Estado actual: Discrepancia.\n\n"
+                        "Para proceder, realice una de las siguientes acciones:\n"
+                        "1. Aplique (concilie) una Nota de Crédito del proveedor.\n"
+                        "2. Aplique una Factura Cruzada (Nota de Débito).\n"
+                        "3. Solicite autorización marcando 'Autorizar Pago' (Solo Gerentes)."
+                    ))
 
         return super(AccountMove, self).action_register_payment()
 
@@ -70,28 +86,34 @@ class AccountMove(models.Model):
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
-    # Campo "Semáforo": El backend decide si esta línea es problemática
+    # 3. Campo computado por línea: ¿Esta línea específica tiene problemas?
     is_3way_discrepancy = fields.Boolean(
         string="Discrepancia 3-Way",
         compute="_compute_3way_discrepancy",
-        store=False  # No hace falta guardarlo en BD, se calcula al vuelo
+        store=True # Guardado para permitir búsquedas rápidas y rendimiento
     )
 
-    @api.depends('price_unit', 'quantity', 'purchase_line_id', 'purchase_line_id.price_unit', 'purchase_line_id.qty_received')
+    @api.depends('price_unit', 'quantity', 'purchase_line_id', 
+                 'purchase_line_id.price_unit', 'purchase_line_id.qty_received')
     def _compute_3way_discrepancy(self):
+        """
+        Compara Precio y Cantidad contra la línea de la Orden de Compra (PO).
+        Usa float_compare para precisión decimal exacta.
+        """
         for line in self:
-            # Por defecto todo está bien
             is_problem = False
             
+            # Solo validamos si hay una Orden de Compra vinculada
             if line.purchase_line_id:
-                # 1. Chequeo de Precio (Usamos float_compare para evitar errores de redondeo como 10.0000001)
-                # Si precio_factura > precio_compra (con precisión de 2 decimales)
+                
+                # Comparación de Precio: ¿Precio Factura > Precio PO?
+                # float_compare(a, b, precision) devuelve 1 si a > b
                 if float_compare(line.price_unit, line.purchase_line_id.price_unit, precision_digits=2) == 1:
                     is_problem = True
                 
-                # 2. Chequeo de Cantidad
-                # Si cantidad_factura > cantidad_recibida
+                # Comparación de Cantidad: ¿Cantidad Factura > Cantidad Recibida?
+                # OJO: Comparamos contra lo RECIBIDO (qty_received), no lo ordenado, para ser estrictos.
                 elif float_compare(line.quantity, line.purchase_line_id.qty_received, precision_digits=2) == 1:
                     is_problem = True
-            
+
             line.is_3way_discrepancy = is_problem
