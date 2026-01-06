@@ -139,7 +139,11 @@ class ExtractMixin(models.AbstractModel):
                 response_mime_type="application/json"
             )
         )
-        return json.loads(response.text)
+        try:
+            return json.loads(response.text)
+        except json.JSONDecodeError as e:
+            _logger.error(f"OCR Manager: Invalid JSON from AI: {response.text}")
+            raise UserError(_("La IA devolvió una respuesta inválida. Intente nuevamente."))
 
     def _extract_with_openai(self, api_key, model_name, b64_data, mime_type, prompt_text):
         """Conexión con OpenAI (GPT-4o)"""

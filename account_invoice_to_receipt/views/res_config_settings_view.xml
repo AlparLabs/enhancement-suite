@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_receipts" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.receipts</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='analytic']" position="before">
+                <block title="Conversión a Recibos Internos" id="receipt_conversion">
+                    <setting string="Configuración Ventas (Clientes)" help="Configura el diario y cuenta para recibos de clientes.">
+                        <div class="row mt16">
+                            <label for="receipt_customer_journal_id" class="col-lg-3 o_light_label"/>
+                            <field name="receipt_customer_journal_id"/>
+                        </div>
+                        <div class="row">
+                            <label for="receipt_customer_account_id" class="col-lg-3 o_light_label"/>
+                            <field name="receipt_customer_account_id"/>
+                        </div>
+                        <div class="row">
+                            <label for="receipt_customer_tax_id" class="col-lg-3 o_light_label"/>
+                            <field name="receipt_customer_tax_id"/>
+                        </div>
+                    </setting>
+                    <setting string="Configuración Compras (Proveedores)" help="Configura el diario y cuenta para recibos de proveedores.">
+                        <div class="row mt16">
+                            <label for="receipt_vendor_journal_id" class="col-lg-3 o_light_label"/>
+                            <field name="receipt_vendor_journal_id"/>
+                        </div>
+                        <div class="row">
+                            <label for="receipt_vendor_account_id" class="col-lg-3 o_light_label"/>
+                            <field name="receipt_vendor_account_id"/>
+                        </div>
+                        <div class="row">
+                            <label for="receipt_vendor_tax_id" class="col-lg-3 o_light_label"/>
+                            <field name="receipt_vendor_tax_id"/>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
