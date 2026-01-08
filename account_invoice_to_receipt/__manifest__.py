@@ -1,7 +1,7 @@
 # __manifest__.py
 {
     'name': 'Convertir Factura a Recibo Interno',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Accounting',
     'summary': 'Transforma borradores de facturas en recibos contables internos',
     'author': 'AlparData SAS / Gemini',

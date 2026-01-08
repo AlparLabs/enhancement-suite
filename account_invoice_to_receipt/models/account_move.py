@@ -55,7 +55,7 @@ class AccountMove(models.Model):
             
             # Parche número documento proveedor
             if target_type == 'in_receipt' and not move.l10n_latam_document_number:
-                vals['l10n_latam_document_number'] = '000-00000'
+                vals['l10n_latam_document_number'] = '000-%s' % move.id
 
             move.write(vals)
 

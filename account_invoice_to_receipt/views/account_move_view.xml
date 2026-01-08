@@ -10,8 +10,20 @@
                         string="Convertir a Recibo Interno" 
                         type="object" 
                         class="btn-secondary"
-                        invisible="state != 'draft' or move_type not in ('out_invoice', 'in_invoice')"/>
+                        invisible="state != 'draft' or move_type not in ('out_invoice', 'in_invoice', 'out_receipt', 'in_receipt')"/>
             </xpath>
+        </field>
+    </record>
+
+    <record id="action_convert_to_internal_receipt_server" model="ir.actions.server">
+        <field name="name">Convertir a Recibo Interno</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                records.action_convert_to_internal_receipt()
         </field>
     </record>
 </odoo>
