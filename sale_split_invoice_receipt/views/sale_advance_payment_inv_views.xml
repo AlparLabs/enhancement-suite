@@ -5,8 +5,8 @@
         <field name="model">sale.advance.payment.inv</field>
         <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='advance_payment_method']" position="inside">
-                <field name="has_down_payment" invisible="1"/>
+            <xpath expr="//field[@name='advance_payment_method']" position="after">
+                <field name="has_down_payments" invisible="1"/>
             </xpath>
         </field>
     </record>
