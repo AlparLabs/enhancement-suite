@@ -42,3 +42,21 @@ class SaleOrder(models.Model):
             action['context'] = context
 
         return action
+
+    def _get_invoiced(self):
+        """
+        Sobrescribimos para incluir Recibos (out_receipt) en el cómputo de facturas.
+        """
+        self.ensure_one()
+        # 1. Obtenemos lo que Odoo considera "facturado" (Facturas y Notas de Crédito)
+        invoices = super(SaleOrder, self)._get_invoiced()
+        
+        # 2. Buscamos recibos vinculados
+        receipts = self.env['account.move'].search([
+            ('line_ids.sale_line_ids.order_id', '=', self.id),
+            ('move_type', '=', 'out_receipt'),
+            ('state', '!=', 'cancel')
+        ])
+        
+        # 3. Unimos los resultados
+        return invoices | receipts
