@@ -8,8 +8,8 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
     advance_payment_method = fields.Selection(
         selection_add=[
-            ('split_50_50', 'Dividir Cantidades: 50% Oficial / 50% Recibo X'),
-            ('receipt', 'Recibo X (Completo)')
+            ('split_50_50', 'Dividir documento: 50% Oficial / 50% Presupuesto'),
+            ('receipt', 'Presupuesto')
         ],
         ondelete={'split_50_50': 'set default', 'receipt': 'set default'}
     )
@@ -54,11 +54,11 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 # Convertir a Recibo usando el módulo account_invoice_to_receipt
                 try:
                     move.action_convert_to_internal_receipt()
-                    move.ref = _('Recibo X de %s') % order.name
+                    move.ref = _('Presupuesto de %s') % order.name
                     created_moves += move
                 except UserError as e:
                     move.unlink()
-                    raise UserError(_("Falló la creación del recibo: %s") % str(e))
+                    raise UserError(_("Falló la creación del Presupuesto: %s") % str(e))
 
             # Abrimos los documentos generados
             if self._context.get('open_invoices', False) and created_moves:
@@ -121,7 +121,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 created_moves += move_b
             except UserError as e:
                 move_b.unlink()
-                raise UserError(_("Se creó la factura oficial, pero falló la creación del recibo: %s") % str(e))
+                raise UserError(_("Se creó la factura oficial, pero falló la creación del Presupuesto: %s") % str(e))
 
         # Abrimos las facturas generadas
         if self._context.get('open_invoices', False) and created_moves:
