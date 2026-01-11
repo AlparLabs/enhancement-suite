@@ -3,6 +3,57 @@ from odoo import models, api, fields
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
+    # Redefinimos invoice_ids para incluir out_receipt
+    invoice_ids = fields.Many2many(
+        'account.move',
+        string='Invoices',
+        compute='_compute_invoice_ids',
+        search='_search_invoice_ids',
+        copy=False,
+    )
+
+    invoice_count = fields.Integer(
+        string='Invoice Count',
+        compute='_compute_invoice_count',
+    )
+
+    @api.depends('order_line.invoice_lines')
+    def _compute_invoice_ids(self):
+        """
+        Computa invoice_ids incluyendo facturas, notas de crédito Y recibos.
+        """
+        for order in self:
+            # Buscamos por líneas vinculadas
+            invoices = order.order_line.invoice_lines.move_id.filtered(
+                lambda m: m.move_type in ('out_invoice', 'out_refund', 'out_receipt')
+            )
+            
+            # Fallback: buscamos recibos por invoice_origin si no fueron encontrados por líneas
+            receipt_by_origin = self.env['account.move'].search([
+                ('invoice_origin', '=', order.name),
+                ('move_type', '=', 'out_receipt'),
+                ('state', '!=', 'cancel')
+            ])
+            
+            # Unimos resultados
+            order.invoice_ids = invoices | receipt_by_origin
+
+    @api.depends('invoice_ids')
+    def _compute_invoice_count(self):
+        """
+        Computa el conteo de facturas incluyendo recibos.
+        """
+        for order in self:
+            order.invoice_count = len(order.invoice_ids)
+
+    def _search_invoice_ids(self, operator, value):
+        """
+        Permite buscar órdenes por sus facturas/recibos.
+        """
+        if operator == 'in':
+            return [('order_line.invoice_lines.move_id', 'in', value)]
+        return [('order_line.invoice_lines.move_id', operator, value)]
+
     def action_view_invoice(self, invoices=False):
         """
         Sobrescribimos la acción del botón inteligente para incluir Recibos (out_receipt)
@@ -45,32 +96,3 @@ class SaleOrder(models.Model):
 
         action['context'] = context
         return action
-
-    @api.depends('order_line.invoice_lines')
-    def _get_invoiced(self):
-        """
-        Sobrescribimos para incluir Recibos (out_receipt) en invoice_ids.
-        """
-        # Primero llamamos al método original para que setee invoice_ids estándar
-        super(SaleOrder, self)._get_invoiced()
-        
-        # Ahora añadimos los recibos a cada orden
-        for order in self:
-            # Buscamos recibos vinculados por líneas
-            receipts = self.env['account.move'].search([
-                ('line_ids.sale_line_ids.order_id', '=', order.id),
-                ('move_type', '=', 'out_receipt'),
-                ('state', '!=', 'cancel')
-            ])
-            
-            # Si no encontramos por líneas, intentamos por origen
-            if not receipts:
-                receipts = self.env['account.move'].search([
-                    ('invoice_origin', '=', order.name),
-                    ('move_type', '=', 'out_receipt'),
-                    ('state', '!=', 'cancel')
-                ])
-            
-            # Añadimos los recibos a invoice_ids (si existen)
-            if receipts:
-                order.invoice_ids = order.invoice_ids | receipts
