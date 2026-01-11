@@ -1,6 +1,6 @@
 {
     'name': 'Split Venta 50/50 (Factura/Recibo)',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Sales',
     'summary': 'Factura 50% Oficial y 50% Recibo Interno',
     'author': 'AlparData',
