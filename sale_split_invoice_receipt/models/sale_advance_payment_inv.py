@@ -1,3 +1,5 @@
+import copy
+
 from odoo import models, fields, _
 from odoo.exceptions import UserError
 
@@ -33,24 +35,23 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
             # Iteramos sobre las líneas del pedido
             for line in order.order_line:
-                # Ignoramos notas, secciones o líneas con cantidad 0
-                if line.display_type or line.product_uom_qty == 0.0:
+                # Ignoramos notas, secciones o líneas sin cantidad a facturar
+                if line.display_type or line.qty_to_invoice <= 0.0:
                     continue
 
                 # Preparamos la data base de la línea (cuentas, impuestos, nombre)
-                # Odoo por defecto trae 'qty_to_invoice', pero nosotros forzaremos la mitad
                 original_line_vals = line._prepare_invoice_line()
                 
-                # Calculamos mitad
-                half_qty = line.product_uom_qty * 0.5
+                # Calculamos mitad de lo pendiente por facturar
+                half_qty = line.qty_to_invoice * 0.5
 
-                # Línea para Factura A
-                vals_a = original_line_vals.copy()
+                # Línea para Factura A (usamos deepcopy para evitar compartir referencias)
+                vals_a = copy.deepcopy(original_line_vals)
                 vals_a['quantity'] = half_qty
                 invoice_lines_a.append((0, 0, vals_a))
 
                 # Línea para Factura B
-                vals_b = original_line_vals.copy()
+                vals_b = copy.deepcopy(original_line_vals)
                 vals_b['quantity'] = half_qty
                 invoice_lines_b.append((0, 0, vals_b))
 

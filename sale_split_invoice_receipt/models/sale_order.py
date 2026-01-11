@@ -21,6 +21,13 @@ class SaleOrder(models.Model):
         # 3. Actualizamos el dominio y los contextos de la acción
         if len(invoices) > 1:
             action['domain'] = [('id', 'in', invoices.ids)]
+            # FIX: Si super() encontró solo 1 factura, habrá seteado res_id y views=[(form, 'form')].
+            # Nosotros encontramos más (ej. 1 factura + 1 recibo), así que forzamos lista.
+            action['res_id'] = False
+            action['views'] = [
+                (self.env.ref('account.view_out_invoice_tree').id, 'tree'),
+                (self.env.ref('account.view_move_form').id, 'form')
+            ]
         elif len(invoices) == 1:
             action['views'] = [(self.env.ref('account.view_move_form').id, 'form')]
             action['res_id'] = invoices.id
@@ -28,6 +35,10 @@ class SaleOrder(models.Model):
             action['domain'] = [('id', 'in', invoices.ids)]
 
         # 4. Aseguramos que el contexto no filtre por defecto
-        # (A veces Odoo pone default_move_type='out_invoice' que puede molestar al crear uno nuevo desde ahí,
-        # pero para ver listados está bien).
+        # Eliminamos default_move_type para que no filtre en la vista de lista
+        if 'default_move_type' in action['context']:
+            context = dict(action['context'])
+            context.pop('default_move_type', None)
+            action['context'] = context
+
         return action
