@@ -50,6 +50,8 @@ class SaleOrder(models.Model):
         self.ensure_one()
         # 1. Obtenemos lo que Odoo considera "facturado" (Facturas y Notas de Crédito)
         invoices = super(SaleOrder, self)._get_invoiced()
+        if not invoices:
+            invoices = self.env['account.move']
         
         # 2. Buscamos recibos vinculados
         receipts = self.env['account.move'].search([

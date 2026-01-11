@@ -8,16 +8,52 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
     advance_payment_method = fields.Selection(
         selection_add=[
-            ('split_50_50', 'Dividir Cantidades: 50% Oficial / 50% Recibo X')
+            ('split_50_50', 'Dividir Cantidades: 50% Oficial / 50% Recibo X'),
+            ('receipt', 'Recibo X (Completo)')
         ],
-        ondelete={'split_50_50': 'set default'}
+        ondelete={'split_50_50': 'set default', 'receipt': 'set default'}
     )
 
     def create_invoices(self):
         # 1. Si no es nuestra opción, comportamiento estándar
-        if self.advance_payment_method != 'split_50_50':
+        if self.advance_payment_method not in ('split_50_50', 'receipt'):
             return super().create_invoices()
 
+        # CASO RECIBO COMPLETO
+        if self.advance_payment_method == 'receipt':
+            # Creamos las facturas estándar usando la lógica nativa
+            action = super().create_invoices()
+            
+            # Recuperamos los movimientos creados
+            moves = self.env['account.move']
+            if isinstance(action, dict):
+                if action.get('res_id'):
+                    moves = self.env['account.move'].browse(action['res_id'])
+                elif action.get('domain'):
+                    # Intentamos extraer los IDs del dominio
+                    domain = action['domain']
+                    move_ids = []
+                    for leaf in domain:
+                        if isinstance(leaf, (list, tuple)) and len(leaf) == 3 and leaf[0] == 'id' and leaf[1] == 'in':
+                            move_ids = leaf[2]
+                            break
+                    if move_ids:
+                        moves = self.env['account.move'].browse(move_ids)
+            
+            if not moves:
+                # Fallback: buscamos por contexto active_ids si no podemos deducirlo de la acción
+                sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
+                moves = sale_orders.invoice_ids.filtered(lambda m: m.state == 'draft' and m.create_date >= fields.Datetime.now())
+
+            # Convertimos a Recibo
+            for move in moves:
+                if move.move_type == 'out_invoice':
+                    move.action_convert_to_internal_receipt()
+                    move.ref = _('Recibo X de %s') % move.invoice_origin
+
+            return action
+
+        # CASO SPLIT 50/50
         sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
         created_moves = self.env['account.move']
 
