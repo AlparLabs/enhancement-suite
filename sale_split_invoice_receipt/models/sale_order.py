@@ -25,7 +25,7 @@ class SaleOrder(models.Model):
             # Nosotros encontramos más (ej. 1 factura + 1 recibo), así que forzamos lista.
             action['res_id'] = False
             action['views'] = [
-                (self.env.ref('account.view_out_invoice_list').id, 'list'),
+                (self.env.ref('account.view_out_invoice_tree').id, 'list'),
                 (self.env.ref('account.view_move_form').id, 'form')
             ]
         elif len(invoices) == 1:
