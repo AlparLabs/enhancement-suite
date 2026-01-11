@@ -19,44 +19,54 @@ class SaleAdvancePaymentInv(models.TransientModel):
         if self.advance_payment_method not in ('split_50_50', 'receipt'):
             return super().create_invoices()
 
-        # CASO RECIBO COMPLETO
-        if self.advance_payment_method == 'receipt':
-            # Creamos las facturas estándar usando la lógica nativa
-            action = super().create_invoices()
-            
-            # Recuperamos los movimientos creados
-            moves = self.env['account.move']
-            if isinstance(action, dict):
-                if action.get('res_id'):
-                    moves = self.env['account.move'].browse(action['res_id'])
-                elif action.get('domain'):
-                    # Intentamos extraer los IDs del dominio
-                    domain = action['domain']
-                    move_ids = []
-                    for leaf in domain:
-                        if isinstance(leaf, (list, tuple)) and len(leaf) == 3 and leaf[0] == 'id' and leaf[1] == 'in':
-                            move_ids = leaf[2]
-                            break
-                    if move_ids:
-                        moves = self.env['account.move'].browse(move_ids)
-            
-            if not moves:
-                # Fallback: buscamos por contexto active_ids si no podemos deducirlo de la acción
-                sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
-                moves = sale_orders.invoice_ids.filtered(lambda m: m.state == 'draft' and m.create_date >= fields.Datetime.now())
-
-            # Convertimos a Recibo
-            for move in moves:
-                if move.move_type == 'out_invoice':
-                    move.action_convert_to_internal_receipt()
-                    move.ref = _('Recibo X de %s') % move.invoice_origin
-
-            return action
-
-        # CASO SPLIT 50/50
         sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
         created_moves = self.env['account.move']
 
+        # CASO RECIBO COMPLETO (100%)
+        if self.advance_payment_method == 'receipt':
+            for order in sale_orders:
+                if order.invoice_status == 'invoiced':
+                    continue
+
+                # Preparar factura base
+                invoice_vals = order._prepare_invoice()
+                invoice_lines = []
+
+                # Iteramos sobre las líneas del pedido
+                for line in order.order_line:
+                    # Ignoramos notas, secciones o líneas sin cantidad a facturar
+                    if line.display_type or line.qty_to_invoice <= 0.0:
+                        continue
+
+                    # Preparamos la línea con los datos reales
+                    line_vals = line._prepare_invoice_line()
+                    line_vals['quantity'] = line.qty_to_invoice
+                    invoice_lines.append((0, 0, line_vals))
+
+                # Si no hay líneas facturables, pasamos
+                if not invoice_lines:
+                    continue
+
+                # Crear la factura con las líneas reales
+                invoice_vals['invoice_line_ids'] = invoice_lines
+                move = self.env['account.move'].create(invoice_vals)
+
+                # Convertir a Recibo usando el módulo account_invoice_to_receipt
+                try:
+                    move.action_convert_to_internal_receipt()
+                    move.ref = _('Recibo X de %s') % order.name
+                    created_moves += move
+                except UserError as e:
+                    move.unlink()
+                    raise UserError(_("Falló la creación del recibo: %s") % str(e))
+
+            # Abrimos los documentos generados
+            if self._context.get('open_invoices', False) and created_moves:
+                return sale_orders.action_view_invoice(invoices=created_moves)
+
+            return {'type': 'ir.actions.act_window_close'}
+
+        # CASO SPLIT 50/50
         for order in sale_orders:
             if order.invoice_status == 'invoiced':
                 continue
@@ -105,21 +115,16 @@ class SaleAdvancePaymentInv(models.TransientModel):
             move_b = self.env['account.move'].create(invoice_vals_b)
             
             # Aplicamos la conversión usando tu módulo 'account_invoice_to_receipt'
-            # Esto cambiará el diario, quitará impuestos y ajustará el tipo
             try:
                 move_b.action_convert_to_internal_receipt()
-                
-                # Referencia visual
                 move_b.ref = _('Ref. Presupuesto %s (50%%)') % order.name
                 created_moves += move_b
-                
             except UserError as e:
-                # Si falla la conversión (ej. falta configurar diario), borramos la factura B para no dejar basura
                 move_b.unlink()
                 raise UserError(_("Se creó la factura oficial, pero falló la creación del recibo: %s") % str(e))
 
         # Abrimos las facturas generadas
-        if self._context.get('open_invoices', False):
-            return sale_orders.action_view_invoice()
+        if self._context.get('open_invoices', False) and created_moves:
+            return sale_orders.action_view_invoice(invoices=created_moves)
 
         return {'type': 'ir.actions.act_window_close'}
