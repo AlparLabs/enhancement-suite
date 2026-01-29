@@ -43,10 +43,10 @@
     </record>
 
     <menuitem id="menu_sim"
-              name="Internal Requests (SIM)"
-              parent="purchase.menu_procurement_management"
+              name="Purchase Requests (SIM)"
+              parent="material_requests.menu_material_request_root"
               action="action_sim"
-              sequence="1"/>
+              sequence="20"/>
               
     <record id="seq_sim" model="ir.sequence">
         <field name="name">SIM Sequence</field>

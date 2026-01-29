@@ -83,11 +83,18 @@
         </field>
     </record>
 
+    <menuitem id="menu_material_request_root"
+              name="Material Requests"
+              sequence="10"
+              web_icon="project,static/description/icon.png"/> 
+              <!-- Note: Using project icon as placeholder, or we can use generic 'fa-cubes' if Odoo 18 supports it in web_icon path or just rely on default. 
+                   Better: If no "static/description/icon.png" exists, it shows default. We will stick to a clean definition. -->
+
     <menuitem id="menu_pim"
-              name="Material Requests (PIM)"
-              parent="project.menu_main_pm"
+              name="Requests (PIM)"
+              parent="menu_material_request_root"
               action="action_pim"
-              sequence="50"/>
+              sequence="10"/>
 
     <record id="seq_pim" model="ir.sequence">
         <field name="name">PIM Sequence</field>
