@@ -8,6 +8,7 @@ class Sim(models.Model):
     name = fields.Char(string='SIM Reference', required=True, copy=False, readonly=True, default='New')
     pim_id = fields.Many2one('pim', string='Source PIM', readonly=True)
     project_id = fields.Many2one(related='pim_id.project_id', string='Project', store=True)
+    partner_id = fields.Many2one('res.partner', string='Preferred Vendor', domain="[('supplier_rank', '>', 0)]")
     state = fields.Selection([
         ('draft', 'New Request'),
         ('po_created', 'PO Created'),
@@ -28,22 +29,38 @@ class Sim(models.Model):
         self.ensure_one()
         PurchaseOrder = self.env['purchase.order']
         
+        # Determine Vendor
+        partner = self.partner_id
+        if not partner:
+            # Try to find the first common vendor if possible, or leave empty
+            # For now, we leave it empty if not set, consistent with Odoo flows 
+            # where user must choose.
+            pass
+
         # 1. Create the PO Header
         po_vals = {
             'origin': f"{self.name} ({self.pim_id.name})",
-            'partner_id': self.env.user.company_id.partner_id.id, # Placeholder Vendor (User must change it)
-            'pim_id': self.pim_id.id, # Custom link we will add to PO
+            'partner_id': partner.id if partner else False, 
+            'pim_id': self.pim_id.id, 
+            'sim_id': self.id,
             'order_line': []
         }
 
         # 2. Add the Lines
         for line in self.line_ids:
+            # Try to get price from supplier info
+            price_unit = 0.0
+            if partner:
+                supplier_info = line.product_id._select_seller(partner_id=partner, quantity=line.quantity, uom_id=line.uom_id)
+                if supplier_info:
+                    price_unit = supplier_info.price
+            
             po_vals['order_line'].append((0, 0, {
                 'product_id': line.product_id.id,
                 'name': line.product_id.name,
                 'product_qty': line.quantity,
                 'product_uom': line.uom_id.id,
-                'price_unit': 0.0, # To be filled by buyer
+                'price_unit': price_unit, 
                 'date_planned': fields.Date.context_today(self),
             }))
         

@@ -18,6 +18,7 @@
                     <group>
                         <field name="pim_id"/>
                         <field name="project_id"/>
+                        <field name="partner_id" placeholder="Select Vendor (Optional)"/>
                     </group>
                     <notebook>
                         <page string="Items to Buy">

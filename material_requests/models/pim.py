@@ -44,6 +44,7 @@ class Pim(models.Model):
     def action_process_pim(self):
         """ 
         Smart Logic: Splits PIM into Transfer (Stock) and SIM (Purchase) 
+        Checked against specific Location availability.
         """
         stock_lines = []
         sim_lines = []
@@ -51,21 +52,37 @@ class Pim(models.Model):
         # Get Locations
         picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1) or \
                        self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
+        
+        location_src_id = picking_type.default_location_src_id.id
 
         for line in self.line_ids:
-            # 1. Check Availability
-            qty_available = line.product_id.free_qty
+            # 1. Check Availability in specific location
+            quants = self.env['stock.quant'].search([
+                ('product_id', '=', line.product_id.id),
+                ('location_id', '=', location_src_id)
+            ])
+            qty_available = sum(quants.mapped('quantity'))
+            
+            # We must subtract reserved quantity if we want "Available" (quantity - reserved_quantity)
+            # But 'quantity' in stock.quant is On Hand. 
+            # Depending on need, we might use 'limit=1' or summing if multiple quants exist in sub-locations (if child_of).
+            # For simplicity in this step, we assume one main location or exact match. 
+            # Better approach: use product.with_context(location=...).free_qty for that location.
+            
+            product_in_loc = line.product_id.with_context(location=location_src_id)
+            qty_available_free = product_in_loc.free_qty
+
             qty_needed = line.quantity
             
             qty_for_transfer = 0
             qty_for_sim = 0
 
             # 2. The Split Logic
-            if qty_available >= qty_needed:
+            if qty_available_free >= qty_needed:
                 qty_for_transfer = qty_needed
             else:
                 # Partial or None available
-                qty_for_transfer = max(0, qty_available)
+                qty_for_transfer = max(0, qty_available_free)
                 qty_for_sim = qty_needed - qty_for_transfer
 
             # 3. Prepare Transfer Line
