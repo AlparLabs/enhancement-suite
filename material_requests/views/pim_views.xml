@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <record id="view_pim_form" model="ir.ui.view">
+        <field name="name">pim.form</field>
+        <field name="model">pim</field>
+        <field name="arch" type="xml">
+            <form string="PIM Request">
+                <header>
+                    <button name="action_submit" string="Submit to Warehouse" type="object" class="oe_highlight" 
+                            invisible="state != 'draft'"/>
+                    
+                    <button name="action_process_pim" string="Check Availability" type="object" class="btn-primary" 
+                            invisible="state != 'submitted'"/>
+                            
+                    <button name="action_approve" string="Complete" type="object" 
+                            invisible="state != 'processing'"/>
+                            
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,processing,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_pickings" type="object" class="oe_stat_button" icon="fa-truck"
+                                invisible="picking_count == 0">
+                            <field name="picking_count" widget="statinfo" string="Transfers"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="date_required"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Materials">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="quantity"/>
+                                    <field name="uom_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_pim_tree" model="ir.ui.view">
+        <field name="name">pim.list</field>
+        <field name="model">pim</field>
+        <field name="arch" type="xml">
+            <list string="PIM Requests">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="user_id"/>
+                <field name="date_required"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state == 'draft'" 
+                       decoration-warning="state == 'submitted'" 
+                       decoration-success="state == 'done'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_pim" model="ir.actions.act_window">
+        <field name="name">Material Requests (PIM)</field>
+        <field name="res_model">pim</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Create a new Internal Material Request (PIM)
+          </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_pim"
+              name="Material Requests (PIM)"
+              parent="project.menu_main_pm"
+              action="action_pim"
+              sequence="50"/>
+
+    <record id="seq_pim" model="ir.sequence">
+        <field name="name">PIM Sequence</field>
+        <field name="code">pim</field>
+        <field name="prefix">PIM/%(year)s/</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+</odoo>

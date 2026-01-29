@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pim,pim,model_pim,base.group_user,1,1,1,1
+access_pim_line,pim.line,model_pim_line,base.group_user,1,1,1,1
