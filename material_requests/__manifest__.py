@@ -7,7 +7,9 @@
     'depends': ['base', 'project', 'stock', 'purchase'],
     'data': [
         'security/ir.model.access.csv',
-        'views/pim_view.xml',
+        'views/pim_views.xml',
+        'views/sim_views.xml',
+        'views/purchase_views.xml',
     ],
     'installable': True,
     'application': True,
