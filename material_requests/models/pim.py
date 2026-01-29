@@ -28,12 +28,13 @@ class Pim(models.Model):
         for record in self:
             record.picking_count = len(record.picking_ids)
 
-    @api.model
-    def create(self, vals):
-        if vals.get('name', 'New') == 'New':
-            # Simple sequence generator
-            vals['name'] = self.env['ir.sequence'].next_by_code('pim') or 'PIM'
-        return super(Pim, self).create(vals)
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', 'New') == 'New':
+                # Simple sequence generator
+                vals['name'] = self.env['ir.sequence'].next_by_code('pim') or 'PIM'
+        return super(Pim, self).create(vals_list)
 
     def action_submit(self):
         self.write({'state': 'submitted'})
