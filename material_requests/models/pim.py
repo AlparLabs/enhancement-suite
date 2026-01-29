@@ -43,43 +43,52 @@ class Pim(models.Model):
 
     def action_process_pim(self):
         """ 
-        1. Checks stock availability.
-        2. Creates a Transfer (Picking) for available items.
-        3. Moves state to 'Processing'.
+        Smart Logic: Splits PIM into Transfer (Stock) and SIM (Purchase) 
         """
         stock_lines = []
+        sim_lines = []
         
-        # We need the Warehouse Output location (Standard: Stock -> Customers/Project)
-        # For this example, we grab the default warehouse locations.
-        # In a real setup, you might want to pick specific Source/Dest locations.
-        picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1)
-        if not picking_type:
-            # Fallback if no internal type found, usually unlikely in standard Odoo
-             picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
+        # Get Locations
+        picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1) or \
+                       self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
 
         for line in self.line_ids:
-            # Check 'Free To Use' quantity (Quantity on Hand - Reserved)
+            # 1. Check Availability
             qty_available = line.product_id.free_qty
+            qty_needed = line.quantity
             
-            # Logic: If we have ANY stock, we create a transfer for it.
-            # If we need 10 and have 4, we transfer 4. The other 6 will become a SIM later.
-            qty_to_transfer = 0
-            if qty_available >= line.quantity:
-                qty_to_transfer = line.quantity
-            elif qty_available > 0:
-                qty_to_transfer = qty_available
-            
-            if qty_to_transfer > 0:
+            qty_for_transfer = 0
+            qty_for_sim = 0
+
+            # 2. The Split Logic
+            if qty_available >= qty_needed:
+                qty_for_transfer = qty_needed
+            else:
+                # Partial or None available
+                qty_for_transfer = max(0, qty_available)
+                qty_for_sim = qty_needed - qty_for_transfer
+
+            # 3. Prepare Transfer Line
+            if qty_for_transfer > 0:
                 stock_lines.append((0, 0, {
                     'product_id': line.product_id.id,
                     'name': line.product_id.name,
                     'product_uom': line.uom_id.id,
-                    'product_uom_qty': qty_to_transfer,
+                    'product_uom_qty': qty_for_transfer,
                     'location_id': picking_type.default_location_src_id.id,
                     'location_dest_id': picking_type.default_location_dest_id.id,
                 }))
 
-        # Create the Picking (Document) if there are items to move
+            # 4. Prepare SIM Line
+            if qty_for_sim > 0:
+                sim_lines.append((0, 0, {
+                    'product_id': line.product_id.id,
+                    'quantity': qty_for_sim,
+                }))
+
+        # --- EXECUTE ACTIONS ---
+        
+        # A) Create Stock Picking (If any stock found)
         if stock_lines:
             picking_vals = {
                 'picking_type_id': picking_type.id,
@@ -90,10 +99,16 @@ class Pim(models.Model):
                 'move_ids_without_package': stock_lines
             }
             new_picking = self.env['stock.picking'].create(picking_vals)
-            
-            # Auto-Confirm: This Reserves the stock so nobody else takes it.
-            new_picking.action_confirm()
-            new_picking.action_assign() # Checks availability formally in Odoo
+            new_picking.action_confirm() 
+            new_picking.action_assign()
+
+        # B) Create SIM (If stock missing)
+        if sim_lines:
+            sim_vals = {
+                'pim_id': self.id,
+                'line_ids': sim_lines
+            }
+            self.env['sim'].create(sim_vals)
 
         self.write({'state': 'processing'})
 

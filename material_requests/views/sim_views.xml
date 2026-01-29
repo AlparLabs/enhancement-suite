@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sim_form" model="ir.ui.view">
+        <field name="name">sim.form</field>
+        <field name="model">sim</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_create_rfq" string="Create Purchase Order" 
+                            type="object" class="oe_highlight"
+                            invisible="state == 'po_created'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <field name="pim_id"/>
+                        <field name="project_id"/>
+                    </group>
+                    <notebook>
+                        <page string="Items to Buy">
+                            <field name="line_ids" readonly="1">
+                                <list>
+                                    <field name="product_id"/>
+                                    <field name="quantity"/>
+                                    <field name="uom_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sim" model="ir.actions.act_window">
+        <field name="name">Purchase Requests (SIM)</field>
+        <field name="res_model">sim</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_sim"
+              name="Internal Requests (SIM)"
+              parent="purchase.menu_procurement_management"
+              action="action_sim"
+              sequence="1"/>
+              
+    <record id="seq_sim" model="ir.sequence">
+        <field name="name">SIM Sequence</field>
+        <field name="code">sim</field>
+        <field name="prefix">SIM/%(year)s/</field>
+        <field name="padding">3</field>
+    </record>
+</odoo>
