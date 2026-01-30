@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sim_merge_wizard_form" model="ir.ui.view">
+        <field name="name">sim.merge.wizard.form</field>
+        <field name="model">sim.merge.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Merge SIMs">
+                <group>
+                    <field name="partner_id"/>
+                    <field name="sim_ids" widget="many2many_tags" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_merge" string="Merge &amp; Create PO" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sim_merge_wizard" model="ir.actions.act_window">
+        <field name="name">Merge SIMs</field>
+        <field name="res_model">sim.merge.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="material_requests.model_sim"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>

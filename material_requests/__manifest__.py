@@ -10,6 +10,7 @@
         'views/pim_views.xml',
         'views/sim_views.xml',
         'views/purchase_views.xml',
+        'wizard/sim_merge_wizard_views.xml',
     ],
     'installable': True,
     'application': True,

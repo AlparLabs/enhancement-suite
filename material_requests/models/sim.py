@@ -43,7 +43,7 @@ class Sim(models.Model):
             'origin': f"{self.name} ({self.pim_id.name})",
             'partner_id': partner.id if partner else False, 
             'pim_id': self.pim_id.id, 
-            'sim_id': self.id,
+            'sim_ids': [fields.Command.set([self.id])],
             'order_line': []
         }
 

@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <field name="origin" position="after">
                 <field name="pim_id" optional="show"/>
-                <field name="sim_id" optional="hide"/>
+                <field name="sim_ids" widget="many2many_tags" optional="show"/>
             </field>
         </field>
     </record>
