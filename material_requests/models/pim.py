@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 
 class Pim(models.Model):
     _name = 'pim'
@@ -42,10 +42,20 @@ class Pim(models.Model):
     def action_approve(self):
         self.write({'state': 'approved'})
 
+    sim_ids = fields.One2many('sim', 'pim_id', string='Purchase Requests')
+    sim_count = fields.Integer(compute='_compute_sim_count', string='SIM Count')
+
+    @api.depends('sim_ids')
+    def _compute_sim_count(self):
+        for record in self:
+            record.sim_count = len(record.sim_ids)
+
     def action_process_pim(self):
         """ 
-        Smart Logic: Splits PIM into Transfer (Stock) and SIM (Purchase) 
-        Checked against specific Location availability.
+        Smart Logic: 
+        1. Always create a Stock Picking for the FULL requested quantity.
+           This allows Odoo to handle reservations and Backorders automatically.
+        2. Check for shortages and create a SIM for missing quantities so Purchasing knows what to buy.
         """
         stock_lines = []
         sim_lines = []
@@ -57,56 +67,35 @@ class Pim(models.Model):
         location_src_id = picking_type.default_location_src_id.id
 
         for line in self.line_ids:
-            # 1. Check Availability in specific location
-            quants = self.env['stock.quant'].search([
-                ('product_id', '=', line.product_id.id),
-                ('location_id', '=', location_src_id)
-            ])
-            qty_available = sum(quants.mapped('quantity'))
+            # 1. Always request the FULL amount in the Transfer
+            stock_lines.append((0, 0, {
+                'product_id': line.product_id.id,
+                'name': line.product_id.name,
+                'product_uom': line.uom_id.id,
+                'product_uom_qty': line.quantity,
+                'location_id': picking_type.default_location_src_id.id,
+                'location_dest_id': picking_type.default_location_dest_id.id,
+            }))
             
-            # We must subtract reserved quantity if we want "Available" (quantity - reserved_quantity)
-            # But 'quantity' in stock.quant is On Hand. 
-            # Depending on need, we might use 'limit=1' or summing if multiple quants exist in sub-locations (if child_of).
-            # For simplicity in this step, we assume one main location or exact match. 
-            # Better approach: use product.with_context(location=...).free_qty for that location.
-            
+            # 2. Check Availability for SIM creation
+            # We want to know how much we are SHORT of free stock
             product_in_loc = line.product_id.with_context(location=location_src_id)
             qty_available_free = product_in_loc.free_qty
-
-            qty_needed = line.quantity
             
-            qty_for_transfer = 0
-            qty_for_sim = 0
+            # If we need 10 and have 4 free, we need to buy 6.
+            # If we need 10 and have 12 free, we need to buy 0.
+            qty_shortage = max(0, line.quantity - qty_available_free)
 
-            # 2. The Split Logic
-            if qty_available_free >= qty_needed:
-                qty_for_transfer = qty_needed
-            else:
-                # Partial or None available
-                qty_for_transfer = max(0, qty_available_free)
-                qty_for_sim = qty_needed - qty_for_transfer
-
-            # 3. Prepare Transfer Line
-            if qty_for_transfer > 0:
-                stock_lines.append((0, 0, {
-                    'product_id': line.product_id.id,
-                    'name': line.product_id.name,
-                    'product_uom': line.uom_id.id,
-                    'product_uom_qty': qty_for_transfer,
-                    'location_id': picking_type.default_location_src_id.id,
-                    'location_dest_id': picking_type.default_location_dest_id.id,
-                }))
-
-            # 4. Prepare SIM Line
-            if qty_for_sim > 0:
+            # 3. Prepare SIM Line if there is a shortage
+            if qty_shortage > 0:
                 sim_lines.append((0, 0, {
                     'product_id': line.product_id.id,
-                    'quantity': qty_for_sim,
+                    'quantity': qty_shortage,
                 }))
 
         # --- EXECUTE ACTIONS ---
         
-        # A) Create Stock Picking (If any stock found)
+        # A) Create Stock Picking (Always, if there are lines)
         if stock_lines:
             picking_vals = {
                 'picking_type_id': picking_type.id,
@@ -118,6 +107,8 @@ class Pim(models.Model):
             }
             new_picking = self.env['stock.picking'].create(picking_vals)
             new_picking.action_confirm() 
+            # We assume 'action_assign' (Check Availability) is desired.
+            # If it's not fully available, Odoo will reserve what it can and leave the rest as 'Not Available'
             new_picking.action_assign()
 
         # B) Create SIM (If stock missing)
@@ -139,6 +130,17 @@ class Pim(models.Model):
             'res_model': 'stock.picking',
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.picking_ids.ids)],
+            'context': {'default_pim_id': self.id}
+        }
+
+    def action_view_sims(self):
+        self.ensure_one()
+        return {
+            'name': _('Purchase Requests'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'sim',
+            'view_mode': 'list,form',
+            'domain': [('id', 'in', self.sim_ids.ids)],
             'context': {'default_pim_id': self.id}
         }
 

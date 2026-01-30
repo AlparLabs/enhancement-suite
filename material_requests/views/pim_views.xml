@@ -24,6 +24,10 @@
                                 invisible="picking_count == 0">
                             <field name="picking_count" widget="statinfo" string="Transfers"/>
                         </button>
+                        <button name="action_view_sims" type="object" class="oe_stat_button" icon="fa-credit-card"
+                                invisible="sim_count == 0">
+                            <field name="sim_count" widget="statinfo" string="Purchase Requests"/>
+                        </button>
                     </div>
 
                     <div class="oe_title">

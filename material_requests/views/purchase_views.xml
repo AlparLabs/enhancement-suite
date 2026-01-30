@@ -1,5 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Add PIM reference to Purchase Order List -->
+    <record id="purchase_order_tree_pim" model="ir.ui.view">
+        <field name="name">purchase.order.list.pim</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+            <field name="origin" position="after">
+                <field name="pim_id" optional="show"/>
+                <field name="sim_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Add Search Filter -->
+    <record id="purchase_order_search_pim" model="ir.ui.view">
+        <field name="name">purchase.order.search.pim</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="arch" type="xml">
+            <filter name="my_purchases" position="after">
+                <separator/>
+                <filter string="From PIM" name="from_pim" domain="[('pim_id', '!=', False)]"/>
+            </filter>
+        </field>
+    </record>
+</odoo>
     <record id="view_purchase_order_tree" model="ir.ui.view">
         <field name="name">purchase.order.list</field>
         <field name="model">purchase.order</field>
