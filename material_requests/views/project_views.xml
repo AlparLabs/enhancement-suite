@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add PIM Smart Button to Project Form -->
+    <record id="view_project_project_form_inherit_pim" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.pim</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_pims" type="object" class="oe_stat_button" icon="fa-cubes"
+                        invisible="pim_count == 0">
+                    <field name="pim_count" widget="statinfo" string="Material Requests"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+    <!-- Add PIM Menu inside Project App -->
+    <!-- Placing it under the "Orders" or "Search" equivalent if available, or just under the main menu.
+         Project app usually has: Dashboard, My Tasks, (Projects), Configuration.
+         We can try to put it under 'project.menu_main_pm' (Project Management) or create a new 'Materials' category.
+    -->
+    <menuitem id="menu_project_pim"
+              name="Material Requests"
+              parent="project.menu_main_pm"
+              action="material_requests.action_pim"
+              sequence="30"/>
+
+</odoo>
