@@ -25,7 +25,7 @@
             </filter>
         </field>
     </record>
-</odoo>
+
     <record id="view_purchase_order_tree" model="ir.ui.view">
         <field name="name">purchase.order.list</field>
         <field name="model">purchase.order</field>
