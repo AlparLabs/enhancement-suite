@@ -1,6 +1,6 @@
 {
     'name': 'Material Requests (PIM/SIM)',
-    'version': '18.0.1.0.2',
+    'version': '18.0.1.0.3',
     'summary': 'Manage PIM (Internal Material Requests) and SIM (Purchase Requests)',
     'author': 'AlparData',
     'category': 'Construction/Inventory',
