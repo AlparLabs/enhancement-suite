@@ -38,6 +38,15 @@ class Pim(models.Model):
 
     def action_submit(self):
         self.write({'state': 'submitted'})
+        # Notify Inventory Managers
+        group_stock_manager = self.env.ref('stock.group_stock_manager')
+        users = group_stock_manager.users
+        for user in users:
+            self.activity_schedule(
+                'mail.mail_activity_data_todo',
+                user_id=user.id,
+                note=_('Please review this Material Request and decide to Deliver or Buy.')
+            )
 
     def action_approve(self):
         self.write({'state': 'approved'})
@@ -50,24 +59,18 @@ class Pim(models.Model):
         for record in self:
             record.sim_count = len(record.sim_ids)
 
-    def action_process_pim(self):
+    def action_create_transfer(self):
         """ 
-        Smart Logic: 
-        1. Always create a Stock Picking for the FULL requested quantity.
-           This allows Odoo to handle reservations and Backorders automatically.
-        2. Check for shortages and create a SIM for missing quantities so Purchasing knows what to buy.
+        Create a Stock Picking for the FULL requested quantity.
         """
+        self.ensure_one()
         stock_lines = []
-        sim_lines = []
         
         # Get Locations
         picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1) or \
                        self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
         
-        location_src_id = picking_type.default_location_src_id.id
-
         for line in self.line_ids:
-            # 1. Always request the FULL amount in the Transfer
             stock_lines.append((0, 0, {
                 'product_id': line.product_id.id,
                 'name': line.product_id.name,
@@ -77,25 +80,6 @@ class Pim(models.Model):
                 'location_dest_id': picking_type.default_location_dest_id.id,
             }))
             
-            # 2. Check Availability for SIM creation
-            # We want to know how much we are SHORT of free stock
-            product_in_loc = line.product_id.with_context(location=location_src_id)
-            qty_available_free = product_in_loc.free_qty
-            
-            # If we need 10 and have 4 free, we need to buy 6.
-            # If we need 10 and have 12 free, we need to buy 0.
-            qty_shortage = max(0, line.quantity - qty_available_free)
-
-            # 3. Prepare SIM Line if there is a shortage
-            if qty_shortage > 0:
-                sim_lines.append((0, 0, {
-                    'product_id': line.product_id.id,
-                    'quantity': qty_shortage,
-                }))
-
-        # --- EXECUTE ACTIONS ---
-        
-        # A) Create Stock Picking (Always, if there are lines)
         if stock_lines:
             picking_vals = {
                 'picking_type_id': picking_type.id,
@@ -107,19 +91,45 @@ class Pim(models.Model):
             }
             new_picking = self.env['stock.picking'].create(picking_vals)
             new_picking.action_confirm() 
-            # We assume 'action_assign' (Check Availability) is desired.
-            # If it's not fully available, Odoo will reserve what it can and leave the rest as 'Not Available'
             new_picking.action_assign()
+        
+        # We don't change state to processing automatically anymore, as they might need to do both actions.
+        # But if we want to track progress, maybe we can check if both are done? 
+        # For now, let's set it to processing if at least one action is taken.
+        if self.state == 'submitted':
+            self.write({'state': 'processing'})
 
-        # B) Create SIM (If stock missing)
+    def action_create_sim(self):
+        """
+        Check for shortages and create a SIM for missing quantities.
+        """
+        self.ensure_one()
+        sim_lines = []
+        picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1) or \
+                       self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
+        location_src_id = picking_type.default_location_src_id.id
+
+        for line in self.line_ids:
+            # Check shortage based on free qty in the source location
+            product_in_loc = line.product_id.with_context(location=location_src_id)
+            qty_available_free = product_in_loc.free_qty
+            qty_shortage = max(0, line.quantity - qty_available_free)
+
+            if qty_shortage > 0:
+                sim_lines.append((0, 0, {
+                    'product_id': line.product_id.id,
+                    'quantity': qty_shortage,
+                }))
+
         if sim_lines:
             sim_vals = {
                 'pim_id': self.id,
                 'line_ids': sim_lines
             }
             self.env['sim'].create(sim_vals)
-
-        self.write({'state': 'processing'})
+            
+        if self.state == 'submitted':
+            self.write({'state': 'processing'})
 
     # Smart Button Action
     def action_view_pickings(self):
@@ -153,3 +163,15 @@ class PimLine(models.Model):
     product_id = fields.Many2one('product.product', string='Product', required=True)
     quantity = fields.Float(string='Quantity', default=1.0)
     uom_id = fields.Many2one('uom.uom', string='Unit of Measure', related='product_id.uom_id', readonly=True)
+    qty_available = fields.Float(string='On Hand (Free)', compute='_compute_qty_available')
+
+    @api.depends('product_id')
+    def _compute_qty_available(self):
+        for line in self:
+            if line.product_id:
+                # We can try to guess the warehouse/location from context or default
+                # Ideally, we should use the same logic as in the actions (picking type's source location)
+                # For simplicity here, we use the standard 'free_qty' which usually looks at default warehouse.
+                line.qty_available = line.product_id.free_qty
+            else:
+                line.qty_available = 0.0
