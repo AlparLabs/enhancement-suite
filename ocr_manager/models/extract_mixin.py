@@ -4,6 +4,7 @@ import json
 import base64
 import io
 import re  # <--- IMPORTANTE: Necesario para la limpieza con Regex
+import uuid
 from odoo import models, _
 from odoo.exceptions import UserError
 
@@ -275,65 +276,83 @@ class ExtractMixin(models.AbstractModel):
              self._recompute_dynamic_lines(recompute_all_taxes=True)
 
     def _upload_to_extract(self):
-            """ Sobrescritura principal del método de extracción """
-            self.ensure_one()
-            company = self.env.company
-            
-            # 1. Chequeo de seguridad
-            if not company.ocr_manager_enabled:
+        """ Sobrescritura para usar IA propia (Gemini/OpenAI) adaptada a Odoo 19 """
+        self.ensure_one()
+        company = self.env.company
+        
+        # 1. Chequeo de seguridad (sin cambios)
+        if not company.ocr_manager_enabled:
+            return super(ExtractMixin, self)._upload_to_extract()
+
+        _logger.info(f"OCR Manager: Iniciando extracción para {self.id} con {company.ocr_provider}")
+
+        try:
+            # 2. Preparar archivo (sin cambios)
+            attachment = self.message_main_attachment_id
+            if not attachment:
+                _logger.warning("OCR Manager: No se encontró adjunto principal.")
                 return super(ExtractMixin, self)._upload_to_extract()
 
-            _logger.info(f"OCR Manager: Iniciando extracción para {self.id} con {company.ocr_provider}")
+            b64_image, mime_type = self._process_file_content(attachment)
+            
+            # 3. Obtener credenciales (sin cambios)
+            prompt_text = self._get_manager_prompt(company, company.ocr_provider, 'invoice')
+            api_key = company.ocr_api_key
+            model_name = company.ocr_ai_model
 
-            try:
-                # 2. Preparar archivo
-                attachment = self.message_main_attachment_id
-                if not attachment:
-                    _logger.warning("OCR Manager: No se encontró adjunto principal.")
-                    return super(ExtractMixin, self)._upload_to_extract()
+            if not api_key:
+                raise UserError("Falta la API Key en la configuración de la compañía.")
 
-                b64_image, mime_type = self._process_file_content(attachment)
-                
-                # 3. Obtener prompt y credenciales
-                # AQUI EL CAMBIO CLAVE: Pasamos 'company' para leer el ocr_prompt_id
-                prompt_text = self._get_manager_prompt(company, company.ocr_provider, 'invoice')
-                api_key = company.ocr_api_key
-                model_name = company.ocr_ai_model
+            # 4. Llamar al proveedor (sin cambios)
+            extracted_data = {}
+            if company.ocr_provider == 'google':
+                extracted_data = self._extract_with_google(api_key, model_name, b64_image, mime_type, prompt_text)
+            elif company.ocr_provider == 'openai':
+                extracted_data = self._extract_with_openai(api_key, model_name, b64_image, mime_type, prompt_text)
+            
+            # 5. Aplicar datos (sin cambios)
+            self._apply_ai_results(extracted_data)
+            
+            # --- SECCIÓN ACTUALIZADA PARA V19 ---
+            
+            # A. Generar UUID para el Bus si no existe
+            if not self.extract_document_uuid:
+                self.extract_document_uuid = str(uuid.uuid4())
 
-                if not api_key:
-                    raise UserError("Falta la API Key en la configuración de la compañía.")
+            # B. Actualizar estados para compatibilidad con UI nativa
+            self.extract_state = 'waiting_validation' 
+            self.extract_status = 'success' # Crítico para evitar que _compute_error_message muestre error
+            self.extract_error_message = ''
 
-                # 4. Llamar al proveedor
-                extracted_data = {}
-                if company.ocr_provider == 'google':
-                    extracted_data = self._extract_with_google(api_key, model_name, b64_image, mime_type, prompt_text)
-                elif company.ocr_provider == 'openai':
-                    extracted_data = self._extract_with_openai(api_key, model_name, b64_image, mime_type, prompt_text)
-                
-                _logger.info(f"OCR Manager: Datos extraídos (JSON raw): {json.dumps(extracted_data)}")
+            # C. Notificar al Bus (Refresca la barra de estado en el navegador)
+            self.env.user._bus_send("extract_mixin_new_document", {
+                'status': self.extract_state,
+                'error_message': self.extract_error_message,
+                'extract_document_uuid': self.extract_document_uuid,
+            })
+            
+            # D. Mensaje en Chatter y Callback
+            self.message_post(body=f"Digitalización IA completada con éxito usando {company.ocr_provider}.")
+            self._upload_to_extract_success_callback()
+            
+            return True
 
-                # 5. Aplicar datos a la factura
-                self._apply_ai_results(extracted_data)
-                
-                # 6. Actualizar estado para Odoo
-                self.extract_state = 'waiting_validation' 
-                
-                # Mensaje en el chatter
-                self.message_post(body=f"Digitalización IA completada con éxito usando {company.ocr_provider}.")
-                
-                return True
+        except Exception as e:
+            # Manejo de errores (sin cambios mayores, asegurar seteo de status)
+            error_msg = f"Fallo en IA Propia: {str(e)}"
+            _logger.error(error_msg)
+            
+            self.extract_state = 'error_status'
+            self.extract_status = 'error_internal' # Para que Odoo sepa que falló
+            self.extract_error_message = error_msg
+            
+            # Notificar error al bus también
+            if self.extract_document_uuid:
+                 self.env.user._bus_send("extract_mixin_new_document", {
+                    'status': self.extract_state,
+                    'error_message': self.extract_error_message,
+                    'extract_document_uuid': self.extract_document_uuid,
+                })
 
-            except Exception as e:
-                # MANEJO DE ERRORES ROBUSTO
-                error_msg = f"Fallo en IA Propia: {str(e)}"
-                _logger.error(error_msg)
-                
-                # Guardamos el error en el campo correcto que SÍ existe
-                self.extract_error_message = error_msg
-                self.extract_state = 'error_status' 
-                
-                # Notificamos en el chatter para que el usuario lo vea
-                self.message_post(body=error_msg)
-                
-                # Retornamos False para indicar que no se pudo procesar
-                return False
+            self.message_post(body=error_msg)
+            return False

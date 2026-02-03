@@ -2,7 +2,7 @@
 {
     'name': "OCR Manager - IA Generativa",
     'summary': "Gestor avanzado de digitalización con Gemini/OpenAI",
-    'version': '18.0.1.0.04',
+    'version': '19.0.1.0.1',
     'category': 'Accounting/Accounting',
     'author': "AlparData & Gemini",
     'website': "www.alpardata.com.ar",
