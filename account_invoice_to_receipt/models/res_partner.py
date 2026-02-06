@@ -1,11 +1,18 @@
 # res_partner.py
 # Extends total_invoiced and action to include receipts
 
-from odoo import models, api
+from odoo import models, api, fields
 
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
+
+    # Redeclare the field with our compute method
+    total_invoiced = fields.Monetary(
+        compute='_compute_total_invoiced',
+        string="Total Invoiced",
+        groups='account.group_account_invoice,account.group_account_readonly',
+    )
 
     def _compute_total_invoiced(self):
         """Override to include out_receipt in the total invoiced calculation."""
