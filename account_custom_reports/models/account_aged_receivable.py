@@ -10,6 +10,11 @@ class AccountAgedReceivableReportHandler(models.AbstractModel):
         # Check if columns are already present to avoid duplicates
         column_labels = [col['expression_label'] for col in options['columns']]
         
+        # Determine the column_group_key to attach new columns to.
+        # Typically, string columns are attached to the first group or a default group.
+        # We'll try to key off the first existing column or the first available group.
+        default_group_key = options['columns'][0]['column_group_key'] if options.get('columns') else next(iter(options.get('column_groups', {})), 'default')
+
         # Append new columns
         # We add them with 'sortable': False to avoid SQL engine issues since we populate them post-process
         if 'salesperson' not in column_labels:
@@ -18,6 +23,7 @@ class AccountAgedReceivableReportHandler(models.AbstractModel):
                 'expression_label': 'salesperson',
                 'figure_type': 'string',
                 'sortable': False, 
+                'column_group_key': default_group_key,
             })
             
         if 'sales_team' not in column_labels:
@@ -26,6 +32,7 @@ class AccountAgedReceivableReportHandler(models.AbstractModel):
                 'expression_label': 'sales_team',
                 'figure_type': 'string',
                 'sortable': False,
+                'column_group_key': default_group_key,
             })
 
     def _custom_line_postprocessor(self, report, options, lines):
