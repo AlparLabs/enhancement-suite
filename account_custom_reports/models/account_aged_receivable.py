@@ -67,7 +67,7 @@ class AccountAgedReceivableReportHandler(models.AbstractModel):
             for p in partners:
                 partners_data[p.id] = {
                     'salesperson': p.user_id.name or '',
-                    'sales_team': p.team_id.name or ''
+                    'sales_team': p.x_studio_equipo_de_ventas.name or ''
                 }
                 
         moves_data = {}
