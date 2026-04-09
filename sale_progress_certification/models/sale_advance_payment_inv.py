@@ -6,14 +6,18 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
     advance_payment_method = fields.Selection(
         selection_add=[
-            ('percentage_progress', 'Certificación por % de avance')
+            ('percentage_progress', 'Certificación por % de avance'),
+            ('fixed_progress', 'Certificación por Monto Fijo (Neto)')
         ],
-        ondelete={'percentage_progress': 'set default'}
+        ondelete={
+            'percentage_progress': 'set default',
+            'fixed_progress': 'set default'
+        }
     )
 
     def create_invoices(self):
         # Si no es nuestra opción, dejamos que Odoo haga lo suyo
-        if self.advance_payment_method != 'percentage_progress':
+        if self.advance_payment_method not in ('percentage_progress', 'fixed_progress'):
             return super().create_invoices()
 
         # Lógica personalizada para Certificación
@@ -29,20 +33,25 @@ class SaleAdvancePaymentInv(models.TransientModel):
                     "Por favor asigne uno en Ventas > Configuración."
                 ))
 
-            # Calculamos el monto basado en el porcentaje ingresado en el wizard
-            # pero utilizando el monto neto (untaxed) de la orden
-            amount_to_invoice = order.amount_untaxed * (self.amount / 100.0)
+            # Calculamos el monto dependiendo de la opción
+            if self.advance_payment_method == 'percentage_progress':
+                # Según lo charlado, se utiliza el monto neto (untaxed) para certif.
+                amount_to_invoice = order.amount_untaxed * (self.amount / 100.0)
+                description = _('Certificación de Avance: %s%%') % (self.amount)
+            else:
+                amount_to_invoice = self.fixed_amount
+                description = _('Certificación de Avance: Monto Fijo')
 
-            # Usamos el método nativo de crear línea de anticipo
+            # Usamos el método nativo de crear línea de anticipo (estándar de Odoo)
             so_line = order._create_downpayment_line(
                 product=product_certification,
                 price=amount_to_invoice
             )
             
-            # Personalizamos la descripción para que no diga "Anticipo" sino "Certificación"
-            so_line.name = _('Certificación de Avance: %s%%') % (self.amount)
+            # Personalizamos la descripción
+            so_line.name = description
             
-            # Creamos la factura de esa línea
+            # Creamos la factura usando el método estándar
             order._create_invoices(final=False)
 
         if self._context.get('open_invoices', False):
