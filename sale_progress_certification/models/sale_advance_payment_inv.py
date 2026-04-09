@@ -85,9 +85,13 @@ class SaleAdvancePaymentInv(models.TransientModel):
             return {'type': 'ir.actions.act_window_close'}
 
         # ── Caso 3: Anticipo por Monto Fijo (Neto) ─────────────────────────────
-        # Igual al anticipo fijo nativo pero con descripción personalizada.
-        # self.fixed_amount ya es el monto neto que el usuario ingresó.
+        # El anticipo nativo de Odoo trata fixed_amount como monto TOTAL
+        # (impuestos incluidos) y retrocede price_unit = fixed_amount / (1+tasa).
+        # Queremos lo contrario: el usuario ingresa el monto NETO y los
+        # impuestos se suman encima.  Por eso, después de que super() crea las
+        # líneas, restauramos price_unit al valor neto original.
         if self.advance_payment_method == 'fixed_net':
+            net_amount = self.fixed_amount
             invoices_before = sale_orders.mapped('invoice_ids')
             self.advance_payment_method = 'fixed'
             result = super().create_invoices()
@@ -99,4 +103,8 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 for line in inv.invoice_line_ids:
                     if line.is_downpayment:
                         line.name = description
+                        # Odoo calcula price_unit como gross/taxes; lo
+                        # reemplazamos por el neto ingresado para que los
+                        # impuestos se calculen encima del neto.
+                        line.price_unit = net_amount
             return result
