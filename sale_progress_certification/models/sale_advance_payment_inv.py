@@ -25,11 +25,17 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
 
         for order in sale_orders:
-            # Usamos el producto de anticipo estándar
-            product_certification = order.company_id.sale_down_payment_product_id
+            # Obtenemos el producto de anticipo estándar
+            # En Odoo 17/18, suele estar en el wizard (self.product_id) o en ir.config_parameter
+            product_certification = getattr(self, 'product_id', False)
+            if not product_certification:
+                dp_id = self.env['ir.config_parameter'].sudo().get_param('sale.default_deposit_product_id')
+                if dp_id:
+                    product_certification = self.env['product.product'].browse(int(dp_id))
+            
             if not product_certification:
                 raise UserError(_(
-                    "No se encontró un producto de Anticipo configurado en la compañía. "
+                    "No se encontró un producto de Anticipo configurado en la compañía o el sistema. "
                     "Por favor asigne uno en Ventas > Configuración."
                 ))
 
