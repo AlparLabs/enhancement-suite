@@ -19,24 +19,21 @@ class SaleAdvancePaymentInv(models.TransientModel):
         # Lógica personalizada para Certificación
         sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
 
-        # Buscamos el producto definido en el XML data
-        product_certification = self.env.ref(
-            'sale_progress_certification.product_product_certification', 
-            raise_if_not_found=False
-        )
-        
-        # Fallback de seguridad
-        if not product_certification:
-            raise UserError(_(
-                "No se encontró el producto de Certificación definido en los datos del módulo. "
-                "Por favor reinstale el módulo o verifique que el producto no fue archivado."
-            ))
 
         for order in sale_orders:
-            # Calculamos el monto basado en el porcentaje ingresado en el wizard
-            amount_to_invoice = order.amount_total * (self.amount / 100.0)
+            # Usamos el producto de anticipo estándar
+            product_certification = order.company_id.sale_down_payment_product_id
+            if not product_certification:
+                raise UserError(_(
+                    "No se encontró un producto de Anticipo configurado en la compañía. "
+                    "Por favor asigne uno en Ventas > Configuración."
+                ))
 
-            # Usamos el método nativo de crear línea de anticipo pero forzando nuestro producto
+            # Calculamos el monto basado en el porcentaje ingresado en el wizard
+            # pero utilizando el monto neto (untaxed) de la orden
+            amount_to_invoice = order.amount_untaxed * (self.amount / 100.0)
+
+            # Usamos el método nativo de crear línea de anticipo
             so_line = order._create_downpayment_line(
                 product=product_certification,
                 price=amount_to_invoice

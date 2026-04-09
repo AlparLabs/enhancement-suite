@@ -19,7 +19,6 @@
         'account',
     ],
     'data': [
-        'data/product_data.xml',
         'views/sale_advance_payment_inv_views.xml',
     ],
     'installable': True,
