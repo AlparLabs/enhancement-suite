@@ -103,11 +103,10 @@ class SaleOrder(models.Model):
         current_user = self.env.user
         partner = self.partner_id.commercial_partner_id
 
-        # Verificar permisos
-        is_admin = self.env.ref('base.group_system') in current_user.groups_id
+        is_approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver') in current_user.groups_id
         is_supervisor = partner.supervisor_id and partner.supervisor_id == current_user
 
-        if not (is_admin or is_supervisor):
+        if not (is_approver_group or is_supervisor):
             raise AccessError(
                 _(
                     "No tiene permiso para aprobar este exceso de crédito. "
@@ -140,6 +139,7 @@ class SaleOrder(models.Model):
     # Computed: visibilidad del botón de aprobación
     # -------------------------------------------------------------------------
     def _compute_show_approve_credit_button(self):
+        approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver')
         for order in self:
             if order.state != 'waiting_approval':
                 order.show_approve_credit_button = False
@@ -147,9 +147,9 @@ class SaleOrder(models.Model):
 
             current_user = self.env.user
             partner = order.partner_id.commercial_partner_id
-            is_admin = self.env.ref('base.group_system') in current_user.groups_id
+            is_approver_group = approver_group in current_user.groups_id
             is_supervisor = partner.supervisor_id and partner.supervisor_id == current_user
-            order.show_approve_credit_button = bool(is_admin or is_supervisor)
+            order.show_approve_credit_button = bool(is_approver_group or is_supervisor)
 
     show_approve_credit_button = fields.Boolean(
         string='Mostrar botón de aprobación',
