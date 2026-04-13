@@ -19,17 +19,12 @@
     ],
     'data': [
         'security/ir.model.access.csv',
+        'views/sale_credit_approval_wizard_views.xml',
         'views/sale_order_views.xml',
         'views/res_partner_views.xml',
         'security/security.xml',
     ],
-    'assets': {
-        'web.assets_backend': [
-            'sale_credit_limit_approval/static/src/xml/credit_pin_dialog.xml',
-            'sale_credit_limit_approval/static/src/js/credit_pin_dialog.js',
-            'sale_credit_limit_approval/static/src/js/approve_pin_button.js',
-        ],
-    },
+
     'installable': True,
     'application': False,
     'auto_install': False,
