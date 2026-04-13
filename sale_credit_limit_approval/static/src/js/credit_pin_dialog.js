@@ -55,8 +55,10 @@ export class CreditPinDialog extends Component {
             this.props.close();
             this.props.onSuccess();
         } catch (error) {
-            // Show the server error inline without closing the dialog
+            // Show the server error inline without closing the dialog.
+            // In Odoo 18, UserError messages are in error.data.arguments[0].
             const serverMessage =
+                error?.data?.arguments?.[0] ||
                 error?.data?.message ||
                 error?.message ||
                 "Error al verificar el PIN. Intente nuevamente.";

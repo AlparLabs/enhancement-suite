@@ -1,8 +1,12 @@
 /** @odoo-module **/
 // sale_credit_limit_approval/static/src/js/approve_pin_button.js
 //
-// Patches the sale.order form view so that clicking the "Aprobar con PIN"
-// button opens the CreditPinDialog instead of making a normal RPC call.
+// Patches FormController.onClickViewButton so that clicking "Aprobar con PIN"
+// opens the CreditPinDialog instead of making a normal RPC call to the stub.
+//
+// NOTE: _onButtonClicked does NOT exist in Odoo 18. The correct intercept
+// point is onClickViewButton, as confirmed by the browser call stack:
+//   onClick (ViewButton) → onClickViewButton (FormController) → doActionButton
 
 import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
@@ -12,33 +16,30 @@ import { CreditPinDialog } from "./credit_pin_dialog";
 patch(FormController.prototype, {
     setup() {
         super.setup();
-        // Only attach the dialog service if we are on a sale.order form
-        this._dialogService = useService("dialog");
-        this._actionService = useService("action");
+        // Must be called during setup so OWL can track the service hook
+        this._pinDialogService = useService("dialog");
     },
 
-    /**
-     * Intercept the "action_open_pin_dialog" button click.
-     * All other button clicks go through the normal Odoo flow.
-     */
-    async _onButtonClicked(clickParams) {
+    onClickViewButton({ clickParams, record }) {
         if (
-            clickParams.name === "action_open_pin_dialog" &&
+            clickParams?.name === "action_open_pin_dialog" &&
             this.model.root.resModel === "sale.order"
         ) {
-            const orderId = this.model.root.resId;
-            this._dialogService.add(CreditPinDialog, {
+            const rec = record || this.model.root;
+            const model = this.model;
+
+            this._pinDialogService.add(CreditPinDialog, {
                 title: "Aprobación por PIN de Crédito",
-                orderId,
+                orderId: rec.resId,
                 onSuccess: async () => {
-                    // Reload the record so the view reflects the new state
-                    await this.model.root.load();
-                    this.model.notify();
+                    // Reload record so the view reflects the new confirmed state
+                    await model.root.load();
+                    model.notify();
                 },
             });
-            // Do NOT call super — we've handled this button ourselves
+            // Return without calling super — we've handled this button ourselves
             return;
         }
-        return super._onButtonClicked(clickParams);
+        return super.onClickViewButton({ clickParams, record });
     },
 });
