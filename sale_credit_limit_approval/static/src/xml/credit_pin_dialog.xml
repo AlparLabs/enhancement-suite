@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="sale_credit_limit_approval.CreditPinDialog">
+        <Dialog title="props.title" size="'md'" footer="false">
+
+            <div class="credit-pin-dialog-body p-2">
+
+                <!-- Instruction -->
+                <p class="text-muted mb-3">
+                    Ingrese el PIN de empleado de un aprobador autorizado para confirmar la orden.
+                </p>
+
+                <!-- Error banner -->
+                <t t-if="state.errorMessage">
+                    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
+                        <i class="fa fa-exclamation-circle"/>
+                        <span t-esc="state.errorMessage"/>
+                    </div>
+                </t>
+
+                <!-- PIN input -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold" for="credit_approval_pin">
+                        PIN del aprobador
+                    </label>
+                    <input
+                        id="credit_approval_pin"
+                        type="password"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        maxlength="6"
+                        autocomplete="off"
+                        class="form-control form-control-lg text-center letter-spacing-wide"
+                        placeholder="● ● ● ●"
+                        t-model="state.pin"
+                        t-on-keydown="onKeydown"
+                    />
+                </div>
+
+                <!-- Buttons -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button
+                        class="btn btn-secondary"
+                        t-on-click="onCancel"
+                        t-att-disabled="state.loading"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        class="btn btn-success"
+                        t-on-click="onConfirm"
+                        t-att-disabled="state.loading or !state.pin"
+                    >
+                        <t t-if="state.loading">
+                            <i class="fa fa-spinner fa-spin me-1"/>Verificando...
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-check me-1"/>Confirmar
+                        </t>
+                    </button>
+                </div>
+
+            </div>
+
+        </Dialog>
+    </t>
+
+</templates>

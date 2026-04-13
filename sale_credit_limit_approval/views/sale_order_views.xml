@@ -12,8 +12,10 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- ── Botón de aprobación en el header ── -->
+            <!-- ── Botones de aprobación en el header ── -->
             <xpath expr="//header/button[@name='action_confirm']" position="after">
+
+                <!-- Para sesiones de aprobador: aprobación directa sin PIN -->
                 <button
                     name="action_approve_credit"
                     string="Aprobar Crédito"
@@ -22,6 +24,16 @@
                     invisible="state != 'waiting_approval' or not show_approve_credit_button"
                     confirm="¿Está seguro de aprobar el exceso de crédito y confirmar esta orden de venta?"
                 />
+
+                <!-- Para sesiones de no-aprobador: abre el diálogo de PIN -->
+                <button
+                    name="action_open_pin_dialog"
+                    string="Aprobar con PIN"
+                    type="object"
+                    class="btn-warning"
+                    invisible="state != 'waiting_approval' or show_approve_credit_button"
+                />
+
             </xpath>
 
             <!-- ── Estado 'waiting_approval' en la barra de estados ── -->

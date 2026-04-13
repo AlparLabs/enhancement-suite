@@ -92,12 +92,12 @@ class SaleOrder(models.Model):
         return True
 
     # -------------------------------------------------------------------------
-    # Acción: Aprobar crédito
+    # Acción: Aprobar crédito (sesión de aprobador)
     # -------------------------------------------------------------------------
     def action_approve_credit(self):
         """
         Aprueba el exceso de crédito y confirma la orden de venta.
-        Solo puede ejecutarlo el supervisor_id del cliente o un admin de sistema.
+        Solo puede ejecutarlo el supervisor_id del cliente o un miembro del grupo aprobador.
         """
         self.ensure_one()
         current_user = self.env.user
@@ -118,22 +118,69 @@ class SaleOrder(models.Model):
         if self.state != 'waiting_approval':
             raise UserError(_("Esta orden no está pendiente de aprobación de crédito."))
 
-        # Registrar aprobación en el chatter
+        self._do_approve_credit(current_user)
+        return self.with_context(bypass_credit_limit=True).action_confirm()
+
+    # -------------------------------------------------------------------------
+    # Acción: Aprobar crédito por PIN (sesión de no-aprobador)
+    # -------------------------------------------------------------------------
+    def action_approve_credit_by_pin(self, pin):
+        """
+        Permite que un aprobador autorice la orden ingresando su PIN de empleado,
+        sin necesidad de que el usuario actual sea del grupo aprobador.
+
+        El PIN se valida contra hr.employee.pin. El empleado debe tener un
+        usuario vinculado (user_id) que pertenezca al grupo aprobador o que
+        sea el supervisor_id del cliente.
+        """
+        self.ensure_one()
+
+        if not pin:
+            raise UserError(_("Debe ingresar un PIN."))
+
+        if self.state != 'waiting_approval':
+            raise UserError(_("Esta orden no está pendiente de aprobación de crédito."))
+
+        partner = self.partner_id.commercial_partner_id
+        approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver')
+        approver_user_ids = approver_group.users.ids
+
+        # Incluir también al supervisor del cliente si tiene uno asignado
+        if partner.supervisor_id:
+            approver_user_ids = list(set(approver_user_ids + [partner.supervisor_id.id]))
+
+        # Buscar empleado cuyo PIN coincida y cuyo usuario sea aprobador
+        employee = self.env['hr.employee'].sudo().search([
+            ('pin', '=', pin),
+            ('user_id', 'in', approver_user_ids),
+        ], limit=1)
+
+        if not employee:
+            raise UserError(_(
+                "PIN incorrecto o el empleado no tiene permisos para aprobar límites de crédito."
+            ))
+
+        self._do_approve_credit(employee.user_id, via_pin=True)
+        return self.with_context(bypass_credit_limit=True).action_confirm()
+
+    # -------------------------------------------------------------------------
+    # Ayudante interno: registrar aprobación y resetear estado
+    # -------------------------------------------------------------------------
+    def _do_approve_credit(self, approver_user, via_pin=False):
+        """Registra la aprobación en el chatter y resetea el estado a draft."""
+        suffix = _(" (vía PIN)") if via_pin else ""
         self.message_post(
             body=_(
-                "✅ Exceso de crédito aprobado por %(user)s. La orden procede a confirmarse.",
-                user=current_user.name,
+                "✅ Exceso de crédito aprobado por %(user)s%(suffix)s. La orden procede a confirmarse.",
+                user=approver_user.name,
+                suffix=suffix,
             ),
             message_type='notification',
         )
-
-        # Volver a draft y confirmar con el flag que bypasea el check de crédito
         self.write({
             'state': 'draft',
             'credit_approval_note': False,
         })
-        # Usamos with_context para evitar que action_confirm vuelva a bloquear la orden
-        return self.with_context(bypass_credit_limit=True).action_confirm()
 
     # -------------------------------------------------------------------------
     # Computed: visibilidad del botón de aprobación
