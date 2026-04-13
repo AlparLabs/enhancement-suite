@@ -130,16 +130,13 @@ class SaleOrder(models.Model):
         No requiere JS personalizado: target='new' es manejado por el framework.
         """
         self.ensure_one()
-        wizard = self.env['sale.credit.approval.wizard'].create({
-            'order_id': self.id,
-        })
         return {
             'type': 'ir.actions.act_window',
             'name': _('Aprobación por PIN de Crédito'),
             'res_model': 'sale.credit.approval.wizard',
-            'res_id': wizard.id,
             'view_mode': 'form',
             'target': 'new',
+            'context': {'default_order_id': self.id},
         }
 
     # -------------------------------------------------------------------------
