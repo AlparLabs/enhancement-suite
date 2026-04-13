@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Extensión de la vista de formulario de res.partner para mostrar:
+        - El campo 'credit_limit' (ya disponible en la pestaña de ventas/crédito).
+        - El nuevo campo 'supervisor_id'.
+    -->
+    <record id="view_partner_form_credit_supervisor" model="ir.ui.view">
+        <field name="name">res.partner.form.credit.supervisor</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Insertar supervisor_id justo debajo del campo credit_limit -->
+            <xpath expr="//field[@name='credit_limit']" position="after">
+                <field name="supervisor_id"
+                       string="Supervisor de Crédito"
+                       widget="many2one"
+                       options="{'no_create': True}"
+                />
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
