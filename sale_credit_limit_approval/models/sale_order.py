@@ -30,29 +30,37 @@ class SaleOrder(models.Model):
     def _check_credit_limit(self):
         """
         Devuelve True si el pedido supera el límite de crédito del cliente.
-        Devuelve False si no hay límite (credit_limit == 0) o si no se supera.
+
+        Reutiliza el campo nativo `partner_credit_warning` de Odoo, que ya
+        contempla facturas impagas + órdenes de venta pendientes, evitando
+        calcular manualmente una cifra diferente a la que Odoo muestra en pantalla.
+
+        Devuelve False si el partner no tiene límite configurado (credit_limit == 0).
         """
         self.ensure_one()
         partner = self.partner_id.commercial_partner_id
-        credit_limit = partner.credit_limit
 
-        # 0 significa sin límite
-        if not credit_limit:
+        # 0 significa sin límite: no bloqueamos
+        if not partner.credit_limit:
             return False
 
-        # credit: saldo pendiente actual del cliente (campo nativo de Odoo)
-        current_credit = partner.credit
-        order_total = self.amount_total
-
-        return (current_credit + order_total) > credit_limit
+        # `partner_credit_warning` es el campo computado nativo de Odoo 18.
+        # Está vacío ('') si no hay exceso; contiene el mensaje de advertencia si sí lo hay.
+        # Es la misma fuente de verdad que el warning que aparece en la orden de venta.
+        return bool(self.partner_credit_warning)
 
     # -------------------------------------------------------------------------
     # Override de action_confirm
     # -------------------------------------------------------------------------
     def action_confirm(self):
-        orders_to_check = self.filtered(lambda o: o.state in ('draft', 'sent'))
+        # Si el contexto indica que la aprobación ya fue concedida, saltear check
+        if self.env.context.get('bypass_credit_limit'):
+            return super().action_confirm()
 
-        for order in orders_to_check:
+        blocked = self.env['sale.order']
+        to_confirm = self.env['sale.order']
+
+        for order in self.filtered(lambda o: o.state in ('draft', 'sent')):
             if order._check_credit_limit():
                 partner = order.partner_id.commercial_partner_id
                 current_credit = partner.credit
@@ -75,13 +83,12 @@ class SaleOrder(models.Model):
                     ) % (credit_limit, current_credit, order.amount_total),
                 })
                 order.message_post(body=msg, message_type='notification')
-                # No confirmamos esta orden; continuamos con las demás
-                continue
+                blocked |= order
+            else:
+                to_confirm |= order
 
-        # Confirmamos solo las que no fueron bloqueadas
-        orders_to_confirm = self.filtered(lambda o: o.state != 'waiting_approval')
-        if orders_to_confirm:
-            return super(SaleOrder, orders_to_confirm).action_confirm()
+        if to_confirm:
+            return super(SaleOrder, to_confirm).action_confirm()
         return True
 
     # -------------------------------------------------------------------------
@@ -121,12 +128,13 @@ class SaleOrder(models.Model):
             message_type='notification',
         )
 
-        # Limpiar la nota y forzar la confirmación saltando la validación de crédito
+        # Volver a draft y confirmar con el flag que bypasea el check de crédito
         self.write({
             'state': 'draft',
             'credit_approval_note': False,
         })
-        return super(SaleOrder, self).action_confirm()
+        # Usamos with_context para evitar que action_confirm vuelva a bloquear la orden
+        return self.with_context(bypass_credit_limit=True).action_confirm()
 
     # -------------------------------------------------------------------------
     # Computed: visibilidad del botón de aprobación
@@ -156,4 +164,7 @@ class SaleOrder(models.Model):
         waiting = self.filtered(lambda o: o.state == 'waiting_approval')
         if waiting:
             waiting.write({'state': 'cancel', 'credit_approval_note': False})
-        return super(SaleOrder, self - waiting).action_cancel()
+        remaining = self - waiting
+        if remaining:
+            return super(SaleOrder, remaining).action_cancel()
+        return True
