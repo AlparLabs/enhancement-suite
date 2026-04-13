@@ -122,6 +122,18 @@ class SaleOrder(models.Model):
         return self.with_context(bypass_credit_limit=True).action_confirm()
 
     # -------------------------------------------------------------------------
+    # Stub: apertura del diálogo PIN (interceptado en JS antes del RPC)
+    # -------------------------------------------------------------------------
+    def action_open_pin_dialog(self):
+        """
+        Stub requerido por el validador de vistas de Odoo.
+        En la práctica este método nunca se ejecuta: el parche de JS en
+        approve_pin_button.js intercepta el clic del botón en el cliente
+        y abre el diálogo OWL antes de que se realice cualquier llamada RPC.
+        """
+        return False
+
+    # -------------------------------------------------------------------------
     # Acción: Aprobar crédito por PIN (sesión de no-aprobador)
     # -------------------------------------------------------------------------
     def action_approve_credit_by_pin(self, pin):
