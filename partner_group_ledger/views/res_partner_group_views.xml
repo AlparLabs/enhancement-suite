@@ -23,7 +23,7 @@
                     </div>
                     <notebook>
                         <page string="Partners" name="partners">
-                            <field name="partner_ids" nolabel="1">
+                            <field name="partner_ids" nolabel="1" widget="many2many">
                                 <list>
                                     <field name="name"/>
                                     <field name="vat"/>
