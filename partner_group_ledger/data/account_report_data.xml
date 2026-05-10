@@ -42,7 +42,7 @@
                         <field name="label">initial_balance</field>
                         <field name="engine">aggregation</field>
                         <field name="formula">balance</field>
-                        <field name="date_scope">previous</field>
+                        <field name="date_scope">to_beginning_of_period</field>
                     </record>
                     <record id="expr_partner_group_debit" model="account.report.expression">
                         <field name="label">debit</field>
