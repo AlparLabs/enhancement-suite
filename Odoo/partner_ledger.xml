@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo auto_sequence="1">
-    <record id="partner_group_ledger_report" model="account.report">
-        <field name="name">Partner Group Ledger</field>
+    <record id="partner_ledger_report" model="account.report">
+        <field name="name">Partner Ledger</field>
         <field name="filter_show_draft" eval="True"/>
         <field name="filter_account_type">both</field>
         <field name="filter_partner" eval="True"/>
@@ -13,67 +13,49 @@
         <field name="default_opening_date_filter">this_year</field>
         <field name="search_bar" eval="True"/>
         <field name="load_more_limit" eval="80"/>
-        
-        <!-- Target our new custom python handler -->
-        <field name="custom_handler_model_id" ref="partner_group_ledger.model_account_partner_group_ledger_report_handler"/>
-        
-        <!-- We do NOT define line_ids or expression_ids! The custom handler will dynamically build the lines exactly like the standard partner ledger! -->
-        
+        <field name="custom_handler_model_id" ref="model_account_partner_ledger_report_handler"/>
         <field name="column_ids">
-            <record id="partner_group_ledger_report_journal_code" model="account.report.column">
+            <record id="partner_ledger_report_journal_code" model="account.report.column">
                 <field name="name">Journal</field>
                 <field name="expression_label">journal_code</field>
                 <field name="figure_type">string</field>
             </record>
-            <record id="partner_group_ledger_report_account_code" model="account.report.column">
+            <record id="partner_ledger_report_account_code" model="account.report.column">
                 <field name="name">Account</field>
                 <field name="expression_label">account_code</field>
                 <field name="figure_type">string</field>
             </record>
-            <record id="partner_group_ledger_report_invoicing_date" model="account.report.column">
+            <record id="partner_ledger_report_invoicing_date" model="account.report.column">
                 <field name="name">Invoice Date</field>
                 <field name="expression_label">invoice_date</field>
                 <field name="figure_type">date</field>
             </record>
-            <record id="partner_group_ledger_report_date_maturity" model="account.report.column">
+            <record id="partner_ledger_report_date_maturity" model="account.report.column">
                 <field name="name">Due Date</field>
                 <field name="expression_label">date_maturity</field>
                 <field name="figure_type">date</field>
             </record>
-            <record id="partner_group_ledger_report_matching_number" model="account.report.column">
+            <record id="partner_ledger_report_matching_number" model="account.report.column">
                 <field name="name">Matching</field>
                 <field name="expression_label">matching_number</field>
                 <field name="figure_type">string</field>
             </record>
-            <record id="partner_group_ledger_report_debit" model="account.report.column">
+            <record id="partner_ledger_report_debit" model="account.report.column">
                 <field name="name">Debit</field>
                 <field name="expression_label">debit</field>
             </record>
-            <record id="partner_group_ledger_report_credit" model="account.report.column">
+            <record id="partner_ledger_report_credit" model="account.report.column">
                 <field name="name">Credit</field>
                 <field name="expression_label">credit</field>
             </record>
-            <record id="partner_group_ledger_report_amount_currency" model="account.report.column">
+            <record id="partner_ledger_report_amount_currency" model="account.report.column">
                 <field name="name">Amount Currency</field>
                 <field name="expression_label">amount_currency</field>
             </record>
-            <record id="partner_group_ledger_report_balance" model="account.report.column">
+            <record id="partner_ledger_report_balance" model="account.report.column">
                 <field name="name">Balance</field>
                 <field name="expression_label">balance</field>
             </record>
         </field>
     </record>
-
-    <!-- Menu item for the report -->
-    <record id="action_partner_group_ledger_report" model="ir.actions.client">
-        <field name="name">Partner Group Ledger</field>
-        <field name="tag">account_report</field>
-        <field name="context" eval="{'report_id': ref('partner_group_ledger_report')}"/>
-    </record>
-
-    <menuitem id="menu_partner_group_ledger_report" 
-              name="Partner Group Ledger" 
-              action="action_partner_group_ledger_report" 
-              parent="account.menu_finance_reports" 
-              sequence="25"/>
 </odoo>
