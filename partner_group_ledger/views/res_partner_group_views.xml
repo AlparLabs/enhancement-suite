@@ -4,9 +4,9 @@
         <field name="name">res.partner.group.tree</field>
         <field name="model">res.partner.group</field>
         <field name="arch" type="xml">
-            <tree string="Partner Groups">
+            <list string="Partner Groups">
                 <field name="name"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -24,10 +24,10 @@
                     <notebook>
                         <page string="Partners" name="partners">
                             <field name="partner_ids" nolabel="1">
-                                <tree>
+                                <list>
                                     <field name="name"/>
                                     <field name="vat"/>
-                                </tree>
+                                </list>
                             </field>
                         </page>
                     </notebook>
@@ -39,7 +39,7 @@
     <record id="action_partner_group" model="ir.actions.act_window">
         <field name="name">Partner Groups</field>
         <field name="res_model">res.partner.group</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="menu_partner_group" name="Partner Groups"
