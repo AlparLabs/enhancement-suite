@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_group_tree" model="ir.ui.view">
+        <field name="name">res.partner.group.tree</field>
+        <field name="model">res.partner.group</field>
+        <field name="arch" type="xml">
+            <tree string="Partner Groups">
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_partner_group_form" model="ir.ui.view">
+        <field name="name">res.partner.group.form</field>
+        <field name="model">res.partner.group</field>
+        <field name="arch" type="xml">
+            <form string="Partner Group">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Group Name..."/>
+                        </h1>
+                    </div>
+                    <notebook>
+                        <page string="Partners" name="partners">
+                            <field name="partner_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="vat"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_partner_group" model="ir.actions.act_window">
+        <field name="name">Partner Groups</field>
+        <field name="res_model">res.partner.group</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_partner_group" name="Partner Groups"
+              parent="account.menu_finance_receivables"
+              action="action_partner_group" sequence="20"/>
+</odoo>
