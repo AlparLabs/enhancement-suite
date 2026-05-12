@@ -1,7 +1,7 @@
 # l10n_latam_check_no_date/__manifest__.py
 {
     'name': 'Cheques Propios sin Fecha Obligatoria',
-    'version': '18.0.1.0.0',
+    'version': '1.0.0',
     'category': 'Accounting/Localizations',
     'summary': 'Permite emitir cheques propios sin fecha de pago en el cheque.',
     'description': """
