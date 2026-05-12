@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Override de la vista del wizard de registro de pago (account.payment.register)
+        para reflejar que payment_date ya no es obligatorio en cheques propios.
+
+        La vista original (l10n_latam_check/wizards/account_payment_register_views.xml)
+        hereda de account.view_account_payment_register_form e inyecta la tabla de cheques.
+        Aquí sobreescribimos el atributo 'required' de payment_date en la columna
+        de cheques propios (own_checks) para que la UI no lo marque como obligatorio.
+    -->
+    <record id="view_account_payment_register_form_no_date" model="ir.ui.view">
+        <field name="name">account.payment.register.form.no.check.date</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="l10n_latam_check.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <!--
+                Apuntamos a la columna payment_date dentro de la lista editable
+                de l10n_latam_new_check_ids (cheques propios y terceros nuevos)
+                y le quitamos el required.
+            -->
+            <field name="l10n_latam_new_check_ids" position="inside">
+                <list position="attributes">
+                    <!-- No hacemos nada en el list, el required ya está
+                         manejado a nivel de modelo/wizard -->
+                </list>
+            </field>
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']//field[@name='payment_date']" position="attributes">
+                <attribute name="required">0</attribute>
+                <attribute name="optional">show</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
