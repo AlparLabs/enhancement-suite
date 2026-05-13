@@ -11,6 +11,11 @@
     'website': 'https://www.alpardata.com.ar',
     'depends': ['account_reports'],
     'data': [],
+    'assets': {
+        'web.assets_backend': [
+            'account_custom_reports/static/src/xml/custom_filters.xml',
+        ],
+    },
     'installable': True,
     'auto_install': False,
     'license': 'OEEL-1',

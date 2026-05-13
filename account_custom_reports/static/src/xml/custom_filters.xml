@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-inherit="account_reports.AccountReportFilterExtraOptions" t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='content']" position="inside">
+            <t t-if="'hide_initial_balance' in controller.options">
+                <DropdownItem
+                    class="{ 'selected': controller.options.hide_initial_balance }"
+                    onSelected="() => this.filterClicked({ optionKey: 'hide_initial_balance', reload: true})"
+                    closingMode="'none'"
+                >
+                    Hide Initial Balances
+                </DropdownItem>
+            </t>
+        </xpath>
+    </t>
+</templates>

@@ -6,10 +6,10 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
 
     def _custom_options_initializer(self, report, options, previous_options):
         """
-        Override to force hiding the initial balance line.
+        Override to conditionally hide the initial balance line.
         """
         super()._custom_options_initializer(report, options, previous_options=previous_options)
-        options['hide_initial_balance'] = True
+        options['hide_initial_balance'] = previous_options.get('hide_initial_balance', True)
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         if not options.get('hide_initial_balance'):
