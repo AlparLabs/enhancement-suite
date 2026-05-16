@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_credit_approval" model="ir.ui.view">
+        <field name="name">sale.order.form.credit.approval</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- ── Botones de aprobación en el header ── -->
+            <xpath expr="//header/button[@name='action_confirm']" position="after">
+
+                <!-- Para sesiones de aprobador: aprobación directa sin PIN -->
+                <button
+                    name="action_approve_credit"
+                    string="Aprobar Crédito"
+                    type="object"
+                    class="btn-success"
+                    invisible="state != 'waiting_approval' or not show_approve_credit_button"
+                    confirm="¿Está seguro de aprobar el exceso de crédito y confirmar esta orden de venta?"
+                />
+
+                <!-- Para sesiones de no-aprobador: abre el diálogo de PIN -->
+                <button
+                    name="action_open_pin_dialog"
+                    string="Aprobar con PIN"
+                    type="object"
+                    class="btn-warning"
+                    invisible="state != 'waiting_approval' or show_approve_credit_button"
+                />
+
+            </xpath>
+
+            <!-- Agregar el estado visualmente en el statusbar -->
+            <xpath expr="//field[@name='state'][@widget='statusbar']" position="attributes">
+                <attribute name="statusbar_visible">draft,sent,waiting_approval,sale,done</attribute>
+            </xpath>
+
+            <!-- ── Nota de crédito bloqueado (panel de información) ── -->
+            <xpath expr="//sheet/div[@class='oe_button_box'] | //sheet/group[1]" position="before">
+                <div
+                    class="alert alert-warning mb-0"
+                    invisible="state != 'waiting_approval'"
+                    role="alert"
+                >
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    <strong>Orden pendiente de aprobación de crédito.</strong>
+                    <field name="credit_approval_note" readonly="1" class="d-block mt-1"/>
+                </div>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Extensión de la vista de formulario de res.partner para mostrar
+        el campo 'supervisor_id' junto al crédito del cliente.
+
+        En Odoo 19, `credit_limit` está dentro de un <div class="o_row"> dentro
+        de <group name="credit_limits">. Insertamos supervisor_id como un grupo
+        independiente inmediatamente después del grupo credit_limits.
+    -->
+    <record id="view_partner_form_credit_supervisor" model="ir.ui.view">
+        <field name="name">res.partner.form.credit.supervisor</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//group[@name='credit_limits']" position="after">
+                <group>
+                    <field
+                        name="supervisor_id"
+                        string="Supervisor de Crédito"
+                        options="{'no_create': True}"
+                    />
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

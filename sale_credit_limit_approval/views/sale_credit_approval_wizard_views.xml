@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_credit_approval_wizard_form" model="ir.ui.view">
+        <field name="name">sale.credit.approval.wizard.form</field>
+        <field name="model">sale.credit.approval.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Aprobación por PIN de Crédito">
+
+                <!-- Contexto visual para el aprobador -->
+                <group string="Detalle de la Orden">
+                    <field name="order_id" readonly="1"/>
+                    <field name="partner_id" readonly="1"/>
+                    <field name="amount_total" readonly="1"/>
+                    <field name="credit_approval_note" readonly="1"/>
+                </group>
+
+                <!-- Ingreso del PIN -->
+                <group string="Autorización">
+                    <field
+                        name="pin"
+                        password="True"
+                        placeholder="Ingrese el PIN del aprobador"
+                        required="1"
+                    />
+                </group>
+
+                <footer>
+                    <button
+                        name="action_confirm_pin"
+                        string="Aprobar"
+                        type="object"
+                        class="btn-success"
+                    />
+                    <button
+                        string="Cancelar"
+                        class="btn-secondary"
+                        special="cancel"
+                    />
+                </footer>
+
+            </form>
+        </field>
+    </record>
+</odoo>
