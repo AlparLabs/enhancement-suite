@@ -10,7 +10,10 @@
     'author': 'AlparData',
     'website': 'https://www.alpardata.com.ar',
     'depends': ['account_reports'],
-    'data': [],
+    'data': [
+        'data/account_report_data.xml',
+        'views/account_report_views.xml',
+    ],
     'assets': {
         'web.assets_backend': [
             'account_custom_reports/static/src/xml/custom_filters.xml',
