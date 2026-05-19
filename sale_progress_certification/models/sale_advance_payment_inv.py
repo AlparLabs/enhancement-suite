@@ -7,95 +7,53 @@ class SaleAdvancePaymentInv(models.TransientModel):
     advance_payment_method = fields.Selection(
         selection_add=[
             ('percentage_progress', 'Certificación por % de avance'),
-            ('fixed_progress', 'Anticipo por % sobre monto neto'),
             ('fixed_net', 'Anticipo por Monto Fijo (Neto)'),
         ],
         ondelete={
             'percentage_progress': 'set default',
-            'fixed_progress': 'set default',
             'fixed_net': 'set default',
         }
     )
 
     def create_invoices(self):
-        if self.advance_payment_method not in ('percentage_progress', 'fixed_progress', 'fixed_net'):
+        if self.advance_payment_method not in ('percentage_progress', 'fixed_net'):
             return super().create_invoices()
 
         sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
 
         # ── Caso 1: Certificación por % de avance ──────────────────────────────
-        # Misma mecánica que el Anticipo estándar de Odoo pero con descripción
+        # Misma mecánica que el anticipo estándar de Odoo pero con descripción
         # personalizada: "Certificación de Avance: XX%"
         if self.advance_payment_method == 'percentage_progress':
-            # Llamamos al super() con el método nativo 'percentage' para que Odoo
-            # cree todo correctamente (producto, contabilidad, etc).
-            # Snapshot de las facturas previas para detectar las nuevas.
             invoices_before = sale_orders.mapped('invoice_ids')
-            self.advance_payment_method = 'percentage'
-            result = super().create_invoices()
-            self.advance_payment_method = 'percentage_progress'
+            pct = int(self.amount)
+            self.write({'advance_payment_method': 'percentage'})
+            try:
+                result = super().create_invoices()
+            finally:
+                self.write({'advance_payment_method': 'percentage_progress'})
 
-            # Buscamos las facturas recién creadas y renombramos sus líneas
             new_invoices = sale_orders.mapped('invoice_ids') - invoices_before
-            description = _('Certificación de Avance: %s%%') % int(self.amount)
+            description = _('Certificación de Avance: %s%%') % pct
             for inv in new_invoices:
                 for line in inv.invoice_line_ids:
                     if line.is_downpayment:
                         line.name = description
             return result
 
-        # ── Caso 2: Anticipo por % sobre monto Neto ────────────────────────────
-        # Idéntico al anticipo estándar pero el % se aplica sobre amount_untaxed
-        # en lugar de amount_total  (Odoo por defecto usa amount_total).
-        if self.advance_payment_method == 'fixed_progress':
-            invoices_before = sale_orders.mapped('invoice_ids')
-
-            # Convertimos el % sobre el neto en % equivalente sobre el total
-            # para que cuando Odoo calcule (amount/100 * total) obtenga
-            # exactamente (amount/100 * untaxed).
-            original_method = self.advance_payment_method
-            original_amount = self.amount
-
-            # Calculamos la cantidad a facturar correctamente por cada orden
-            # y generamos las facturas una a una ajustando 'amount'.
-            for order in sale_orders:
-                if order.amount_total:
-                    # % equivalente: (pct_neto / 100 * untaxed) / total * 100
-                    equivalent_pct = (original_amount / 100.0 * order.amount_untaxed) / order.amount_total * 100.0
-                else:
-                    equivalent_pct = original_amount
-
-                self.advance_payment_method = 'percentage'
-                self.amount = equivalent_pct
-                super().create_invoices()
-
-            self.advance_payment_method = original_method
-            self.amount = original_amount
-
-            # Renombramos líneas de las nuevas facturas
-            new_invoices = sale_orders.mapped('invoice_ids') - invoices_before
-            description = _('Anticipo: %s%% sobre monto neto') % int(original_amount)
-            for inv in new_invoices:
-                for line in inv.invoice_line_ids:
-                    if line.is_downpayment:
-                        line.name = description
-
-            if self._context.get('open_invoices', False):
-                return sale_orders.action_view_invoice()
-            return {'type': 'ir.actions.act_window_close'}
-
-        # ── Caso 3: Anticipo por Monto Fijo (Neto) ─────────────────────────────
-        # El anticipo nativo de Odoo trata fixed_amount como monto TOTAL
-        # (impuestos incluidos) y retrocede price_unit = fixed_amount / (1+tasa).
-        # Queremos lo contrario: el usuario ingresa el monto NETO y los
-        # impuestos se suman encima.  Por eso, después de que super() crea las
-        # líneas, restauramos price_unit al valor neto original.
+        # ── Caso 2: Anticipo por Monto Fijo (Neto) ─────────────────────────────
+        # Odoo trata fixed_amount como monto TOTAL (impuestos incluidos) y
+        # retrocede price_unit = fixed_amount / (1+tasa).
+        # Aquí el usuario ingresa el monto NETO; los impuestos se suman encima.
+        # Por eso restauramos price_unit al neto original tras la creación.
         if self.advance_payment_method == 'fixed_net':
             net_amount = self.fixed_amount
             invoices_before = sale_orders.mapped('invoice_ids')
-            self.advance_payment_method = 'fixed'
-            result = super().create_invoices()
-            self.advance_payment_method = 'fixed_net'
+            self.write({'advance_payment_method': 'fixed'})
+            try:
+                result = super().create_invoices()
+            finally:
+                self.write({'advance_payment_method': 'fixed_net'})
 
             new_invoices = sale_orders.mapped('invoice_ids') - invoices_before
             description = _('Anticipo: Monto Fijo Neto')
@@ -103,8 +61,5 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 for line in inv.invoice_line_ids:
                     if line.is_downpayment:
                         line.name = description
-                        # Odoo calcula price_unit como gross/taxes; lo
-                        # reemplazamos por el neto ingresado para que los
-                        # impuestos se calculen encima del neto.
                         line.price_unit = net_amount
             return result
