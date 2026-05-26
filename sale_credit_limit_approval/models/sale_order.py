@@ -133,7 +133,7 @@ class SaleOrder(models.Model):
 
         partner = self.partner_id.commercial_partner_id
         approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver')
-        approver_user_ids = approver_group.users.ids
+        approver_user_ids = approver_group.user_ids.ids
 
         if partner.supervisor_id:
             approver_user_ids = list(set(approver_user_ids + [partner.supervisor_id.id]))
