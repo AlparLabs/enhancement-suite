@@ -7,7 +7,10 @@
         <field name="arch" type="xml">
 
             <!-- ── Botones de aprobación en el header ── -->
-            <xpath expr="//header/button[@name='action_confirm']" position="after">
+            <!-- Use @id to match only the first 'Confirm' button (state=sent).
+                 In Odoo 19 there are two buttons with name='action_confirm';
+                 targeting by id avoids duplicating our buttons in the DOM. -->
+            <xpath expr="//header/button[@id='action_confirm']" position="after">
 
                 <!-- Para sesiones de aprobador: aprobación directa sin PIN -->
                 <button
@@ -32,7 +35,7 @@
 
             <!-- Agregar el estado visualmente en el statusbar -->
             <xpath expr="//field[@name='state'][@widget='statusbar']" position="attributes">
-                <attribute name="statusbar_visible">draft,sent,waiting_approval,sale,done</attribute>
+                <attribute name="statusbar_visible">draft,sent,waiting_approval,sale</attribute>
             </xpath>
 
             <!-- ── Nota de crédito bloqueado (panel de información) ── -->
