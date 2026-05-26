@@ -88,7 +88,7 @@ class SaleOrder(models.Model):
         current_user = self.env.user
         partner = self.partner_id.commercial_partner_id
 
-        is_approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver') in current_user.groups_id
+        is_approver_group = current_user.has_group('sale_credit_limit_approval.group_credit_limit_approver')
         is_supervisor = partner.supervisor_id and partner.supervisor_id == current_user
 
         if not (is_approver_group or is_supervisor):
@@ -169,7 +169,6 @@ class SaleOrder(models.Model):
 
     @api.depends('state', 'partner_id')
     def _compute_show_approve_credit_button(self) -> None:
-        approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver')
         for order in self:
             if order.state != 'waiting_approval':
                 order.show_approve_credit_button = False
@@ -177,7 +176,7 @@ class SaleOrder(models.Model):
 
             current_user = self.env.user
             partner = order.partner_id.commercial_partner_id
-            is_approver_group = approver_group in current_user.groups_id
+            is_approver_group = current_user.has_group('sale_credit_limit_approval.group_credit_limit_approver')
             is_supervisor = partner.supervisor_id and partner.supervisor_id == current_user
             order.show_approve_credit_button = bool(is_approver_group or is_supervisor)
 
