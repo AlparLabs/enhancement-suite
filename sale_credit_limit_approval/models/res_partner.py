@@ -1,4 +1,3 @@
-# sale_credit_limit_approval/models/res_partner.py
 from odoo import fields, models
 
 

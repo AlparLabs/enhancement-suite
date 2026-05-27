@@ -1,6 +1,6 @@
 {
     'name': 'Sale Credit Limit Approval',
-    'version': '18.0.1.0.0',
+    'version': '19.0.1.0.0',
     'category': 'Sales',
     'summary': 'Bloquea la confirmación de ventas si el cliente supera su límite de crédito',
     'description': """
@@ -14,17 +14,17 @@
     'license': 'AGPL-3',
     'depends': [
         'sale_management',
+        'sales_team',
         'account',
         'hr',
     ],
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'views/sale_credit_approval_wizard_views.xml',
         'views/sale_order_views.xml',
         'views/res_partner_views.xml',
-        'security/security.xml',
     ],
-
     'installable': True,
     'application': False,
     'auto_install': False,

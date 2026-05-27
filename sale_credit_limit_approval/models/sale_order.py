@@ -1,4 +1,3 @@
-# sale_credit_limit_approval/models/sale_order.py
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
@@ -6,10 +5,6 @@ from odoo.exceptions import AccessError, UserError
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    # -------------------------------------------------------------------------
-    # Override de state para agregar el valor 'waiting_approval'
-    # En Odoo 18 el campo state en sale.order está definido con selection_add.
-    # -------------------------------------------------------------------------
     state = fields.Selection(
         selection_add=[
             ('waiting_approval', 'Esperando Aprobación'),
@@ -17,17 +12,18 @@ class SaleOrder(models.Model):
         ondelete={'waiting_approval': 'set default'},
     )
 
-    # Campo informativo para mostrar en la vista el motivo del bloqueo
     credit_approval_note = fields.Char(
         string='Nota de Crédito',
         readonly=True,
         copy=False,
     )
 
-    # -------------------------------------------------------------------------
-    # Método auxiliar: comprobación de límite de crédito
-    # -------------------------------------------------------------------------
-    def _check_credit_limit(self):
+    show_approve_credit_button = fields.Boolean(
+        string='Mostrar botón de aprobación',
+        compute='_compute_show_approve_credit_button',
+    )
+
+    def _check_credit_limit(self) -> bool:
         """
         Devuelve True si el pedido supera el límite de crédito del cliente.
 
@@ -40,20 +36,12 @@ class SaleOrder(models.Model):
         self.ensure_one()
         partner = self.partner_id.commercial_partner_id
 
-        # 0 significa sin límite: no bloqueamos
         if not partner.credit_limit:
             return False
 
-        # `partner_credit_warning` es el campo computado nativo de Odoo 18.
-        # Está vacío ('') si no hay exceso; contiene el mensaje de advertencia si sí lo hay.
-        # Es la misma fuente de verdad que el warning que aparece en la orden de venta.
         return bool(self.partner_credit_warning)
 
-    # -------------------------------------------------------------------------
-    # Override de action_confirm
-    # -------------------------------------------------------------------------
-    def action_confirm(self):
-        # Si el contexto indica que la aprobación ya fue concedida, saltear check
+    def action_confirm(self) -> bool:
         if self.env.context.get('bypass_credit_limit'):
             return super().action_confirm()
 
@@ -91,10 +79,7 @@ class SaleOrder(models.Model):
             return super(SaleOrder, to_confirm).action_confirm()
         return True
 
-    # -------------------------------------------------------------------------
-    # Acción: Aprobar crédito (sesión de aprobador)
-    # -------------------------------------------------------------------------
-    def action_approve_credit(self):
+    def action_approve_credit(self) -> bool:
         """
         Aprueba el exceso de crédito y confirma la orden de venta.
         Solo puede ejecutarlo el supervisor_id del cliente o un miembro del grupo aprobador.
@@ -103,7 +88,7 @@ class SaleOrder(models.Model):
         current_user = self.env.user
         partner = self.partner_id.commercial_partner_id
 
-        is_approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver') in current_user.groups_id
+        is_approver_group = current_user.has_group('sale_credit_limit_approval.group_credit_limit_approver')
         is_supervisor = partner.supervisor_id and partner.supervisor_id == current_user
 
         if not (is_approver_group or is_supervisor):
@@ -121,14 +106,8 @@ class SaleOrder(models.Model):
         self._do_approve_credit(current_user)
         return self.with_context(bypass_credit_limit=True).action_confirm()
 
-    # -------------------------------------------------------------------------
-    # Acción: Abrir wizard de aprobación por PIN
-    # -------------------------------------------------------------------------
-    def action_open_pin_dialog(self):
-        """
-        Crea un wizard de aprobación y lo abre como diálogo modal nativo de Odoo.
-        No requiere JS personalizado: target='new' es manejado por el framework.
-        """
+    def action_open_pin_dialog(self) -> dict:
+        """Abre el wizard de aprobación por PIN como diálogo modal nativo."""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
@@ -139,17 +118,10 @@ class SaleOrder(models.Model):
             'context': {'default_order_id': self.id},
         }
 
-    # -------------------------------------------------------------------------
-    # Acción: Aprobar crédito por PIN (sesión de no-aprobador)
-    # -------------------------------------------------------------------------
-    def action_approve_credit_by_pin(self, pin):
+    def action_approve_credit_by_pin(self, pin) -> bool:
         """
         Permite que un aprobador autorice la orden ingresando su PIN de empleado,
         sin necesidad de que el usuario actual sea del grupo aprobador.
-
-        El PIN se valida contra hr.employee.pin. El empleado debe tener un
-        usuario vinculado (user_id) que pertenezca al grupo aprobador o que
-        sea el supervisor_id del cliente.
         """
         self.ensure_one()
 
@@ -161,13 +133,11 @@ class SaleOrder(models.Model):
 
         partner = self.partner_id.commercial_partner_id
         approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver')
-        approver_user_ids = approver_group.users.ids
+        approver_user_ids = approver_group.user_ids.ids
 
-        # Incluir también al supervisor del cliente si tiene uno asignado
         if partner.supervisor_id:
             approver_user_ids = list(set(approver_user_ids + [partner.supervisor_id.id]))
 
-        # Buscar empleado cuyo PIN coincida y cuyo usuario sea aprobador
         employee = self.env['hr.employee'].sudo().search([
             ('pin', '=', pin),
             ('user_id', 'in', approver_user_ids),
@@ -181,10 +151,7 @@ class SaleOrder(models.Model):
         self._do_approve_credit(employee.user_id, via_pin=True)
         return self.with_context(bypass_credit_limit=True).action_confirm()
 
-    # -------------------------------------------------------------------------
-    # Ayudante interno: registrar aprobación y resetear estado
-    # -------------------------------------------------------------------------
-    def _do_approve_credit(self, approver_user, via_pin=False):
+    def _do_approve_credit(self, approver_user, via_pin=False) -> None:
         """Registra la aprobación en el chatter y resetea el estado a draft."""
         suffix = _(" (vía PIN)") if via_pin else ""
         self.message_post(
@@ -200,11 +167,8 @@ class SaleOrder(models.Model):
             'credit_approval_note': False,
         })
 
-    # -------------------------------------------------------------------------
-    # Computed: visibilidad del botón de aprobación
-    # -------------------------------------------------------------------------
-    def _compute_show_approve_credit_button(self):
-        approver_group = self.env.ref('sale_credit_limit_approval.group_credit_limit_approver')
+    @api.depends('state', 'partner_id')
+    def _compute_show_approve_credit_button(self) -> None:
         for order in self:
             if order.state != 'waiting_approval':
                 order.show_approve_credit_button = False
@@ -212,20 +176,11 @@ class SaleOrder(models.Model):
 
             current_user = self.env.user
             partner = order.partner_id.commercial_partner_id
-            is_approver_group = approver_group in current_user.groups_id
+            is_approver_group = current_user.has_group('sale_credit_limit_approval.group_credit_limit_approver')
             is_supervisor = partner.supervisor_id and partner.supervisor_id == current_user
             order.show_approve_credit_button = bool(is_approver_group or is_supervisor)
 
-    show_approve_credit_button = fields.Boolean(
-        string='Mostrar botón de aprobación',
-        compute='_compute_show_approve_credit_button',
-    )
-
-    # -------------------------------------------------------------------------
-    # Cancelar una orden en waiting_approval → volver a draft
-    # -------------------------------------------------------------------------
-    def action_cancel(self):
-        # Permitir cancelar órdenes bloqueadas sin error de flujo
+    def action_cancel(self) -> bool:
         waiting = self.filtered(lambda o: o.state == 'waiting_approval')
         if waiting:
             waiting.write({'state': 'cancel', 'credit_approval_note': False})
