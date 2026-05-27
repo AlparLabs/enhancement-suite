@@ -253,7 +253,7 @@ class InvoiceLineExportWizard(models.TransientModel):
                     sign * line.price_subtotal,                                 # VALOR NETO
                     sign * line.price_total,                                    # VALOR BRUTO
                     move.currency_id.name,                                      # MONEDA
-                    move.invoice_currency_rate or 1.0,                          # TASA DE CAMBIO
+                    (1.0 / move.invoice_currency_rate) if move.invoice_currency_rate else 1.0,  # TASA DE CAMBIO (inverse)
                 ])
 
         return rows
