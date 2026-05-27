@@ -41,30 +41,10 @@
         </field>
     </record>
 
-    <record id="partner_objective_view_search" model="ir.ui.view">
-        <field name="name">partner.objective.search</field>
-        <field name="model">partner.objective</field>
-        <field name="arch" type="xml">
-            <search string="Objectives">
-                <field name="partner_id"/>
-                <field name="delivery_address_id"/>
-                <filter string="This Year" name="this_year"
-                        domain="[('date', '>=', time.strftime('%Y-01-01'))]"/>
-                <filter string="This Month" name="this_month"
-                        domain="[('date', '>=', time.strftime('%Y-%m-01'))]"/>
-                <group expand="0" string="Group By">
-                    <filter string="Partner" name="group_partner" context="{'group_by': 'partner_id'}"/>
-                    <filter string="Date" name="group_date" context="{'group_by': 'date:month'}"/>
-                </group>
-            </search>
-        </field>
-    </record>
-
     <record id="action_partner_objective" model="ir.actions.act_window">
         <field name="name">Partner Objectives</field>
         <field name="res_model">partner.objective</field>
         <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="partner_objective_view_search"/>
     </record>
 
     <menuitem id="menu_partner_objective_root"
