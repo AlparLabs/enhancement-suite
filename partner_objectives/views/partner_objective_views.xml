@@ -49,9 +49,9 @@
                 <field name="partner_id"/>
                 <field name="delivery_address_id"/>
                 <filter string="This Year" name="this_year"
-                        domain="[('date', '>=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('date', '>=', time.strftime('%Y-01-01'))]"/>
                 <filter string="This Month" name="this_month"
-                        domain="[('date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('date', '>=', time.strftime('%Y-%m-01'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Partner" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Date" name="group_date" context="{'group_by': 'date:month'}"/>
