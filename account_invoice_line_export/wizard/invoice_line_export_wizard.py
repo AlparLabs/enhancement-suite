@@ -18,7 +18,6 @@ MOVE_TYPE_LABELS = {
 }
 
 HEADERS = [
-    'EMPRESA',
     'SUC',
     'OV',
     'PipeDrive ID',
@@ -45,9 +44,9 @@ HEADERS = [
     'TASA DE CAMBIO',
 ]
 
-# Column indices for numeric formatting
-NUMERIC_COLS = {18, 19, 20, 21, 22, 24}  # CANTIDAD, Pr unitario neto, Descuento, VALOR NETO, VALOR BRUTO, TASA DE CAMBIO
-DATE_COLS = {6}  # FECHA DE DOCUMENTO DE VENTA
+# Column indices for numeric formatting (0-based, EMPRESA removed so all shift -1)
+NUMERIC_COLS = {17, 18, 19, 20, 21, 23}  # CANTIDAD, Pr unitario neto, Descuento, VALOR NETO, VALOR BRUTO, TASA DE CAMBIO
+DATE_COLS = {5}  # FECHA DE DOCUMENTO DE VENTA
 
 
 def _safe_field(record, field_name, default=''):
@@ -218,8 +217,7 @@ class InvoiceLineExportWizard(models.TransientModel):
             # Credit notes → negative sign on quantities and amounts
             sign = -1 if move.move_type in ('out_refund', 'in_refund') else 1
 
-            empresa = _safe_field(move.company_id, 'x_studio_empresa') or move.company_id.name
-            suc = _safe_field(move.company_id, 'x_studio_sucursal') or ''
+            suc = move.company_id.name
             partner = move.partner_id
             delivery = move.partner_shipping_id
 
@@ -243,7 +241,6 @@ class InvoiceLineExportWizard(models.TransientModel):
                     account_label = f"{line.account_id.code} {line.account_id.name}".strip()
 
                 rows.append([
-                    empresa,                                                    # EMPRESA
                     suc,                                                        # SUC
                     ov,                                                         # OV
                     pipedrive_id,                                               # PipeDrive ID
@@ -293,8 +290,7 @@ class InvoiceLineExportWizard(models.TransientModel):
         )
         rows = []
         for order in orders:
-            empresa = _safe_field(order.company_id, 'x_studio_empresa') or order.company_id.name
-            suc = _safe_field(order.company_id, 'x_studio_sucursal') or ''
+            suc = order.company_id.name
             partner = order.partner_id
             delivery = order.partner_shipping_id
             pipedrive_id = _safe_field(order, 'x_studio_pipedrive_id') or ''
@@ -310,7 +306,6 @@ class InvoiceLineExportWizard(models.TransientModel):
 
             for line in product_lines:
                 rows.append([
-                    empresa,                                    # EMPRESA
                     suc,                                        # SUC
                     order.name,                                 # OV
                     pipedrive_id,                               # PipeDrive ID
