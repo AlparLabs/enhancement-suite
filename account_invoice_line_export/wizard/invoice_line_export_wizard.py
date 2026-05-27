@@ -60,17 +60,6 @@ def _safe_field(record, field_name, default=''):
         return default
 
 
-def _many2one_name(record, field_name):
-    """Return the name of a Many2one field, or '' if missing/unset."""
-    try:
-        rel = getattr(record, field_name, False)
-        if rel and hasattr(rel, 'name'):
-            return rel.name or ''
-        return ''
-    except Exception:
-        return ''
-
-
 class InvoiceLineExportWizard(models.TransientModel):
     _name = 'invoice.line.export.wizard'
     _description = 'Invoice / Sale Line Flat Export'
@@ -222,7 +211,7 @@ class InvoiceLineExportWizard(models.TransientModel):
             delivery = move.partner_shipping_id
 
             tipo_cliente = self._resolve_tipo_cliente(partner)
-            sales_team = move.team_id.name if move.team_id else _many2one_name(partner, 'x_studio_equipo_de_ventas')
+            sales_team = move.team_id.name if move.team_id else ''
 
             product_lines = move.invoice_line_ids.filtered(
                 lambda l: l.display_type not in ('line_section', 'line_note') and l.product_id
@@ -293,7 +282,7 @@ class InvoiceLineExportWizard(models.TransientModel):
             suc = order.company_id.name
             partner = order.partner_id
             delivery = order.partner_shipping_id
-            pipedrive_id = _safe_field(order, 'x_studio_pipedrive_id') or ''
+            pipedrive_id = _safe_field(order, 'x_studio_pipedrive_deal_id') or ''
             pricelist = order.pricelist_id.name if order.pricelist_id else ''
             tipo_cliente = self._resolve_tipo_cliente(partner)
             sales_team = order.team_id.name if order.team_id else ''
@@ -345,7 +334,7 @@ class InvoiceLineExportWizard(models.TransientModel):
         if sale_orders:
             ov = ', '.join(sale_orders.mapped('name'))
             pipedrive_ids = list(filter(None, [
-                _safe_field(o, 'x_studio_pipedrive_id') for o in sale_orders
+                _safe_field(o, 'x_studio_pipedrive_deal_id') for o in sale_orders
             ]))
             pipedrive_id = ', '.join(str(p) for p in pipedrive_ids)
             pricelists = [o.pricelist_id.name for o in sale_orders if o.pricelist_id]
@@ -359,7 +348,7 @@ class InvoiceLineExportWizard(models.TransientModel):
 
     def _resolve_tipo_cliente(self, partner):
         """Resolve TIPO DE CLIENTE from partner Studio field (char or many2one)."""
-        val = _safe_field(partner, 'x_studio_tipo_cliente', False)
+        val = _safe_field(partner, 'x_studio_tipo_de_cliente', False)
         if val is False or val == '':
             return ''
         if hasattr(val, 'name'):
