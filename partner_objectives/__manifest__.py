@@ -15,7 +15,7 @@
     'author': 'AlparData',
     'website': 'https://www.alpardata.com.ar',
     'license': 'LGPL-3',
-    'depends': ['base'],
+    'depends': ['base', 'contacts'],
     'data': [
         'security/ir.model.access.csv',
         'views/partner_objective_views.xml',

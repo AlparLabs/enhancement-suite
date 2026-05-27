@@ -49,7 +49,7 @@
 
     <menuitem id="menu_partner_objective_root"
               name="Partner Objectives"
-              parent="base.menu_contacts"
+              parent="contacts.menu_contacts"
               action="action_partner_objective"
               sequence="30"/>
 
