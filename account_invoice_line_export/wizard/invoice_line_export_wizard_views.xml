@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard form view -->
+    <record id="view_invoice_line_export_wizard_form" model="ir.ui.view">
+        <field name="name">invoice.line.export.wizard.form</field>
+        <field name="model">invoice.line.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Exportar Líneas a Excel">
+                <group>
+                    <group string="Tipo de exportación">
+                        <field name="report_type" widget="radio"/>
+                    </group>
+                    <group string="Filtros">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="company_ids" widget="many2many_tags"/>
+                        <field name="invoice_state"
+                               invisible="report_type == 'sale'"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export"
+                            string="Descargar Excel"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancelar"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open wizard (generic) -->
+    <record id="action_invoice_line_export_wizard" model="ir.actions.act_window">
+        <field name="name">Exportar Líneas a Excel</field>
+        <field name="res_model">invoice.line.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ============================================================
+         Server Actions bound to list views
+         ============================================================ -->
+
+    <!-- Customer Invoices list -->
+    <record id="action_export_customer_invoice_lines" model="ir.actions.server">
+        <field name="name">Exportar líneas a Excel (Facturas Cliente)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.act_window',
+    'res_model': 'invoice.line.export.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {'default_report_type': 'customer_invoice'},
+}
+        </field>
+    </record>
+
+    <!-- Vendor Bills list -->
+    <record id="action_export_vendor_bill_lines" model="ir.actions.server">
+        <field name="name">Exportar líneas a Excel (Facturas Proveedor)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.act_window',
+    'res_model': 'invoice.line.export.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {'default_report_type': 'vendor_bill'},
+}
+        </field>
+    </record>
+
+    <!-- Sale Orders list -->
+    <record id="action_export_sale_lines" model="ir.actions.server">
+        <field name="name">Exportar líneas a Excel (Ventas)</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.act_window',
+    'res_model': 'invoice.line.export.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {'default_report_type': 'sale'},
+}
+        </field>
+    </record>
+
+</odoo>
