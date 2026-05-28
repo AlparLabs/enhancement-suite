@@ -18,34 +18,38 @@ MOVE_TYPE_LABELS = {
 }
 
 HEADERS = [
-    'SUC',
-    'OV',
-    'PipeDrive ID',
-    'TIPO DE DOCUMENTO',
-    'NRO DE DOC',
-    'FECHA DE DOCUMENTO DE VENTA',
-    'DIARIO',
-    'CUENTA CONTABLE',
-    'CLIENTE',
-    'TAX ID',
-    'TIPO DE CLIENTE',
-    'PROVINCIA DE ENTREGA',
-    'PROVINCIA DEL CLIENTE',
-    'EQUIPO DE VENTAS',
-    'LISTA DE PRECIOS',
-    'PRODUCTO',
-    'CATEGORÍA DE PRODUCTOS',
-    'CANTIDAD',
-    'Pr unitario neto',
-    'Descuento',
-    'VALOR NETO',
-    'VALOR BRUTO',
-    'MONEDA',
-    'TASA DE CAMBIO',
+    'SUC',                          # 0
+    'OV',                           # 1
+    'PipeDrive ID',                 # 2
+    'TIPO DE DOCUMENTO',            # 3
+    'NRO DE DOC',                   # 4
+    'FECHA DE DOCUMENTO DE VENTA',  # 5
+    'DIARIO',                       # 6
+    'CUENTA CONTABLE',              # 7
+    'CLIENTE',                      # 8
+    'TAX ID',                       # 9
+    'TIPO DE CLIENTE',              # 10
+    'PROVINCIA DE ENTREGA',         # 11
+    'LOCALIDAD',                    # 12  ← nuevo
+    'PROVINCIA DEL CLIENTE',        # 13
+    'EQUIPO DE VENTAS',             # 14
+    'LISTA DE PRECIOS',             # 15
+    'PRODUCTO',                     # 16
+    'CATEGORÍA DE PRODUCTOS',       # 17
+    'CANTIDAD',                     # 18
+    'Pr unitario neto',             # 19
+    'Descuento',                    # 20
+    'Precio con descuento',         # 21  ← nuevo
+    'VALOR NETO',                   # 22
+    'VALOR BRUTO',                  # 23
+    'MONEDA',                       # 24
+    'TASA DE CAMBIO',               # 25
 ]
 
-# Column indices for numeric formatting (0-based, EMPRESA removed so all shift -1)
-NUMERIC_COLS = {17, 18, 19, 20, 21, 23}  # CANTIDAD, Pr unitario neto, Descuento, VALOR NETO, VALOR BRUTO, TASA DE CAMBIO
+# Column indices for numeric formatting (0-based)
+# 18=CANTIDAD, 19=Pr unitario neto, 20=Descuento, 21=Precio con descuento,
+# 22=VALOR NETO, 23=VALOR BRUTO, 25=TASA DE CAMBIO
+NUMERIC_COLS = {18, 19, 20, 21, 22, 23, 25}
 DATE_COLS = {5}  # FECHA DE DOCUMENTO DE VENTA
 
 
@@ -218,7 +222,17 @@ class InvoiceLineExportWizard(models.TransientModel):
             )
 
             for line in product_lines:
-                ov, pipedrive_id, pricelist = self._extract_sale_order_data(line, move)
+                ov, pipedrive_id, pricelist, zona_entrega, localidad = (
+                    self._extract_sale_order_data(line, move)
+                )
+
+                # Vendor bills have no linked sale order → fall back to delivery address
+                is_customer = move.move_type in ('out_invoice', 'out_refund')
+                provincia_entrega = (
+                    zona_entrega if is_customer
+                    else (delivery.state_id.name if delivery else '')
+                )
+                localidad_col = localidad if is_customer else ''
 
                 invoice_date = (
                     datetime.combine(move.invoice_date, datetime.min.time())
@@ -228,6 +242,10 @@ class InvoiceLineExportWizard(models.TransientModel):
                 account_label = ''
                 if line.account_id:
                     account_label = f"{line.account_id.code} {line.account_id.name}".strip()
+
+                unit_price = abs(line.price_unit)
+                discount = abs(line.discount)
+                price_with_discount = unit_price * (1.0 - discount / 100.0)
 
                 rows.append([
                     suc,                                                        # SUC
@@ -241,15 +259,17 @@ class InvoiceLineExportWizard(models.TransientModel):
                     partner.name or '',                                         # CLIENTE
                     partner.vat or '',                                          # TAX ID
                     tipo_cliente,                                               # TIPO DE CLIENTE
-                    delivery.state_id.name if delivery else '',                 # PROVINCIA DE ENTREGA
+                    provincia_entrega,                                          # PROVINCIA DE ENTREGA
+                    localidad_col,                                              # LOCALIDAD
                     partner.state_id.name or '',                                # PROVINCIA DEL CLIENTE
                     sales_team,                                                 # EQUIPO DE VENTAS
                     pricelist,                                                  # LISTA DE PRECIOS
                     line.product_id.name or '',                                 # PRODUCTO
                     line.product_id.categ_id.complete_name or '',               # CATEGORÍA DE PRODUCTOS
                     sign * line.quantity,                                       # CANTIDAD
-                    abs(line.price_unit),                                       # Pr unitario neto
-                    abs(line.discount),                                         # Descuento
+                    unit_price,                                                 # Pr unitario neto
+                    discount,                                                   # Descuento
+                    price_with_discount,                                        # Precio con descuento
                     sign * line.price_subtotal,                                 # VALOR NETO
                     sign * line.price_total,                                    # VALOR BRUTO
                     move.currency_id.name,                                      # MONEDA
@@ -293,7 +313,14 @@ class InvoiceLineExportWizard(models.TransientModel):
                 lambda l: not l.display_type and l.product_id
             )
 
+            zona_entrega = self._resolve_studio_str(order, 'x_studio_zonas_de_entrega')
+            localidad = self._resolve_studio_str(order, 'x_studio_localidad')
+
             for line in product_lines:
+                unit_price = abs(line.price_unit)
+                discount = abs(line.discount)
+                price_with_discount = unit_price * (1.0 - discount / 100.0)
+
                 rows.append([
                     suc,                                        # SUC
                     order.name,                                 # OV
@@ -306,15 +333,17 @@ class InvoiceLineExportWizard(models.TransientModel):
                     partner.name or '',                         # CLIENTE
                     partner.vat or '',                          # TAX ID
                     tipo_cliente,                               # TIPO DE CLIENTE
-                    delivery.state_id.name if delivery else '', # PROVINCIA DE ENTREGA
+                    zona_entrega,                               # PROVINCIA DE ENTREGA
+                    localidad,                                  # LOCALIDAD
                     partner.state_id.name or '',                # PROVINCIA DEL CLIENTE
                     sales_team,                                 # EQUIPO DE VENTAS
                     pricelist,                                  # LISTA DE PRECIOS
                     line.product_id.name or '',                 # PRODUCTO
                     line.product_id.categ_id.complete_name or '', # CATEGORÍA DE PRODUCTOS
                     line.product_uom_qty,                       # CANTIDAD
-                    abs(line.price_unit),                       # Pr unitario neto
-                    abs(line.discount),                         # Descuento
+                    unit_price,                                 # Pr unitario neto
+                    discount,                                   # Descuento
+                    price_with_discount,                        # Precio con descuento
                     line.price_subtotal,                        # VALOR NETO
                     line.price_total,                           # VALOR BRUTO
                     order.currency_id.name,                     # MONEDA
@@ -328,7 +357,7 @@ class InvoiceLineExportWizard(models.TransientModel):
     # -------------------------------------------------------------------------
 
     def _extract_sale_order_data(self, line, move):
-        """Return (ov, pipedrive_id, pricelist) strings from linked sale orders."""
+        """Return (ov, pipedrive_id, pricelist, zona_entrega, localidad) from linked sale orders."""
         sale_orders = line.sale_line_ids.mapped('order_id') if line.sale_line_ids else self.env['sale.order']
 
         if sale_orders:
@@ -339,18 +368,28 @@ class InvoiceLineExportWizard(models.TransientModel):
             pipedrive_id = ', '.join(str(p) for p in pipedrive_ids)
             pricelists = [o.pricelist_id.name for o in sale_orders if o.pricelist_id]
             pricelist = ', '.join(dict.fromkeys(pricelists))  # deduplicate, preserve order
+            # Delivery zone and locality come from the first linked sale order
+            first_order = sale_orders[0]
+            zona_entrega = self._resolve_studio_str(first_order, 'x_studio_zonas_de_entrega')
+            localidad = self._resolve_studio_str(first_order, 'x_studio_localidad')
         else:
             ov = move.invoice_origin or ''
             pipedrive_id = ''
             pricelist = ''
+            zona_entrega = ''
+            localidad = ''
 
-        return ov, pipedrive_id, pricelist
+        return ov, pipedrive_id, pricelist, zona_entrega, localidad
+
+    def _resolve_studio_str(self, record, field_name):
+        """Resolve a Studio field that may be a Char, Many2one, or Selection."""
+        val = _safe_field(record, field_name, False)
+        if val is False or val == '':
+            return ''
+        if hasattr(val, 'name'):          # Many2one recordset
+            return val.name or ''
+        return str(val)
 
     def _resolve_tipo_cliente(self, partner):
         """Resolve TIPO DE CLIENTE from partner Studio field (char or many2one)."""
-        val = _safe_field(partner, 'x_studio_tipo_de_cliente', False)
-        if val is False or val == '':
-            return ''
-        if hasattr(val, 'name'):
-            return val.name or ''
-        return str(val)
+        return self._resolve_studio_str(partner, 'x_studio_tipo_de_cliente')
