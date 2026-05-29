@@ -19,7 +19,7 @@
         <field name="name">Cost Schedule: Multi-Company</field>
         <field name="model_id" ref="model_product_cost_schedule"/>
         <field name="global" eval="True"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids)]</field>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
 
     <!-- ── Record rules multi-company — product.cost.history ───────────────── -->
@@ -27,7 +27,7 @@
         <field name="name">Cost History: Multi-Company</field>
         <field name="model_id" ref="model_product_cost_history"/>
         <field name="global" eval="True"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids)]</field>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
 
 </odoo>
