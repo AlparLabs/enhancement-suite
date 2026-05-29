@@ -3,50 +3,39 @@
 
     <!-- ══════════════════════════════════════════════════════════════════════
          Herencia de Ajustes — agrega sección de umbrales de divergencia
+         v18: inherit from purchase.res_config_settings_view_form_purchase
+              and use <block>/<setting> markup (app/block/setting pattern)
     ═══════════════════════════════════════════════════════════════════════ -->
     <record id="res_config_settings_view_form_reference_cost" model="ir.ui.view">
         <field name="name">res.config.settings.form.reference.cost</field>
         <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="purchase.res_config_settings_view_form"/>
+        <field name="inherit_id" ref="purchase.res_config_settings_view_form_purchase"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//div[@id='purchase']" position="after">
-                <div id="reference_cost_settings">
-                    <h2>Costo de Referencia Comercial</h2>
-
-                    <div class="row mt16 o_settings_container">
-
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_left_pane"/>
-                            <div class="o_setting_right_pane">
+            <!-- Append a new block at the end of the Purchase app section -->
+            <xpath expr="//app[@name='purchase']" position="inside">
+                <block title="Costo de Referencia Comercial"
+                       name="reference_cost_settings">
+                    <setting string="Umbrales de alerta de divergencia"
+                             help="Cuando la diferencia entre el Costo AVCO y el Costo de Referencia supera estos porcentajes, aparece una alerta visual en el listado de productos.">
+                        <div class="content-group">
+                            <div class="row">
                                 <label for="divergence_threshold_warning"
-                                       string="Umbrales de alerta de divergencia"/>
-                                <div class="text-muted">
-                                    Cuando la diferencia entre el Costo AVCO y el
-                                    Costo de Referencia supera estos porcentajes,
-                                    aparece una alerta visual en el listado de productos.
-                                </div>
-                                <div class="content-group mt8">
-                                    <div class="row">
-                                        <label for="divergence_threshold_warning"
-                                               class="col-lg-5 o_light_label"
-                                               string="Alerta amarilla (%)"/>
-                                        <field name="divergence_threshold_warning"
-                                               class="col-lg-2"/>
-                                    </div>
-                                    <div class="row mt4">
-                                        <label for="divergence_threshold_critical"
-                                               class="col-lg-5 o_light_label"
-                                               string="Alerta roja (%)"/>
-                                        <field name="divergence_threshold_critical"
-                                               class="col-lg-2"/>
-                                    </div>
-                                </div>
+                                       class="col-lg-5 o_light_label"
+                                       string="Alerta amarilla (%)"/>
+                                <field name="divergence_threshold_warning"
+                                       class="col-lg-2"/>
+                            </div>
+                            <div class="row mt4">
+                                <label for="divergence_threshold_critical"
+                                       class="col-lg-5 o_light_label"
+                                       string="Alerta roja (%)"/>
+                                <field name="divergence_threshold_critical"
+                                       class="col-lg-2"/>
                             </div>
                         </div>
-
-                    </div>
-                </div>
+                    </setting>
+                </block>
             </xpath>
 
         </field>
