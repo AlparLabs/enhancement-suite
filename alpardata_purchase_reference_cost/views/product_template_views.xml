@@ -11,13 +11,13 @@
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
 
-            <!-- Smart buttons: programaciones y historial -->
+            <!-- Smart buttons: programaciones y historial (solo para gerentes de compras) -->
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_cost_schedules"
                         type="object"
                         class="oe_stat_button"
                         icon="fa-calendar"
-                        invisible="cost_schedule_count == 0">
+                        groups="purchase.group_purchase_manager">
                     <field name="cost_schedule_count"
                            widget="statinfo"
                            string="Programaciones"/>
@@ -25,7 +25,8 @@
                 <button name="action_view_cost_history"
                         type="object"
                         class="oe_stat_button"
-                        icon="fa-history">
+                        icon="fa-history"
+                        groups="purchase.group_purchase_manager">
                     <field name="cost_history_count"
                            widget="statinfo"
                            string="Historial costo"/>
@@ -36,13 +37,13 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Costo de Referencia"
                       name="reference_cost_tab"
-                      groups="alpardata_purchase_reference_cost.group_reference_cost_editor">
+                      groups="purchase.group_purchase_manager">
                     <group>
                         <group string="Costo comercial estable">
                             <field name="reference_cost"
                                    widget="monetary"
                                    string="Costo de referencia"
-                                   groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                                   groups="purchase.group_purchase_manager"/>
                             <field name="standard_price"
                                    widget="monetary"
                                    string="Costo AVCO (contable)"
@@ -107,16 +108,16 @@
                        string="Costo ref."
                        widget="monetary"
                        optional="show"
-                       groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                       groups="purchase.group_purchase_manager"/>
                 <field name="standard_price"
                        string="Costo AVCO"
                        widget="monetary"
                        optional="show"
-                       groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                       groups="purchase.group_purchase_manager"/>
                 <field name="cost_divergence_pct"
                        string="Diverg. %"
                        optional="show"
-                       groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                       groups="purchase.group_purchase_manager"/>
                 <field name="cost_divergence_alert" column_invisible="True"/>
             </xpath>
 

@@ -10,7 +10,7 @@
               name="Costos de Referencia"
               parent="purchase.menu_purchase_root"
               sequence="30"
-              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+              groups="purchase.group_purchase_manager"/>
 
     <!-- Programaciones de costo -->
     <menuitem id="menu_product_cost_schedule"
@@ -18,7 +18,7 @@
               parent="menu_reference_cost_root"
               action="action_product_cost_schedule"
               sequence="10"
-              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+              groups="purchase.group_purchase_manager"/>
 
     <!-- Historial de cambios -->
     <menuitem id="menu_product_cost_history"
@@ -26,7 +26,7 @@
               parent="menu_reference_cost_root"
               action="action_product_cost_history"
               sequence="20"
-              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+              groups="purchase.group_purchase_manager"/>
 
     <!-- Actualización masiva (wizard) -->
     <menuitem id="menu_reference_cost_mass_update"
@@ -34,6 +34,6 @@
               parent="menu_reference_cost_root"
               action="action_product_reference_cost_mass_update"
               sequence="30"
-              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+              groups="purchase.group_purchase_manager"/>
 
 </odoo>

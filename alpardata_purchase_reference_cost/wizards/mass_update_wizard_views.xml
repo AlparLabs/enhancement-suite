@@ -92,7 +92,7 @@
         <field name="res_model">product.reference.cost.mass.update</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="groups_id" eval="[(4, ref('alpardata_purchase_reference_cost.group_reference_cost_editor'))]"/>
+        <field name="groups_id" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
     </record>
 
 </odoo>
