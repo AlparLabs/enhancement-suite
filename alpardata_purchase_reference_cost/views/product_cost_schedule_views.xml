@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         product.cost.schedule — VISTA FORM
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_cost_schedule_form" model="ir.ui.view">
+        <field name="name">product.cost.schedule.form</field>
+        <field name="model">product.cost.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Programación de Costo de Referencia">
+                <header>
+                    <button name="action_schedule"
+                            string="Confirmar programación"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            confirm="¿Confirmás la programación? Se aplicará automáticamente en la fecha de vigencia."/>
+                    <button name="action_apply_now"
+                            string="Aplicar ahora"
+                            type="object"
+                            class="btn-warning"
+                            invisible="state not in ('draft', 'scheduled')"
+                            confirm="¿Aplicar el nuevo costo ahora mismo sin esperar la fecha de vigencia?"/>
+                    <button name="action_cancel"
+                            string="Cancelar"
+                            type="object"
+                            class="btn-danger"
+                            invisible="state in ('done', 'cancelled')"/>
+                    <button name="action_reset_draft"
+                            string="Volver a borrador"
+                            type="object"
+                            invisible="state != 'cancelled'"/>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,scheduled,done"/>
+                </header>
+
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name"
+                                   placeholder="Ej: Actualización lista yerba Julio 2026"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Producto">
+                            <field name="product_tmpl_id"
+                                   readonly="state in ('done', 'cancelled')"/>
+                            <field name="product_categ_id" readonly="True"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"
+                                   readonly="state in ('done', 'cancelled')"/>
+                        </group>
+                        <group string="Costos">
+                            <field name="current_reference_cost"
+                                   widget="monetary"
+                                   string="Costo de referencia actual"
+                                   readonly="True"/>
+                            <field name="new_reference_cost"
+                                   widget="monetary"
+                                   string="Nuevo costo de referencia"
+                                   readonly="state in ('done', 'cancelled')"/>
+                            <field name="effective_date"
+                                   string="Fecha de vigencia"
+                                   readonly="state in ('done', 'cancelled')"/>
+                        </group>
+                    </group>
+
+                    <group string="Aplicación">
+                        <field name="applied_date"
+                               string="Aplicado el"
+                               readonly="True"
+                               invisible="state != 'done'"/>
+                        <field name="applied_by"
+                               string="Aplicado por"
+                               readonly="True"
+                               invisible="state != 'done'"/>
+                    </group>
+
+                    <group string="Justificación">
+                        <field name="notes"
+                               nolabel="1"
+                               placeholder="Motivo del cambio (ej: nuevo acuerdo con proveedor, ajuste por inflación)..."
+                               readonly="state in ('done', 'cancelled')"/>
+                    </group>
+
+                </sheet>
+
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+
+            </form>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         product.cost.schedule — VISTA LIST
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_cost_schedule_list" model="ir.ui.view">
+        <field name="name">product.cost.schedule.list</field>
+        <field name="model">product.cost.schedule</field>
+        <field name="arch" type="xml">
+            <list string="Programaciones de Costo de Referencia"
+                  decoration-info="state == 'draft'"
+                  decoration-warning="state == 'scheduled'"
+                  decoration-success="state == 'done'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="effective_date" string="Fecha vigencia"/>
+                <field name="product_tmpl_id" string="Producto"/>
+                <field name="product_categ_id" string="Categoría"/>
+                <field name="current_reference_cost"
+                       string="Costo actual"
+                       widget="monetary"/>
+                <field name="new_reference_cost"
+                       string="Nuevo costo"
+                       widget="monetary"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       string="Empresa"/>
+                <field name="state"
+                       string="Estado"
+                       widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'scheduled'"
+                       decoration-success="state == 'done'"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="applied_date"
+                       string="Aplicado el"
+                       optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         product.cost.schedule — VISTA SEARCH
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_cost_schedule_search" model="ir.ui.view">
+        <field name="name">product.cost.schedule.search</field>
+        <field name="model">product.cost.schedule</field>
+        <field name="arch" type="xml">
+            <search string="Buscar programaciones de costo">
+
+                <field name="product_tmpl_id" string="Producto"/>
+                <field name="product_categ_id" string="Categoría"/>
+                <field name="effective_date" string="Fecha de vigencia"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       string="Empresa"/>
+
+                <!-- Filtros rápidos -->
+                <filter name="filter_pending"
+                        string="Pendientes de aplicar"
+                        domain="[('state', 'in', ['draft', 'scheduled'])]"/>
+                <filter name="filter_scheduled"
+                        string="Programadas"
+                        domain="[('state', '=', 'scheduled')]"/>
+                <filter name="filter_done"
+                        string="Aplicadas"
+                        domain="[('state', '=', 'done')]"/>
+                <filter name="filter_this_week"
+                        string="Vigencia esta semana"
+                        domain="[('effective_date', '&gt;=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d')),
+                                 ('effective_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+
+                <separator/>
+
+                <!-- Agrupaciones -->
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_by_product"
+                            string="Producto"
+                            context="{'group_by': 'product_tmpl_id'}"/>
+                    <filter name="group_by_category"
+                            string="Categoría"
+                            context="{'group_by': 'product_categ_id'}"/>
+                    <filter name="group_by_date"
+                            string="Fecha de vigencia"
+                            context="{'group_by': 'effective_date:month'}"/>
+                    <filter name="group_by_state"
+                            string="Estado"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_by_company"
+                            string="Empresa"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         ACCIÓN DE VENTANA — product.cost.schedule
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="action_product_cost_schedule" model="ir.actions.act_window">
+        <field name="name">Programaciones de Costo de Referencia</field>
+        <field name="res_model">product.cost.schedule</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_product_cost_schedule_search"/>
+        <field name="context">{'search_default_filter_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay programaciones de costo pendientes
+            </p>
+            <p>
+                Creá una programación para pre-cargar un cambio de
+                <strong>Costo de Referencia</strong> con fecha de vigencia futura.
+                El sistema lo aplicará automáticamente en la fecha indicada.
+            </p>
+        </field>
+    </record>
+
+</odoo>
