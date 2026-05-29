@@ -102,7 +102,7 @@ class ProductReferenceCostMassUpdate(models.TransientModel):
     )
 
     @api.depends('filter_type', 'categ_id', 'supplier_id', 'product_ids')
-    def _compute_preview_count(self):
+    def _compute_preview_count(self) -> None:
         for rec in self:
             rec.preview_count = len(rec._get_target_products())
 
@@ -132,7 +132,7 @@ class ProductReferenceCostMassUpdate(models.TransientModel):
 
         return self.env['product.template'].search(domain)
 
-    def _compute_new_cost_for_product(self, product):
+    def _compute_new_cost_for_product(self, product) -> float:
         """Calcula el nuevo costo para un producto según el modo elegido."""
         if self.value_mode == 'fixed':
             return self.new_cost
@@ -144,7 +144,7 @@ class ProductReferenceCostMassUpdate(models.TransientModel):
 
     # ── Validaciones ─────────────────────────────────────────────────────────
     @api.constrains('value_mode', 'new_cost', 'percentage')
-    def _check_values(self):
+    def _check_values(self) -> None:
         for rec in self:
             if rec.value_mode == 'fixed' and rec.new_cost < 0:
                 raise ValidationError('El nuevo costo fijo no puede ser negativo.')
@@ -154,7 +154,7 @@ class ProductReferenceCostMassUpdate(models.TransientModel):
                 raise ValidationError('La reducción no puede ser del 100% o más.')
 
     @api.constrains('update_mode', 'effective_date')
-    def _check_date(self):
+    def _check_date(self) -> None:
         for rec in self:
             if rec.update_mode == 'scheduled' and not rec.effective_date:
                 raise ValidationError(
@@ -162,7 +162,7 @@ class ProductReferenceCostMassUpdate(models.TransientModel):
                 )
 
     # ── Acción principal ─────────────────────────────────────────────────────
-    def action_apply(self):
+    def action_apply(self) -> dict:
         self.ensure_one()
         products = self._get_target_products()
 

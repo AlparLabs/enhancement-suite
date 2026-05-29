@@ -75,7 +75,8 @@ class ProductTemplate(models.Model):
 
     # ── Computes ──────────────────────────────────────────────────────────────
     @api.depends('standard_price', 'reference_cost')
-    def _compute_cost_divergence(self):
+    @api.depends_context('company')
+    def _compute_cost_divergence(self) -> None:
         threshold_warning = float(
             self.env['ir.config_parameter'].sudo().get_param(
                 'alpardata_purchase_reference_cost.divergence_threshold_warning', 10.0
@@ -105,6 +106,7 @@ class ProductTemplate(models.Model):
             else:
                 rec.cost_divergence_alert = 'ok'
 
+    @api.depends_context('company')
     def _compute_cost_schedule_count(self) -> None:
         for rec in self:
             rec.cost_schedule_count = self.env['product.cost.schedule'].search_count([
@@ -112,6 +114,7 @@ class ProductTemplate(models.Model):
                 ('state', 'in', ('pending', 'scheduled')),
             ])
 
+    @api.depends_context('company')
     def _compute_cost_history_count(self) -> None:
         for rec in self:
             rec.cost_history_count = self.env['product.cost.history'].search_count([
