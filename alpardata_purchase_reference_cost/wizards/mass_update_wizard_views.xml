@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Wizard de Actualización Masiva de Costo de Referencia
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_reference_cost_mass_update_form" model="ir.ui.view">
+        <field name="name">product.reference.cost.mass.update.form</field>
+        <field name="model">product.reference.cost.mass.update</field>
+        <field name="arch" type="xml">
+            <form string="Actualización Masiva de Costo de Referencia">
+                <sheet>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Actualización masiva</strong>: modificá el
+                        Costo de Referencia de múltiples productos al mismo tiempo.
+                        Podés aplicarlo ahora o programarlo para una fecha futura.
+                    </div>
+
+                    <!-- ── Empresa ── -->
+                    <group string="Empresa">
+                        <field name="company_id"
+                               groups="base.group_multi_company"/>
+                    </group>
+
+                    <!-- ── Filtro de productos ── -->
+                    <group string="¿A qué productos afecta?">
+                        <field name="filter_type" widget="radio"/>
+                        <field name="categ_id"
+                               invisible="filter_type != 'category'"
+                               required="filter_type == 'category'"/>
+                        <field name="supplier_id"
+                               invisible="filter_type != 'supplier'"
+                               required="filter_type == 'supplier'"/>
+                        <field name="product_ids"
+                               invisible="filter_type != 'manual'"
+                               widget="many2many_tags"/>
+                        <field name="preview_count"
+                               string="Productos que serán afectados"
+                               readonly="True"/>
+                    </group>
+
+                    <!-- ── Nuevo valor ── -->
+                    <group string="Nuevo valor del Costo de Referencia">
+                        <field name="value_mode" widget="radio"/>
+                        <field name="new_cost"
+                               string="Nuevo costo fijo (ARS)"
+                               widget="monetary"
+                               invisible="value_mode != 'fixed'"
+                               required="value_mode == 'fixed'"/>
+                        <field name="percentage"
+                               string="Porcentaje (%)"
+                               invisible="value_mode not in ('pct_inc', 'pct_dec')"
+                               required="value_mode in ('pct_inc', 'pct_dec')"/>
+                    </group>
+
+                    <!-- ── Cuándo aplicar ── -->
+                    <group string="¿Cuándo aplicar?">
+                        <field name="update_mode" widget="radio"/>
+                        <field name="effective_date"
+                               invisible="update_mode != 'scheduled'"
+                               required="update_mode == 'scheduled'"
+                               string="Fecha de vigencia"/>
+                    </group>
+
+                    <!-- ── Justificación ── -->
+                    <group string="Justificación (opcional)">
+                        <field name="notes"
+                               nolabel="1"
+                               placeholder="Motivo del cambio masivo (aparece en el historial de cada producto)..."/>
+                    </group>
+
+                </sheet>
+
+                <footer>
+                    <button name="action_apply"
+                            string="Aplicar"
+                            type="object"
+                            class="btn-primary"
+                            confirm="¿Confirmar la actualización masiva? Esta acción afectará a los productos seleccionados."/>
+                    <button string="Cancelar"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción para abrir el wizard -->
+    <record id="action_product_reference_cost_mass_update" model="ir.actions.act_window">
+        <field name="name">Actualización Masiva de Costo de Referencia</field>
+        <field name="res_model">product.reference.cost.mass.update</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="groups_id" eval="[(4, ref('alpardata_purchase_reference_cost.group_reference_cost_editor'))]"/>
+    </record>
+
+</odoo>

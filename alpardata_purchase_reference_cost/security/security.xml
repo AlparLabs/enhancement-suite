@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Grupos de seguridad propios ─────────────────────────────────────── -->
+
+    <record id="group_reference_cost_editor" model="res.groups">
+        <field name="name">Puede editar Costo de Referencia</field>
+        <field name="category_id" ref="base.module_category_inventory_purchase"/>
+        <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
+        <field name="comment">
+            Usuarios con este grupo pueden modificar manualmente el campo
+            "Costo de referencia" en la ficha de producto.
+            Por defecto solo aplica a Gerentes de Compras.
+        </field>
+    </record>
+
+    <!-- ── Record rules multi-company — product.cost.schedule ──────────────── -->
+    <record id="rule_cost_schedule_company" model="ir.rule">
+        <field name="name">Cost Schedule: Multi-Company</field>
+        <field name="model_id" ref="model_product_cost_schedule"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[
+            '|',
+            ('company_id', '=', False),
+            ('company_id', 'in', allowed_company_ids)
+        ]</field>
+    </record>
+
+    <!-- ── Record rules multi-company — product.cost.history ───────────────── -->
+    <record id="rule_cost_history_company" model="ir.rule">
+        <field name="name">Cost History: Multi-Company</field>
+        <field name="model_id" ref="model_product_cost_history"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[
+            '|',
+            ('company_id', '=', False),
+            ('company_id', 'in', allowed_company_ids)
+        ]</field>
+    </record>
+
+</odoo>

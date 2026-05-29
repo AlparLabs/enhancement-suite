@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         HERENCIA VISTA FORM — product.template
+         Agrega la pestaña "Costo de Referencia" y los smart buttons
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_template_form_reference_cost" model="ir.ui.view">
+        <field name="name">product.template.form.reference.cost</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+
+            <!-- Smart buttons: programaciones y historial -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_cost_schedules"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-calendar"
+                        invisible="cost_schedule_count == 0">
+                    <field name="cost_schedule_count"
+                           widget="statinfo"
+                           string="Programaciones"/>
+                </button>
+                <button name="action_view_cost_history"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-history">
+                    <field name="cost_history_count"
+                           widget="statinfo"
+                           string="Historial costo"/>
+                </button>
+            </xpath>
+
+            <!-- Nueva pestaña "Costo de Referencia" en el notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Costo de Referencia"
+                      name="reference_cost_tab"
+                      groups="alpardata_purchase_reference_cost.group_reference_cost_editor">
+                    <group>
+                        <group string="Costo comercial estable">
+                            <field name="reference_cost"
+                                   widget="monetary"
+                                   string="Costo de referencia"
+                                   groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                            <field name="standard_price"
+                                   widget="monetary"
+                                   string="Costo AVCO (contable)"
+                                   readonly="True"/>
+                            <field name="cost_divergence_pct"
+                                   string="Divergencia AVCO vs Referencia (%)"
+                                   readonly="True"
+                                   widget="percentage"/>
+                            <field name="cost_divergence_alert"
+                                   string="Estado"
+                                   readonly="True"
+                                   widget="badge"
+                                   decoration-success="cost_divergence_alert == 'ok'"
+                                   decoration-warning="cost_divergence_alert == 'warning'"
+                                   decoration-danger="cost_divergence_alert == 'critical'"/>
+                        </group>
+                        <group string="Última actualización">
+                            <field name="reference_cost_last_update"
+                                   string="Fecha de última actualización"
+                                   readonly="True"/>
+                            <field name="reference_cost_updated_by"
+                                   string="Actualizado por"
+                                   readonly="True"/>
+                        </group>
+                    </group>
+                    <group string="¿Qué es el Costo de Referencia?">
+                        <div class="alert alert-info" role="alert">
+                            <strong>Costo de Referencia</strong> es el precio comercial
+                            estable que se usa para calcular márgenes y precios de venta.<br/>
+                            <strong>NO</strong> se modifica automáticamente cuando recibís
+                            mercadería o cargás facturas de proveedor (a diferencia del
+                            Costo AVCO, que se recalcula en cada recepción).<br/>
+                            Actualizalo manualmente aquí o usa
+                            <strong>Programaciones de Costo</strong> para pre-cargar
+                            cambios futuros con fecha de vigencia.
+                        </div>
+                    </group>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         HERENCIA VISTA LIST — product.template
+         Agrega columna de divergencia con decoración semáforo
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_template_list_reference_cost" model="ir.ui.view">
+        <field name="name">product.template.list.reference.cost</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+
+            <!-- Agregar columnas después del precio de lista -->
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-warning">cost_divergence_alert == 'warning'</attribute>
+                <attribute name="decoration-danger">cost_divergence_alert == 'critical'</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='list_price']" position="after">
+                <field name="reference_cost"
+                       string="Costo ref."
+                       widget="monetary"
+                       optional="show"
+                       groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                <field name="standard_price"
+                       string="Costo AVCO"
+                       widget="monetary"
+                       optional="show"
+                       groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                <field name="cost_divergence_pct"
+                       string="Diverg. %"
+                       optional="show"
+                       groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+                <field name="cost_divergence_alert" column_invisible="True"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

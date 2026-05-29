@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Menús bajo Compras ▸ Costos de Referencia
+    ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Menú principal: Costos de Referencia (sub-menú de Compras) -->
+    <menuitem id="menu_reference_cost_root"
+              name="Costos de Referencia"
+              parent="purchase.menu_purchase_root"
+              sequence="30"
+              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+
+    <!-- Programaciones de costo -->
+    <menuitem id="menu_product_cost_schedule"
+              name="Programaciones de Costo"
+              parent="menu_reference_cost_root"
+              action="action_product_cost_schedule"
+              sequence="10"
+              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+
+    <!-- Historial de cambios -->
+    <menuitem id="menu_product_cost_history"
+              name="Historial de Cambios"
+              parent="menu_reference_cost_root"
+              action="action_product_cost_history"
+              sequence="20"
+              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+
+    <!-- Actualización masiva (wizard) -->
+    <menuitem id="menu_reference_cost_mass_update"
+              name="Actualización Masiva"
+              parent="menu_reference_cost_root"
+              action="action_product_reference_cost_mass_update"
+              sequence="30"
+              groups="alpardata_purchase_reference_cost.group_reference_cost_editor"/>
+
+</odoo>
