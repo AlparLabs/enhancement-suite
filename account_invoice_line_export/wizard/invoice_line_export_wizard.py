@@ -13,8 +13,10 @@ _logger = logging.getLogger(__name__)
 MOVE_TYPE_LABELS = {
     'out_invoice': 'Factura de Cliente',
     'out_refund': 'Nota de Crédito Cliente',
+    'out_receipt': 'Recibo de Cliente',
     'in_invoice': 'Factura de Proveedor',
     'in_refund': 'Nota de Crédito Proveedor',
+    'in_receipt': 'Recibo de Proveedor',
 }
 
 HEADERS = [
@@ -182,9 +184,9 @@ class InvoiceLineExportWizard(models.TransientModel):
 
     def _get_invoice_domain(self):
         if self.report_type == 'customer_invoice':
-            move_types = ['out_invoice', 'out_refund']
+            move_types = ['out_invoice', 'out_refund', 'out_receipt']
         else:
-            move_types = ['in_invoice', 'in_refund']
+            move_types = ['in_invoice', 'in_refund', 'in_receipt']
 
         domain = [
             ('move_type', 'in', move_types),
