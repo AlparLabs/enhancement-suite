@@ -3,19 +3,28 @@ from __future__ import annotations
 from odoo import api, fields, models
 
 
-class ProductCostHistory(models.Model):
+class ProductSupplierinfoCostHistory(models.Model):
     """
-    Historial inmutable de cambios del Costo de Referencia.
+    Historial inmutable de cambios del Costo de Referencia por proveedor.
 
-    Se genera automáticamente cada vez que product.template.reference_cost
-    es modificado (via write override o via cron de product.cost.schedule).
-    No es editable por el usuario.
+    Se genera automáticamente en product.supplierinfo.write() cada vez que
+    reference_cost cambia. No es editable por el usuario.
     """
-    _name = 'product.cost.history'
-    _description = 'Historial de Cambios — Costo de Referencia'
+
+    _name = 'product.supplierinfo.cost.history'
+    _description = 'Historial de Precios de Referencia por Proveedor'
     _order = 'change_date desc, id desc'
-    _rec_name = 'product_tmpl_id'
+    _rec_name = 'partner_id'
     _check_company_auto = True
+
+    supplierinfo_id: models.Model = fields.Many2one(
+        'product.supplierinfo',
+        string='Ficha de proveedor',
+        required=True,
+        ondelete='cascade',
+        index=True,
+        readonly=True,
+    )
 
     product_tmpl_id: models.Model = fields.Many2one(
         'product.template',
@@ -33,22 +42,30 @@ class ProductCostHistory(models.Model):
         readonly=True,
     )
 
+    partner_id: models.Model = fields.Many2one(
+        'res.partner',
+        string='Proveedor',
+        required=True,
+        ondelete='restrict',
+        index=True,
+        readonly=True,
+    )
+
     company_id: models.Model = fields.Many2one(
         'res.company',
         string='Empresa',
         required=True,
-        default=lambda self: self.env.company,
         readonly=True,
     )
 
     old_reference_cost: float = fields.Float(
-        string='Costo anterior',
+        string='Precio anterior',
         digits='Product Price',
         readonly=True,
     )
 
     new_reference_cost: float = fields.Float(
-        string='Nuevo costo',
+        string='Nuevo precio',
         digits='Product Price',
         readonly=True,
     )
@@ -81,7 +98,7 @@ class ProductCostHistory(models.Model):
     @api.depends('old_reference_cost', 'new_reference_cost')
     def _compute_variation(self) -> None:
         for rec in self:
-            if rec.old_reference_cost and rec.old_reference_cost != 0.0:
+            if rec.old_reference_cost:
                 rec.variation_pct = (
                     (rec.new_reference_cost - rec.old_reference_cost)
                     / rec.old_reference_cost * 100

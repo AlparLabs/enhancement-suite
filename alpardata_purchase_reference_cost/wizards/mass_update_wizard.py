@@ -176,21 +176,46 @@ class ProductReferenceCostMassUpdate(models.TransientModel):
         reason = self.notes or 'Actualización masiva de costo de referencia'
 
         if self.update_mode == 'immediate':
+            updated = 0
+            skipped = []
+            today = fields.Date.today()
+
             for product in products:
                 new_cost = self._compute_new_cost_for_product(product)
-                product.with_context(
-                    force_company=self.company_id.id,
+                primary_seller = product.seller_ids.filtered(
+                    lambda s: not s.company_id or s.company_id == self.company_id
+                ).sorted('sequence')
+
+                if not primary_seller:
+                    skipped.append(product.name)
+                    continue
+
+                seller = primary_seller[0]
+                self.env['product.supplierinfo'].sudo().with_context(
                     _change_reason=reason,
-                ).write({'reference_cost': new_cost})
+                ).create({
+                    'partner_id': seller.partner_id.id,
+                    'product_tmpl_id': product.id,
+                    'company_id': self.company_id.id,
+                    'reference_cost': new_cost,
+                    'price': seller.price,
+                    'date_start': today,
+                    'sequence': seller.sequence,
+                })
+                updated += 1
+
+            msg = f'Se actualizó el costo de referencia de {updated} producto(s).'
+            if skipped:
+                msg += f' {len(skipped)} producto(s) omitidos por no tener proveedor principal.'
 
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
                     'title': 'Actualización completada',
-                    'message': f'Se actualizó el costo de referencia de {len(products)} producto(s).',
-                    'type': 'success',
-                    'sticky': False,
+                    'message': msg,
+                    'type': 'success' if not skipped else 'warning',
+                    'sticky': bool(skipped),
                 },
             }
 
