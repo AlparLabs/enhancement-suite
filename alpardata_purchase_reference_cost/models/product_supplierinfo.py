@@ -81,11 +81,29 @@ class ProductSupplierinfo(models.Model):
         if previous:
             previous.write({'date_end': self.date_start - timedelta(days=1)})
 
+    def _get_active_reference_cost(self) -> float:
+        """Returns the reference_cost of the current active supplierinfo for
+        the same (partner, product_tmpl, company), excluding self.
+        Used to populate old_reference_cost in history on create."""
+        self.ensure_one()
+        today = fields.Date.today()
+        company_id = self.company_id.id if self.company_id else False
+        previous = self.env['product.supplierinfo'].sudo().search([
+            ('id', '!=', self.id),
+            ('partner_id', '=', self.partner_id.id),
+            ('product_tmpl_id', '=', self.product_tmpl_id.id),
+            ('company_id', '=', company_id),
+            '|', ('date_end', '=', False), ('date_end', '>=', today),
+            ('reference_cost', '>', 0),
+        ], order='sequence asc', limit=1)
+        return previous.reference_cost if previous else 0.0
+
     def create(self, vals_list):
         records = super().create(vals_list)
         for rec in records:
             if rec.reference_cost:
-                rec._log_reference_cost_history(0.0, rec.reference_cost)
+                old_cost = rec._get_active_reference_cost()
+                rec._log_reference_cost_history(old_cost, rec.reference_cost)
             rec._close_previous_records()
         return records
 
