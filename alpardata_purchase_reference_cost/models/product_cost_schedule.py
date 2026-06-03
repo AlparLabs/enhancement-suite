@@ -187,16 +187,39 @@ class ProductCostSchedule(models.Model):
 
     # ── Método de aplicación ─────────────────────────────────────────────────
     def _apply_cost_change(self) -> None:
-        """Aplica el reference_cost al producto. Llamado por cron o manualmente."""
+        """
+        Aplica el reference_cost creando un nuevo supplierinfo con date_start =
+        effective_date para el proveedor principal del producto.
+        El campo computed product.template.reference_cost se actualiza solo.
+        """
         self.ensure_one()
         old_cost = self.product_tmpl_id.reference_cost
+        reason = self.notes or f'Programación #{self.name}'
 
-        self.product_tmpl_id.sudo().with_context(
-            force_company=self.company_id.id,
-            _change_reason=self.notes or f'Programación #{self.name}',
-        ).write({
-            'reference_cost': self.new_reference_cost,
-        })
+        # Buscar proveedor principal actual del producto
+        primary_seller = self.product_tmpl_id.seller_ids.filtered(
+            lambda s: not s.company_id or s.company_id == self.company_id
+        ).sorted('sequence')
+
+        if primary_seller:
+            # Crear nuevo supplierinfo con la fecha de vigencia
+            self.env['product.supplierinfo'].sudo().with_context(
+                _change_reason=reason,
+            ).create({
+                'partner_id': primary_seller[0].partner_id.id,
+                'product_tmpl_id': self.product_tmpl_id.id,
+                'company_id': self.company_id.id,
+                'reference_cost': self.new_reference_cost,
+                'price': primary_seller[0].price,
+                'date_start': self.effective_date,
+                'sequence': primary_seller[0].sequence,
+            })
+        else:
+            _logger.warning(
+                'ProductCostSchedule #%s: producto %s no tiene proveedor principal. '
+                'No se puede aplicar el costo de referencia.',
+                self.id, self.product_tmpl_id.name,
+            )
 
         self.write({
             'state': 'done',
