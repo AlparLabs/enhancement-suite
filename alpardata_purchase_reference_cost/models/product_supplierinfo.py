@@ -67,14 +67,17 @@ class ProductSupplierinfo(models.Model):
         if not self.date_start:
             return
 
-        company_id = (self.company_id or self.env.company).id
-        previous = self.env['product.supplierinfo'].search([
+        # If the new record is company-specific, only close records of the same
+        # company. If it's global (no company), only close other global records.
+        company_id = self.company_id.id if self.company_id else False
+        domain = [
             ('id', '!=', self.id),
             ('partner_id', '=', self.partner_id.id),
             ('product_tmpl_id', '=', self.product_tmpl_id.id),
-            '|', ('company_id', '=', company_id), ('company_id', '=', False),
+            ('company_id', '=', company_id),
             '|', ('date_end', '=', False), ('date_end', '>=', self.date_start),
-        ])
+        ]
+        previous = self.env['product.supplierinfo'].sudo().search(domain)
         if previous:
             previous.write({'date_end': self.date_start - timedelta(days=1)})
 
