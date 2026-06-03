@@ -22,10 +22,10 @@
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
 
-    <!-- ── Record rules multi-company — product.cost.history ───────────────── -->
-    <record id="rule_cost_history_company" model="ir.rule">
-        <field name="name">Cost History: Multi-Company</field>
-        <field name="model_id" ref="model_product_cost_history"/>
+    <!-- ── Record rules multi-company — product.supplierinfo.cost.history ─── -->
+    <record id="rule_supplierinfo_cost_history_company" model="ir.rule">
+        <field name="name">Supplierinfo Cost History: Multi-Company</field>
+        <field name="model_id" ref="model_product_supplierinfo_cost_history"/>
         <field name="global" eval="True"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>

@@ -20,12 +20,20 @@
               sequence="10"
               groups="purchase.group_purchase_manager"/>
 
-    <!-- Historial de cambios -->
-    <menuitem id="menu_product_cost_history"
-              name="Historial de Cambios"
+    <!-- Precios por proveedor -->
+    <menuitem id="menu_product_supplierinfo_reference_cost"
+              name="Precios por Proveedor"
               parent="menu_reference_cost_root"
-              action="action_product_cost_history"
+              action="action_product_supplierinfo_reference_cost"
               sequence="20"
+              groups="purchase.group_purchase_manager"/>
+
+    <!-- Historial de precios por proveedor -->
+    <menuitem id="menu_supplierinfo_cost_history"
+              name="Historial de Precios por Proveedor"
+              parent="menu_reference_cost_root"
+              action="action_supplierinfo_cost_history"
+              sequence="30"
               groups="purchase.group_purchase_manager"/>
 
     <!-- Actualización masiva (wizard) -->
@@ -33,7 +41,7 @@
               name="Actualización Masiva"
               parent="menu_reference_cost_root"
               action="action_product_reference_cost_mass_update"
-              sequence="30"
+              sequence="40"
               groups="purchase.group_purchase_manager"/>
 
 </odoo>

@@ -1,6 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_product_cost_schedule_user,product.cost.schedule.user,model_product_cost_schedule,purchase.group_purchase_user,1,1,1,0
 access_product_cost_schedule_manager,product.cost.schedule.manager,model_product_cost_schedule,purchase.group_purchase_manager,1,1,1,1
-access_product_cost_history_user,product.cost.history.user,model_product_cost_history,base.group_user,1,0,0,0
-access_product_cost_history_manager,product.cost.history.manager,model_product_cost_history,purchase.group_purchase_manager,1,1,1,1
+access_supplierinfo_cost_history_user,product.supplierinfo.cost.history.user,model_product_supplierinfo_cost_history,base.group_user,1,0,0,0
+access_supplierinfo_cost_history_manager,product.supplierinfo.cost.history.manager,model_product_supplierinfo_cost_history,purchase.group_purchase_manager,1,1,1,1
 access_product_ref_cost_mass_update,product.reference.cost.mass.update,model_product_reference_cost_mass_update,purchase.group_purchase_manager,1,1,1,1
