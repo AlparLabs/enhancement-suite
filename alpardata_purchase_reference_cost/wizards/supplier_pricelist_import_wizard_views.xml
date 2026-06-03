@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Wizard: Importar Lista de Precios de Proveedor
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_supplier_pricelist_import_form" model="ir.ui.view">
+        <field name="name">product.supplier.pricelist.import.form</field>
+        <field name="model">product.supplier.pricelist.import</field>
+        <field name="arch" type="xml">
+            <form string="Importar Lista de Precios de Proveedor">
+                <sheet>
+
+                    <!-- ── PASO 1: Configurar ──────────────────────────────── -->
+                    <div invisible="state != 'draft'">
+
+                        <div class="alert alert-info" role="alert">
+                            <strong>Importar lista de precios de proveedor</strong><br/>
+                            Cargá el Excel o CSV del proveedor e indicá en qué columnas
+                            están el código de producto y el precio de referencia.<br/>
+                            El sistema actualiza el registro del proveedor en cada producto
+                            (nunca crea duplicados). Si el proveedor es el principal
+                            del producto, el Costo de Referencia del producto también
+                            se actualiza automáticamente.
+                        </div>
+
+                        <group string="Proveedor y empresa">
+                            <field name="supplier_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+
+                        <group string="Archivo">
+                            <field name="file_data"
+                                   filename="file_name"
+                                   widget="binary"
+                                   string="Archivo Excel / CSV"/>
+                            <field name="file_name" invisible="1"/>
+                            <field name="sheet_name"
+                                   placeholder="Primera hoja si se deja vacío"/>
+                            <field name="header_row"/>
+                        </group>
+
+                        <group string="Mapeo de columnas">
+                            <field name="match_field" widget="radio"/>
+                            <field name="col_identifier"
+                                   placeholder="Ej: A  o  Código Proveedor"/>
+                            <field name="col_price"
+                                   placeholder="Ej: B  o  Precio Lista"/>
+                        </group>
+
+                        <group string="Justificación (opcional)">
+                            <field name="notes"
+                                   nolabel="1"
+                                   placeholder="Motivo del cambio (aparece en el historial de cada producto)…"/>
+                        </group>
+
+                    </div>
+
+                    <!-- ── PASO 2: Vista previa ────────────────────────────── -->
+                    <div invisible="state != 'preview'">
+
+                        <!-- Resumen en 4 bloques -->
+                        <div class="row mb-2">
+                            <div class="col-3">
+                                <div class="alert alert-success text-center py-2" role="alert">
+                                    <strong><field name="found_count" readonly="1"/></strong>
+                                    <br/>encontrados
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="alert alert-info text-center py-2" role="alert">
+                                    <strong><field name="new_supplier_count" readonly="1"/></strong>
+                                    <br/>proveedor nuevo en producto
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="alert alert-warning text-center py-2" role="alert">
+                                    <strong><field name="no_price_count" readonly="1"/></strong>
+                                    <br/>sin precio
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="alert alert-danger text-center py-2" role="alert">
+                                    <strong><field name="not_found_count" readonly="1"/></strong>
+                                    <br/>no encontrados
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info" role="alert">
+                            Solo se actualizan los productos con estado
+                            <strong>Encontrado</strong> y precio mayor a cero.
+                            Los marcados como <em>proveedor nuevo en producto</em>
+                            van a crear una nueva ficha de proveedor para ese artículo.
+                        </div>
+
+                        <field name="preview_line_ids" readonly="1">
+                            <list decoration-success="status == 'found'"
+                                  decoration-muted="status == 'not_found'"
+                                  decoration-warning="status == 'no_price'">
+                                <field name="status"
+                                       widget="badge"
+                                       decoration-success="status == 'found'"
+                                       decoration-warning="status == 'no_price'"
+                                       decoration-danger="status == 'not_found'"/>
+                                <field name="identifier_value" string="Identificador"/>
+                                <field name="product_tmpl_id" string="Producto"/>
+                                <field name="is_new_supplierinfo"
+                                       string="Proveedor nuevo"
+                                       widget="boolean_toggle"
+                                       optional="show"/>
+                                <field name="current_reference_cost"
+                                       string="Costo Ref. actual"
+                                       widget="monetary"
+                                       options="{'currency_field': False}"/>
+                                <field name="new_reference_cost"
+                                       string="Nuevo Costo Ref."
+                                       widget="monetary"
+                                       options="{'currency_field': False}"/>
+                                <field name="diff_pct"
+                                       string="Var. %"
+                                       optional="show"/>
+                            </list>
+                        </field>
+
+                    </div>
+
+                    <field name="state" invisible="1"/>
+
+                </sheet>
+
+                <footer>
+                    <button name="action_preview"
+                            string="Vista previa →"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_apply"
+                            string="Aplicar"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'preview'"
+                            confirm="¿Confirmar la actualización del Costo de Referencia para los productos encontrados?"/>
+                    <button name="action_back"
+                            string="← Volver a configurar"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'preview'"/>
+
+                    <button string="Cancelar"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_supplier_pricelist_import" model="ir.actions.act_window">
+        <field name="name">Importar Lista de Precios de Proveedor</field>
+        <field name="res_model">product.supplier.pricelist.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="groups_id" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
+    </record>
+
+</odoo>

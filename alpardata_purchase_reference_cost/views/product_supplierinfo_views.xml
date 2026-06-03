@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Herencia: lista de proveedores en la pestaña Compras del producto
+         Agrega columna "Costo de Referencia" e indicador de proveedor principal
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_supplierinfo_inline_reference_cost" model="ir.ui.view">
+        <field name="name">product.supplierinfo.inline.reference.cost</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="purchase.product_supplierinfo_form_view"/>
+        <field name="arch" type="xml">
+
+            <!-- Agregar campo reference_cost después del precio de compra -->
+            <xpath expr="//field[@name='price']" position="after">
+                <field name="reference_cost"
+                       string="Costo de Referencia"
+                       optional="show"
+                       groups="purchase.group_purchase_manager"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Herencia: lista inline de seller_ids en el formulario de producto
+         Agrega columna "Costo Ref." a la tabla de proveedores
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_template_sellers_reference_cost" model="ir.ui.view">
+        <field name="name">product.template.sellers.reference.cost</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="purchase.product_template_form_view"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='seller_ids']/list/field[@name='price']" position="after">
+                <field name="reference_cost"
+                       string="Costo Ref."
+                       optional="show"
+                       groups="purchase.group_purchase_manager"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Vista lista global de product.supplierinfo con reference_cost
+         Accesible desde Compras > Costos de Referencia > Precios por Proveedor
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_product_supplierinfo_list_reference_cost" model="ir.ui.view">
+        <field name="name">product.supplierinfo.list.reference.cost</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="arch" type="xml">
+            <list string="Precios de Referencia por Proveedor"
+                  decoration-muted="reference_cost == 0">
+                <field name="partner_id" string="Proveedor"/>
+                <field name="product_tmpl_id" string="Producto"/>
+                <field name="product_code" string="Código proveedor" optional="show"/>
+                <field name="price" string="Precio de compra" widget="monetary"/>
+                <field name="reference_cost"
+                       string="Costo de Referencia"
+                       widget="monetary"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="sequence" optional="show"/>
+                <field name="date_start" optional="show"/>
+                <field name="date_end" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_product_supplierinfo_reference_cost" model="ir.actions.act_window">
+        <field name="name">Precios de Referencia por Proveedor</field>
+        <field name="res_model">product.supplierinfo</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_product_supplierinfo_list_reference_cost"/>
+        <field name="domain">[('reference_cost', '>', 0)]</field>
+        <field name="groups_id" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
+    </record>
+
+</odoo>
