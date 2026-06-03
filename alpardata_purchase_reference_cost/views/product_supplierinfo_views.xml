@@ -2,37 +2,40 @@
 <odoo>
 
     <!-- ══════════════════════════════════════════════════════════════════════
-         Herencia: lista de proveedores en la pestaña Compras del producto
-         Agrega columna "Costo de Referencia" e indicador de proveedor principal
+         Herencia: formulario individual de supplierinfo
+         (product.product_supplierinfo_form_view, módulo product)
+         Agrega campo "Costo de Referencia" en la sección Pricelist
     ═══════════════════════════════════════════════════════════════════════ -->
-    <record id="view_product_supplierinfo_inline_reference_cost" model="ir.ui.view">
-        <field name="name">product.supplierinfo.inline.reference.cost</field>
+    <record id="view_product_supplierinfo_form_reference_cost" model="ir.ui.view">
+        <field name="name">product.supplierinfo.form.reference.cost</field>
         <field name="model">product.supplierinfo</field>
-        <field name="inherit_id" ref="purchase.product_supplierinfo_form_view"/>
+        <field name="inherit_id" ref="product.product_supplierinfo_form_view"/>
         <field name="arch" type="xml">
 
-            <!-- Agregar campo reference_cost después del precio de compra -->
-            <xpath expr="//field[@name='price']" position="after">
-                <field name="reference_cost"
-                       string="Costo de Referencia"
-                       optional="show"
+            <xpath expr="//field[@name='price']/.." position="after">
+                <label for="reference_cost" string="Costo de Referencia"
                        groups="purchase.group_purchase_manager"/>
+                <div groups="purchase.group_purchase_manager">
+                    <field name="reference_cost" class="oe_inline"/>
+                </div>
             </xpath>
 
         </field>
     </record>
 
     <!-- ══════════════════════════════════════════════════════════════════════
-         Herencia: lista inline de seller_ids en el formulario de producto
-         Agrega columna "Costo Ref." a la tabla de proveedores
+         Herencia: lista inline de proveedores en la pestaña Compras
+         (purchase.product_supplierinfo_tree_view2 — usada via list_view_ref
+         en seller_ids del producto template)
+         Agrega columna "Costo Ref." después de "Price"
     ═══════════════════════════════════════════════════════════════════════ -->
-    <record id="view_product_template_sellers_reference_cost" model="ir.ui.view">
-        <field name="name">product.template.sellers.reference.cost</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="purchase.product_template_form_view"/>
+    <record id="view_product_supplierinfo_list_inline_reference_cost" model="ir.ui.view">
+        <field name="name">product.supplierinfo.list.inline.reference.cost</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="purchase.product_supplierinfo_tree_view2"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//field[@name='seller_ids']/list/field[@name='price']" position="after">
+            <xpath expr="//field[@name='price']" position="after">
                 <field name="reference_cost"
                        string="Costo Ref."
                        optional="show"
