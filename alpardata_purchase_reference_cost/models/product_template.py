@@ -1,8 +1,4 @@
-import logging
 from odoo import api, fields, models
-from odoo.exceptions import UserError
-
-_logger = logging.getLogger(__name__)
 
 
 class ProductTemplate(models.Model):
@@ -44,15 +40,9 @@ class ProductTemplate(models.Model):
         store=False,
     )
 
-    # ── Programaciones pendientes ─────────────────────────────────────────────
     cost_schedule_count = fields.Integer(
         string='Programaciones pendientes',
         compute='_compute_cost_schedule_count',
-    )
-
-    cost_history_count = fields.Integer(
-        string='Historial de cambios',
-        compute='_compute_cost_history_count',
     )
 
     # ── Computes ──────────────────────────────────────────────────────────────
@@ -88,18 +78,15 @@ class ProductTemplate(models.Model):
                 'alpardata_purchase_reference_cost.divergence_threshold_critical', 25.0
             )
         )
-
         for rec in self:
-            if not rec.reference_cost or rec.reference_cost == 0.0:
+            if not rec.reference_cost:
                 rec.cost_divergence_pct = 0.0
                 rec.cost_divergence_alert = 'ok'
                 continue
-
             divergence = abs(
                 (rec.standard_price - rec.reference_cost) / rec.reference_cost * 100
             )
             rec.cost_divergence_pct = divergence
-
             if divergence >= threshold_critical:
                 rec.cost_divergence_alert = 'critical'
             elif divergence >= threshold_warning:
@@ -115,14 +102,8 @@ class ProductTemplate(models.Model):
                 ('state', 'in', ('pending', 'scheduled')),
             ])
 
-    @api.depends_context('company')
-    def _compute_cost_history_count(self) -> None:
-        for rec in self:
-            rec.cost_history_count = self.env['product.cost.history'].search_count([
-                ('product_tmpl_id', '=', rec.id),
-            ])
-
     # ── Acciones de smart buttons ─────────────────────────────────────────────
+
     def action_view_cost_schedules(self) -> dict:
         self.ensure_one()
         return {
@@ -132,14 +113,4 @@ class ProductTemplate(models.Model):
             'view_mode': 'list,form',
             'domain': [('product_tmpl_id', '=', self.id)],
             'context': {'default_product_tmpl_id': self.id},
-        }
-
-    def action_view_cost_history(self) -> dict:
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Historial de costo de referencia',
-            'res_model': 'product.cost.history',
-            'view_mode': 'list',
-            'domain': [('product_tmpl_id', '=', self.id)],
         }

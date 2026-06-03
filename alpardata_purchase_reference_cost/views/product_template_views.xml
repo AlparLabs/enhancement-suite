@@ -22,15 +22,6 @@
                            widget="statinfo"
                            string="Programaciones"/>
                 </button>
-                <button name="action_view_cost_history"
-                        type="object"
-                        class="oe_stat_button"
-                        icon="fa-history"
-                        groups="purchase.group_purchase_manager">
-                    <field name="cost_history_count"
-                           widget="statinfo"
-                           string="Historial costo"/>
-                </button>
             </xpath>
 
             <!-- Nueva pestaña "Costo de Referencia" en el notebook -->
