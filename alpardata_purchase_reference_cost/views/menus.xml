@@ -36,4 +36,28 @@
               sequence="30"
               groups="purchase.group_purchase_manager"/>
 
+    <!-- Importar lista de precios de proveedor -->
+    <menuitem id="menu_supplier_pricelist_import"
+              name="Importar Lista de Precios"
+              parent="menu_reference_cost_root"
+              action="action_supplier_pricelist_import"
+              sequence="40"
+              groups="purchase.group_purchase_manager"/>
+
+    <!-- Precios por proveedor (supplierinfo con reference_cost) -->
+    <menuitem id="menu_product_supplierinfo_reference_cost"
+              name="Precios por Proveedor"
+              parent="menu_reference_cost_root"
+              action="action_product_supplierinfo_reference_cost"
+              sequence="50"
+              groups="purchase.group_purchase_manager"/>
+
+    <!-- Historial de precios por proveedor -->
+    <menuitem id="menu_supplierinfo_cost_history"
+              name="Historial de Precios por Proveedor"
+              parent="menu_reference_cost_root"
+              action="action_supplierinfo_cost_history"
+              sequence="60"
+              groups="purchase.group_purchase_manager"/>
+
 </odoo>

@@ -1,6 +1,6 @@
 {
     'name': 'AlparData - Costo de Referencia Comercial',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.3.0',
     'summary': 'Doble precio de costo: AVCO contable + costo de referencia comercial estable',
     'description': """
         Módulo desarrollado por AlparData para Grupo Broda.
@@ -42,10 +42,13 @@
         'security/security.xml',
         'data/data.xml',
         'views/product_template_views.xml',
+        'views/product_supplierinfo_views.xml',
+        'views/product_supplierinfo_cost_history_views.xml',
         'views/product_cost_schedule_views.xml',
         'views/product_cost_history_views.xml',
         'views/res_config_settings_views.xml',
         'wizards/mass_update_wizard_views.xml',
+        'wizards/supplier_pricelist_import_wizard_views.xml',
         'views/menus.xml',
     ],
     'installable': True,

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Historial de Precios de Referencia por Proveedor
+    ═══════════════════════════════════════════════════════════════════════ -->
+
+    <record id="view_supplierinfo_cost_history_list" model="ir.ui.view">
+        <field name="name">product.supplierinfo.cost.history.list</field>
+        <field name="model">product.supplierinfo.cost.history</field>
+        <field name="arch" type="xml">
+            <list string="Historial de Precios de Referencia"
+                  decoration-success="variation_pct &gt; 0"
+                  decoration-danger="variation_pct &lt; 0"
+                  create="false" edit="false" delete="false">
+                <field name="change_date" string="Fecha"/>
+                <field name="partner_id" string="Proveedor"/>
+                <field name="product_tmpl_id" string="Producto"/>
+                <field name="product_categ_id" string="Categoría" optional="show"/>
+                <field name="old_reference_cost"
+                       string="Precio anterior"
+                       widget="monetary"
+                       options="{'currency_field': False}"/>
+                <field name="new_reference_cost"
+                       string="Nuevo precio"
+                       widget="monetary"
+                       options="{'currency_field': False}"/>
+                <field name="variation_pct"
+                       string="Variación %"
+                       widget="percentage"
+                       optional="show"/>
+                <field name="change_reason" string="Motivo" optional="show"/>
+                <field name="changed_by" string="Modificado por" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_supplierinfo_cost_history_search" model="ir.ui.view">
+        <field name="name">product.supplierinfo.cost.history.search</field>
+        <field name="model">product.supplierinfo.cost.history</field>
+        <field name="arch" type="xml">
+            <search string="Historial de Precios">
+                <field name="partner_id" string="Proveedor"/>
+                <field name="product_tmpl_id" string="Producto"/>
+                <field name="changed_by" string="Usuario"/>
+                <filter name="this_month"
+                        string="Este mes"
+                        domain="[('change_date', '&gt;=', (context_today()).strftime('%Y-%m-01'))]"/>
+                <filter name="increase"
+                        string="Aumento"
+                        domain="[('variation_pct', '&gt;', 0)]"/>
+                <filter name="decrease"
+                        string="Baja"
+                        domain="[('variation_pct', '&lt;', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_supplier" string="Proveedor" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_product" string="Producto" context="{'group_by': 'product_tmpl_id'}"/>
+                    <filter name="group_category" string="Categoría" context="{'group_by': 'product_categ_id'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'change_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_supplierinfo_cost_history" model="ir.actions.act_window">
+        <field name="name">Historial de Precios de Referencia</field>
+        <field name="res_model">product.supplierinfo.cost.history</field>
+        <field name="view_mode">list</field>
+        <field name="groups_id" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
+    </record>
+
+</odoo>
