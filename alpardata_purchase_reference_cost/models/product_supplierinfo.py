@@ -1,4 +1,6 @@
 import logging
+from datetime import timedelta
+
 from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
@@ -31,59 +33,64 @@ class ProductSupplierinfo(models.Model):
                 'product.supplierinfo.cost.history'
             ].search_count([('supplierinfo_id', '=', rec.id)])
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
+    # ── Create / Write: log history ───────────────────────────────────────────
+    # product.template.reference_cost es un campo computed que depende de
+    # seller_ids, por lo que se recalcula automáticamente cuando se crea o
+    # modifica cualquier supplierinfo. Solo necesitamos loguear el historial.
 
-    def _is_primary_for_product(self) -> bool:
+    def _log_reference_cost_history(self, old_cost: float, new_cost: float) -> None:
+        if old_cost == new_cost:
+            return
+        self.env['product.supplierinfo.cost.history'].sudo().create({
+            'supplierinfo_id': self.id,
+            'product_tmpl_id': self.product_tmpl_id.id,
+            'partner_id': self.partner_id.id,
+            'company_id': (self.company_id or self.env.company).id,
+            'old_reference_cost': old_cost,
+            'new_reference_cost': new_cost,
+            'change_date': fields.Datetime.now(),
+            'changed_by': self.env.uid,
+            'change_reason': self.env.context.get('_change_reason', 'Actualización manual'),
+        })
+
+    def _close_previous_records(self) -> None:
         """
-        Returns True if this supplierinfo is the primary supplier for its product
-        (lowest sequence, considering company scope).
-        The primary supplier's reference_cost is synced to product.template.
+        Cierra los registros anteriores del mismo (partner, product_tmpl, company)
+        que sigan vigentes a partir de self.date_start, poniéndoles
+        date_end = date_start - 1 día.
+
+        Garantiza que el nuevo registro sea el único vigente desde su fecha de
+        inicio, independientemente del sequence.
+        Solo aplica cuando el nuevo registro tiene date_start definido.
         """
         self.ensure_one()
-        company_id = (self.company_id or self.env.company).id
-        primary = self.env['product.supplierinfo'].search([
-            ('product_tmpl_id', '=', self.product_tmpl_id.id),
-            '|',
-            ('company_id', '=', company_id),
-            ('company_id', '=', False),
-        ], order='sequence asc, id asc', limit=1)
-        return primary.id == self.id
+        if not self.date_start:
+            return
 
-    # ── Write override: log history + sync to product ─────────────────────────
+        company_id = (self.company_id or self.env.company).id
+        previous = self.env['product.supplierinfo'].search([
+            ('id', '!=', self.id),
+            ('partner_id', '=', self.partner_id.id),
+            ('product_tmpl_id', '=', self.product_tmpl_id.id),
+            '|', ('company_id', '=', company_id), ('company_id', '=', False),
+            '|', ('date_end', '=', False), ('date_end', '>=', self.date_start),
+        ])
+        if previous:
+            previous.write({'date_end': self.date_start - timedelta(days=1)})
+
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.reference_cost:
+                rec._log_reference_cost_history(0.0, rec.reference_cost)
+            rec._close_previous_records()
+        return records
 
     def write(self, vals: dict) -> bool:
         if 'reference_cost' in vals:
             new_cost = vals['reference_cost']
-            change_reason = self.env.context.get('_change_reason', 'Actualización manual')
-
             for rec in self:
-                old_cost = rec.reference_cost
-                if old_cost == new_cost:
-                    continue
-
-                self.env['product.supplierinfo.cost.history'].sudo().create({
-                    'supplierinfo_id': rec.id,
-                    'product_tmpl_id': rec.product_tmpl_id.id,
-                    'partner_id': rec.partner_id.id,
-                    'company_id': (rec.company_id or self.env.company).id,
-                    'old_reference_cost': old_cost,
-                    'new_reference_cost': new_cost,
-                    'change_date': fields.Datetime.now(),
-                    'changed_by': self.env.uid,
-                    'change_reason': change_reason,
-                })
-
-                # Sync to product.template.reference_cost when this is the primary supplier
-                if rec.product_tmpl_id and rec._is_primary_for_product():
-                    company_id = (rec.company_id or self.env.company).id
-                    reason = change_reason if change_reason != 'Actualización manual' else (
-                        f'Sincronizado desde proveedor principal — {rec.partner_id.name}'
-                    )
-                    rec.product_tmpl_id.sudo().with_context(
-                        force_company=company_id,
-                        _change_reason=reason,
-                    ).write({'reference_cost': new_cost})
-
+                rec._log_reference_cost_history(rec.reference_cost, new_cost)
         return super().write(vals)
 
     # ── Smart button action ────────────────────────────────────────────────────
