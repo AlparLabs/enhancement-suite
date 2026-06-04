@@ -5,13 +5,38 @@
         <field name="model">sale.advance.payment.inv</field>
         <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
         <field name="arch" type="xml">
-            
+            <!-- Make the entire downpayment specification group visible for our custom options -->
+            <xpath expr="//group[@name='down_payment_specification']" position="attributes">
+                <attribute name="invisible">advance_payment_method not in ('fixed', 'percentage', 'percentage_progress', 'fixed_progress', 'fixed_net')</attribute>
+            </xpath>
+
+            <!-- Fix Labels visibility -->
+            <xpath expr="//label[@for='amount']" position="attributes">
+                <attribute name="invisible">advance_payment_method not in ('percentage', 'percentage_progress')</attribute>
+            </xpath>
+
+            <xpath expr="//label[@for='fixed_amount']" position="attributes">
+                <attribute name="invisible">advance_payment_method not in ('fixed', 'fixed_progress', 'fixed_net')</attribute>
+            </xpath>
+
+            <!-- Fix Fields visibility and required status -->
             <xpath expr="//field[@name='amount']" position="attributes">
                 <attribute name="invisible">advance_payment_method not in ('percentage', 'percentage_progress')</attribute>
+                <attribute name="required">advance_payment_method in ('percentage', 'percentage_progress')</attribute>
             </xpath>
             
             <xpath expr="//field[@name='amount']" position="attributes">
                 <attribute name="string">Porcentaje (%)</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='fixed_amount']" position="attributes">
+                <attribute name="invisible">advance_payment_method not in ('fixed', 'fixed_progress', 'fixed_net')</attribute>
+                <attribute name="required">advance_payment_method in ('fixed', 'fixed_progress', 'fixed_net')</attribute>
+            </xpath>
+
+            <!-- Fix the % span symbol visibility -->
+            <xpath expr="//span[contains(text(), '%')]" position="attributes">
+                <attribute name="invisible">advance_payment_method not in ('percentage', 'percentage_progress')</attribute>
             </xpath>
 
         </field>

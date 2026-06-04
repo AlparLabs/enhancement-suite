@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_partner_view_form_objectives" model="ir.ui.view">
+        <field name="name">res.partner.form.objectives</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Smart button -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button"
+                        name="%(action_partner_objective)d"
+                        type="action"
+                        icon="fa-bullseye"
+                        invisible="objective_count == 0"
+                        context="{'default_partner_id': id, 'search_default_partner_id': id}">
+                    <field name="objective_count" widget="statinfo" string="Objectives"/>
+                </button>
+            </xpath>
+
+            <!-- Objectives tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Objectives" name="objectives">
+                    <field name="objective_ids"
+                           context="{'default_partner_id': id}">
+                        <list editable="bottom">
+                            <field name="date"/>
+                            <field name="delivery_address_id"
+                                   domain="[('type', '=', 'delivery'), ('parent_id', '=', parent.id)]"/>
+                            <field name="objective"/>
+                            <field name="currency_id"/>
+                            <field name="objective_qty"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
