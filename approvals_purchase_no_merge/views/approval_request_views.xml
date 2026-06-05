@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="approval_purchase_no_merge_request_view_form_inherit" model="ir.ui.view">
+        <field name="name">approval.purchase.no.merge.request.view.form.inherit</field>
+        <field name="model">approval.request</field>
+        <field name="inherit_id" ref="approvals.approval_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='products']//field[@name='product_line_ids']" position="before">
+                <field name="create_new_rfq"
+                    invisible="approval_type != 'purchase'"
+                    readonly="request_status != 'new'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
