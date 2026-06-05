@@ -4,16 +4,42 @@ from odoo import models, fields, api
 class ProjectProject(models.Model):
     _inherit = 'project.project'
 
-    # Separate from the read-only company currency_id that already exists on
-    # project.project. This field lets managers pick the currency in which they
-    # want to review project financials (e.g. USD for Argentine projects).
+    # Lets managers choose the currency in which the project financials are
+    # expressed (e.g. USD for Argentine projects while company currency is ARS).
     project_currency_id = fields.Many2one(
         comodel_name='res.currency',
         string='Project Currency',
         default=lambda self: self.env.company.currency_id,
         required=True,
         tracking=True,
+        help='Currency used to display all financial indicators for this project. '
+             'Amounts in other currencies are converted at the current exchange rate.',
     )
+
+    # Override the native read-only currency_id so the entire profitability
+    # panel (get_panel_data / _get_profitability_items) uses the project currency
+    # instead of the company currency.  All existing conversion logic in
+    # project_account, sale_project, project_purchase etc. calls
+    # currency._convert(..., to_currency=self.currency_id) — by making
+    # currency_id follow project_currency_id we get the correct output for free.
+    currency_id = fields.Many2one(
+        comodel_name='res.currency',
+        compute='_compute_currency_id',
+        string='Currency',
+        readonly=True,
+        export_string_translation=False,
+    )
+
+    @api.depends('project_currency_id', 'company_id')
+    def _compute_currency_id(self):
+        default = self.env.company.currency_id
+        for project in self:
+            project.currency_id = (
+                project.project_currency_id
+                or project.company_id.currency_id
+                or default
+            )
+
     amount_invoiced = fields.Monetary(
         string='Invoiced',
         currency_field='project_currency_id',
