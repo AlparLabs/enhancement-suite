@@ -5,7 +5,9 @@
     'author': 'AlparData',
     'category': 'Purchase',
     'depends': ['approvals_purchase'],
-    'data': [],
+    'data': [
+        'views/approval_request_views.xml',
+    ],
     'installable': True,
     'auto_install': False,
     'license': 'OPL-1',

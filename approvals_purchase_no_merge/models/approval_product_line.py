@@ -6,5 +6,6 @@ class ApprovalProductLine(models.Model):
 
     def _get_purchase_orders_domain(self, vendor):
         domain = super()._get_purchase_orders_domain(vendor)
-        domain += [('origin', '=', self.approval_request_id.name)]
+        if self.approval_request_id.create_new_rfq:
+            domain += [('origin', '=', self.approval_request_id.name)]
         return domain
