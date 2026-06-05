@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Inherit project form to add a "Resumen Financiero" tab that shows
+        invoiced, sold and purchased totals in the project's own currency.
+        Designed for Argentine companies that manage projects in USD while
+        the company currency is ARS.
+    -->
+    <record id="project_project_form_view_financial" model="ir.ui.view">
+        <field name="name">project.project.form.financial</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+
+            <!-- Add financial summary tab after the analytic tab -->
+            <xpath expr="//page[@name='analytic']" position="after">
+                <page string="Resumen Financiero" name="financial_dashboard"
+                      groups="account.group_account_invoice">
+                    <div class="o_project_financial_dashboard">
+
+                        <!-- Currency selector -->
+                        <group>
+                            <group>
+                                <field name="project_currency_id"
+                                       string="Moneda del Proyecto"/>
+                            </group>
+                        </group>
+
+                        <hr/>
+
+                        <!-- Alert when no analytic account is set -->
+                        <div class="alert alert-info mb-3"
+                             invisible="account_id">
+                            <i class="fa fa-info-circle me-2"/>
+                            Asigná una <strong>cuenta analítica</strong> al proyecto
+                            (tab Analytic) para ver los indicadores financieros.
+                        </div>
+
+                        <!-- KPI cards — only shown when analytic account is linked -->
+                        <div class="row g-3 mb-4" invisible="not account_id">
+
+                            <!-- Invoiced -->
+                            <div class="col-12 col-md-4">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body text-center py-4">
+                                        <div class="text-muted small fw-semibold text-uppercase mb-2">
+                                            Facturado
+                                        </div>
+                                        <div class="fs-4 fw-bold text-success">
+                                            <field name="amount_invoiced"
+                                                   widget="monetary"
+                                                   nolabel="1"/>
+                                        </div>
+                                        <div class="text-muted mt-1" style="font-size:0.78rem">
+                                            Facturas emitidas confirmadas (neto de NC)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sales Orders -->
+                            <div class="col-12 col-md-4">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body text-center py-4">
+                                        <div class="text-muted small fw-semibold text-uppercase mb-2">
+                                            Ventas
+                                        </div>
+                                        <div class="fs-4 fw-bold text-primary">
+                                            <field name="amount_sold"
+                                                   widget="monetary"
+                                                   nolabel="1"/>
+                                        </div>
+                                        <div class="text-muted mt-1" style="font-size:0.78rem">
+                                            Órdenes de venta confirmadas
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Purchase Orders -->
+                            <div class="col-12 col-md-4">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body text-center py-4">
+                                        <div class="text-muted small fw-semibold text-uppercase mb-2">
+                                            Compras
+                                        </div>
+                                        <div class="fs-4 fw-bold text-danger">
+                                            <field name="amount_purchased"
+                                                   widget="monetary"
+                                                   nolabel="1"/>
+                                        </div>
+                                        <div class="text-muted mt-1" style="font-size:0.78rem">
+                                            Órdenes de compra confirmadas
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Margin summary -->
+                        <div class="row g-3" invisible="not account_id">
+                            <div class="col-12 col-md-6 offset-md-3">
+                                <div class="card border-0 shadow-sm bg-light">
+                                    <div class="card-body text-center py-3">
+                                        <div class="text-muted small fw-semibold text-uppercase mb-1">
+                                            Margen Bruto (Ventas − Compras)
+                                        </div>
+                                        <div class="fs-3 fw-bold">
+                                            <field name="amount_margin"
+                                                   widget="monetary"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Conversion note -->
+                        <p class="text-muted mt-3 mb-0" style="font-size:0.82rem"
+                           invisible="not account_id">
+                            <i class="fa fa-info-circle me-1"/>
+                            Los documentos en otras monedas se convierten a
+                            <field name="project_currency_id"
+                                   readonly="1"
+                                   nolabel="1"
+                                   class="d-inline-block"/>
+                            usando el tipo de cambio actual.
+                        </p>
+
+                    </div>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
