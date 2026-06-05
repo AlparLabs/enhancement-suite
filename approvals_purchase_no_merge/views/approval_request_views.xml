@@ -6,9 +6,18 @@
         <field name="inherit_id" ref="approvals.approval_request_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='products']//field[@name='product_line_ids']" position="before">
-                <field name="create_new_rfq"
-                    invisible="approval_type != 'purchase'"
-                    readonly="request_status != 'new'"/>
+                <div class="d-flex align-items-center gap-2 mb-2" invisible="approval_type != 'purchase'">
+                    <field name="create_new_rfq" readonly="request_status != 'new'" nolabel="1"/>
+                    <label for="create_new_rfq" string="Siempre crear un RFQ nuevo"/>
+                </div>
+                <div class="alert alert-info" role="alert"
+                    invisible="approval_type != 'purchase'">
+                    <strong>Comportamiento al generar RFQs:</strong><br/>
+                    <ul class="mb-0 mt-1">
+                        <li><strong>Sin marcar (por defecto):</strong> Si ya existe un RFQ en borrador para el mismo proveedor, los productos de esta aprobación se agregarán a ese RFQ existente.</li>
+                        <li><strong>Marcado:</strong> Se crea un RFQ nuevo y separado para esta aprobación, sin fusionarse con RFQs de otras solicitudes, aunque sean del mismo proveedor.</li>
+                    </ul>
+                </div>
             </xpath>
         </field>
     </record>
