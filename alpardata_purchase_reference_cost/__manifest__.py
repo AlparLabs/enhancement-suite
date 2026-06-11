@@ -47,6 +47,7 @@
         'views/product_supplierinfo_cost_history_views.xml',
         'views/product_cost_schedule_views.xml',
         'views/res_config_settings_views.xml',
+        'views/purchase_order_views.xml',
         'views/menus.xml',
     ],
     'installable': True,
