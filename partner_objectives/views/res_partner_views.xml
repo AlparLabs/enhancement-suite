@@ -26,11 +26,14 @@
                            context="{'default_partner_id': id}">
                         <list editable="bottom">
                             <field name="date"/>
+                            <field name="date_end"/>
                             <field name="delivery_address_id"
                                    domain="[('type', '=', 'delivery'), ('parent_id', '=', parent.id)]"/>
-                            <field name="objective"/>
-                            <field name="currency_id"/>
                             <field name="objective_qty"/>
+                            <field name="dozens_sold"/>
+                            <field name="dozens_remaining" optional="hide"/>
+                            <field name="dozens_achievement_pct" widget="progressbar"/>
+                            <field name="dozens_achieved"/>
                         </list>
                     </field>
                 </page>
