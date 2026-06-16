@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_template_view_form_objectives" model="ir.ui.view">
+        <field name="name">product.template.form.objectives</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='list_price']" position="after">
+                <field name="counts_for_objective"/>
+                <field name="objective_dozen_qty"
+                       invisible="not counts_for_objective"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
