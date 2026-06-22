@@ -46,12 +46,17 @@ HEADERS = [
     'VALOR BRUTO',                  # 23
     'MONEDA',                       # 24
     'TASA DE CAMBIO',               # 25
+    'CUENTA ANALÍTICA',             # 26
 ]
 
 # Column indices for numeric formatting (0-based)
 # 18=CANTIDAD, 19=Pr unitario neto, 20=Descuento, 21=Precio con descuento,
 # 22=VALOR NETO, 23=VALOR BRUTO, 25=TASA DE CAMBIO
 NUMERIC_COLS = {18, 19, 20, 21, 22, 23, 25}
+
+# Columns prorated when expanding by analytic distribution
+# CANTIDAD(18), VALOR NETO(22), VALOR BRUTO(23)
+_ANALYTIC_PRORATE_COLS = {18, 22, 23}
 DATE_COLS = {5}  # FECHA DE DOCUMENTO DE VENTA
 
 
@@ -249,7 +254,7 @@ class InvoiceLineExportWizard(models.TransientModel):
                 discount = abs(line.discount)
                 price_with_discount = unit_price * (1.0 - discount / 100.0)
 
-                rows.append([
+                base_row = [
                     suc,                                                        # SUC
                     ov,                                                         # OV
                     pipedrive_id,                                               # PipeDrive ID
@@ -276,7 +281,13 @@ class InvoiceLineExportWizard(models.TransientModel):
                     sign * line.price_total,                                    # VALOR BRUTO
                     move.currency_id.name,                                      # MONEDA
                     (1.0 / move.invoice_currency_rate) if move.invoice_currency_rate else 1.0,  # TASA DE CAMBIO (inverse)
-                ])
+                ]
+
+                analytic_dist = getattr(line, 'analytic_distribution', None) or {}
+                if analytic_dist:
+                    rows.extend(self._expand_analytic_distribution(base_row, analytic_dist))
+                else:
+                    rows.append(base_row + [''])
 
         return rows
 
@@ -350,6 +361,7 @@ class InvoiceLineExportWizard(models.TransientModel):
                     line.price_total,                           # VALOR BRUTO
                     order.currency_id.name,                     # MONEDA
                     1.0,                                        # TASA DE CAMBIO (not stored on sale order)
+                    '',                                         # CUENTA ANALÍTICA
                 ])
 
         return rows
@@ -357,6 +369,22 @@ class InvoiceLineExportWizard(models.TransientModel):
     # -------------------------------------------------------------------------
     # Helpers
     # -------------------------------------------------------------------------
+
+    def _expand_analytic_distribution(self, base_row, analytic_dist):
+        """Return one row per analytic account, with quantity and amounts prorated by percentage."""
+        account_ids = [int(k) for k in analytic_dist.keys()]
+        accounts = self.env['account.analytic.account'].browse(account_ids)
+        name_by_id = {a.id: a.name or '' for a in accounts}
+        rows = []
+        for account_id_str, percentage in analytic_dist.items():
+            factor = percentage / 100.0
+            row = list(base_row)
+            for idx in _ANALYTIC_PRORATE_COLS:
+                if isinstance(row[idx], (int, float)):
+                    row[idx] = row[idx] * factor
+            account_name = name_by_id.get(int(account_id_str), '')
+            rows.append(row + [account_name])
+        return rows
 
     def _extract_sale_order_data(self, line, move):
         """Return (ov, pipedrive_id, pricelist, zona_entrega, localidad) from linked sale orders."""
