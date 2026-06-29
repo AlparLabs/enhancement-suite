@@ -6,10 +6,12 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='list_price']" position="after">
-                <field name="counts_for_objective"/>
-                <field name="objective_dozen_qty"
-                       invisible="not counts_for_objective"/>
+            <xpath expr="//page[@name='sales']" position="inside">
+                <group string="Partner Objectives" name="partner_objectives">
+                    <field name="counts_for_objective"/>
+                    <field name="objective_dozen_qty"
+                           invisible="not counts_for_objective"/>
+                </group>
             </xpath>
         </field>
     </record>

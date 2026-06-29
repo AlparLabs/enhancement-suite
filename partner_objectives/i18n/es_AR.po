@@ -1,0 +1,180 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* partner_objectives
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: es_AR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: partner_objectives
+#: model:ir.model,name:partner_objectives.model_partner_objective
+msgid "Partner Objective"
+msgstr "Objetivo de cliente"
+
+#. module: partner_objectives
+#: model:ir.actions.act_window,name:partner_objectives.action_partner_objective
+#: model:ir.ui.menu,name:partner_objectives.menu_partner_objective_root
+msgid "Partner Objectives"
+msgstr "Objetivos de clientes"
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__date
+msgid "Start Date"
+msgstr "Fecha de inicio"
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__date_end
+msgid "End Date"
+msgstr "Fecha de fin"
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__partner_id
+msgid "Partner"
+msgstr "Cliente"
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__delivery_address_id
+msgid "Delivery Address"
+msgstr "Dirección de entrega"
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__objective
+msgid "Objective (Amount)"
+msgstr "Objetivo (Importe)"
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__objective_qty
+msgid "Objective (Dozens)"
+msgstr "Objetivo (Docenas)"
+
+#. module: partner_objectives
+#: model:ir.model.fields,help:partner_objectives.field_partner_objective__objective_qty
+msgid "Target number of dozens the partner should buy in the period."
+msgstr "Cantidad de docenas que el cliente debería comprar en el período."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__dozens_sold
+msgid "Dozens Sold (Period)"
+msgstr "Docenas vendidas (período)"
+
+#. module: partner_objectives
+#: model:ir.model.fields,help:partner_objectives.field_partner_objective__dozens_sold
+msgid ""
+"Total dozens sold to the partner within the objective period, based on "
+"confirmed sale orders. Each line contributes its sold quantity multiplied by "
+"the product's 'Dozens per Unit', and only products flagged 'Counts for "
+"Objectives' are included."
+msgstr ""
+"Total de docenas vendidas al cliente dentro del período del objetivo, según "
+"los pedidos de venta confirmados. Cada línea aporta su cantidad vendida "
+"multiplicada por las 'Docenas por unidad' del producto, y solo se incluyen "
+"los productos marcados como 'Cuenta para objetivos'."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__dozens_remaining
+msgid "Dozens Remaining"
+msgstr "Docenas restantes"
+
+#. module: partner_objectives
+#: model:ir.model.fields,help:partner_objectives.field_partner_objective__dozens_remaining
+msgid "Dozens still missing to reach the objective (0 once met)."
+msgstr "Docenas que faltan para alcanzar el objetivo (0 una vez cumplido)."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__dozens_achievement_pct
+msgid "Achievement (%)"
+msgstr "Cumplimiento (%)"
+
+#. module: partner_objectives
+#: model:ir.model.fields,help:partner_objectives.field_partner_objective__dozens_achievement_pct
+msgid "Dozens sold as a percentage of the dozens objective."
+msgstr "Docenas vendidas como porcentaje del objetivo de docenas."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__dozens_achieved
+msgid "Objective Met"
+msgstr "Objetivo cumplido"
+
+#. module: partner_objectives
+#: model:ir.model.fields,help:partner_objectives.field_partner_objective__dozens_achieved
+msgid "Set once the dozens sold reach or exceed the objective."
+msgstr "Se marca cuando las docenas vendidas alcanzan o superan el objetivo."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__currency_id
+msgid "Currency"
+msgstr "Moneda"
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_partner_objective__company_id
+msgid "Company"
+msgstr "Compañía"
+
+#. module: partner_objectives
+#: code:addons/partner_objectives/models/partner_objective.py:0
+msgid "Objective (Amount) cannot be negative."
+msgstr "El objetivo (Importe) no puede ser negativo."
+
+#. module: partner_objectives
+#: code:addons/partner_objectives/models/partner_objective.py:0
+msgid "Objective (Dozens) cannot be negative."
+msgstr "El objetivo (Docenas) no puede ser negativo."
+
+#. module: partner_objectives
+#: code:addons/partner_objectives/models/partner_objective.py:0
+msgid "At least one objective (amount or dozens) must be set."
+msgstr "Debe definirse al menos un objetivo (importe o docenas)."
+
+#. module: partner_objectives
+#: code:addons/partner_objectives/models/partner_objective.py:0
+msgid "End Date cannot be earlier than Start Date."
+msgstr "La fecha de fin no puede ser anterior a la fecha de inicio."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_product_template__counts_for_objective
+msgid "Counts for Objectives"
+msgstr "Cuenta para objetivos"
+
+#. module: partner_objectives
+#: model:ir.model.fields,help:partner_objectives.field_product_template__counts_for_objective
+msgid ""
+"If set, this product is included when computing the dozens sold towards a "
+"partner's objective."
+msgstr ""
+"Si se marca, este producto se incluye al calcular las docenas vendidas para "
+"el objetivo de un cliente."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_product_template__objective_dozen_qty
+msgid "Dozens per Unit"
+msgstr "Docenas por unidad"
+
+#. module: partner_objectives
+#: model:ir.model.fields,help:partner_objectives.field_product_template__objective_dozen_qty
+msgid ""
+"How many dozens one unit of this product represents when computing dozens "
+"sold towards a partner's objective."
+msgstr ""
+"Cuántas docenas representa una unidad de este producto al calcular las "
+"docenas vendidas para el objetivo de un cliente."
+
+#. module: partner_objectives
+#: model:ir.model.fields,field_description:partner_objectives.field_res_partner__objective_ids
+#: model:ir.model.fields,field_description:partner_objectives.field_res_partner__objective_count
+#: model_terms:ir.ui.view,arch_db:partner_objectives.res_partner_view_form_objectives
+#: model_terms:ir.ui.view,arch_db:partner_objectives.product_template_view_form_objectives
+msgid "Objectives"
+msgstr "Objetivos"
+
+#. module: partner_objectives
+#: model_terms:ir.ui.view,arch_db:partner_objectives.partner_objective_view_form
+msgid "Objective"
+msgstr "Objetivo"
