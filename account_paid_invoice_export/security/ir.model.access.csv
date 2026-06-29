@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_paid_invoice_export_wizard_user,paid.invoice.export.wizard user,model_paid_invoice_export_wizard,account.group_account_user,1,1,1,1
+access_paid_invoice_export_wizard_manager,paid.invoice.export.wizard manager,model_paid_invoice_export_wizard,account.group_account_manager,1,1,1,1
