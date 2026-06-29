@@ -83,3 +83,74 @@ class PaidInvoiceExportWizard(models.TransientModel):
             domain.append(('company_id', 'in', self.company_ids.ids))
         return domain
 
+    def _invoice_partials(self, move):
+        """Yield (partial, counterpart_move) for every reconciliation applied
+        to the receivable lines of the invoice.
+
+        Walks the invoice's receivable move lines and their partial
+        reconciliations. For a customer invoice the invoice line is the debit,
+        so the payment/credit-note shows up via matched_credit_ids; we also
+        read matched_debit_ids defensively.
+        """
+        receivable_lines = move.line_ids.filtered(
+            lambda l: l.account_id.account_type == 'asset_receivable'
+        )
+        for line in receivable_lines:
+            for partial in line.matched_credit_ids:
+                counterpart = partial.debit_move_id.move_id
+                yield partial, counterpart
+            for partial in line.matched_debit_ids:
+                counterpart = partial.credit_move_id.move_id
+                yield partial, counterpart
+
+    def _base_row(self, move):
+        """Header-level columns shared by every row of an invoice (cols 0-7)."""
+        currency_code = _safe_field(move, 'l10n_ar_currency_code', '') \
+            or (move.currency_id.name or '')
+        return [
+            move.name or '',                                    # Factura
+            move.partner_id.name or '',                         # Cliente
+            currency_code,                                      # Moneda
+            move.amount_total,                                  # Total
+            move.amount_total_signed,                           # Total en moneda
+            move.amount_residual,                               # Saldo Pendiente
+            move.team_id.name if move.team_id else '',          # Equipo de Ventas
+            move.payment_state or '',                           # Estado de Pago
+        ]
+
+    def _payment_row(self, move, partial, counterpart):
+        """Full row (cols 0-13) for one applied payment."""
+        pay_date = partial.max_date or counterpart.date
+        pay_datetime = (
+            datetime.combine(pay_date, datetime.min.time())
+            if pay_date else None
+        )
+        is_refund = counterpart.move_type == 'out_refund'
+        return self._base_row(move) + [
+            counterpart.ref or counterpart.name or '',          # Pago Referencia
+            pay_datetime,                                       # Fecha de Pago
+            counterpart.currency_id.name or '',                 # Moneda Pago
+            counterpart.amount_total,                           # Monto Pagado
+            partial.amount,                                     # Monto Aplicado (ARS)
+            'Sí' if is_refund else 'No',                        # Es Nota de Crédito
+        ]
+
+    def _empty_payment_row(self, move):
+        """Row for an invoice with no reconciliations (payment cols blank)."""
+        return self._base_row(move) + [None, None, None, None, None, None]
+
+    def _build_rows(self):
+        moves = self.env['account.move'].search(
+            self._get_invoice_domain(),
+            order='invoice_date asc, name asc',
+        )
+        rows = []
+        for move in moves:
+            partials = list(self._invoice_partials(move))
+            if not partials:
+                rows.append(self._empty_payment_row(move))
+            else:
+                for partial, counterpart in partials:
+                    rows.append(self._payment_row(move, partial, counterpart))
+        return rows
+
