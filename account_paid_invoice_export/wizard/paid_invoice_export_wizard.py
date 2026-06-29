@@ -154,3 +154,65 @@ class PaidInvoiceExportWizard(models.TransientModel):
                     rows.append(self._payment_row(move, partial, counterpart))
         return rows
 
+    def action_export(self):
+        self.ensure_one()
+        if not self._selected_payment_states():
+            raise UserError(_('Seleccioná al menos un estado de pago.'))
+
+        rows = self._build_rows()
+        if not rows:
+            raise UserError(_('No se encontraron registros con los filtros seleccionados.'))
+
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Facturas Pagadas')
+
+        fmt_header = workbook.add_format({
+            'bold': True,
+            'bg_color': '#1F4E79',
+            'font_color': '#FFFFFF',
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'text_wrap': True,
+        })
+        fmt_date = workbook.add_format({'num_format': 'dd/mm/yyyy'})
+        fmt_number = workbook.add_format({'num_format': '#,##0.00'})
+        fmt_text = workbook.add_format({'valign': 'vcenter'})
+
+        worksheet.set_row(0, 30)
+        for col, header in enumerate(HEADERS):
+            worksheet.write(0, col, header, fmt_header)
+            worksheet.set_column(col, col, 20)
+
+        for row_idx, row in enumerate(rows, start=1):
+            for col_idx, value in enumerate(row):
+                if col_idx in DATE_COLS and isinstance(value, datetime):
+                    worksheet.write_datetime(row_idx, col_idx, value, fmt_date)
+                elif col_idx in NUMERIC_COLS and isinstance(value, (int, float)):
+                    worksheet.write_number(row_idx, col_idx, value, fmt_number)
+                else:
+                    worksheet.write(row_idx, col_idx, value if value is not None else '', fmt_text)
+
+        worksheet.autofilter(0, 0, len(rows), len(HEADERS) - 1)
+        worksheet.freeze_panes(1, 0)
+
+        workbook.close()
+        output.seek(0)
+        file_data = base64.b64encode(output.read())
+
+        filename = f"facturas_pagadas_{fields.Date.today()}.xlsx"
+        attachment = self.env['ir.attachment'].create({
+            'name': filename,
+            'type': 'binary',
+            'datas': file_data,
+            'res_model': self._name,
+            'res_id': self.id,
+            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/{attachment.id}?download=true',
+            'target': 'self',
+        }
