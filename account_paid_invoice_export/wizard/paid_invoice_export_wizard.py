@@ -1,14 +1,11 @@
 import base64
 import io
-import logging
 from datetime import datetime
 
 import xlsxwriter
 
 from odoo import fields, models, _
 from odoo.exceptions import UserError
-
-_logger = logging.getLogger(__name__)
 
 HEADERS = [
     'Factura',              # 0
