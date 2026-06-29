@@ -42,6 +42,7 @@
               name="Exportar Facturas Pagadas"
               parent="account.menu_finance_reports"
               action="action_paid_invoice_export_wizard"
+              groups="account.group_account_user"
               sequence="99"/>
 
 </odoo>

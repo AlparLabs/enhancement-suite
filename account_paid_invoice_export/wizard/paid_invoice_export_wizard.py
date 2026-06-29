@@ -5,7 +5,7 @@ from datetime import datetime
 
 import xlsxwriter
 
-from odoo import api, fields, models, _
+from odoo import fields, models, _
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -126,6 +126,10 @@ class PaidInvoiceExportWizard(models.TransientModel):
             if pay_date else None
         )
         is_refund = counterpart.move_type == 'out_refund'
+        # 'Monto Pagado' is the full counterpart move total (mirrors the original
+        # script): a payment split across several invoices repeats the whole
+        # payment amount per invoice, while 'Monto Aplicado (ARS)' (partial.amount)
+        # holds the per-invoice slice. Do not naively sum the 'Monto Pagado' column.
         return self._base_row(move) + [
             counterpart.ref or counterpart.name or '',          # Pago Referencia
             pay_datetime,                                       # Fecha de Pago
