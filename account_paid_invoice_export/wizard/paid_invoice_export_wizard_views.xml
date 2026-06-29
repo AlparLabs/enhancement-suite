@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_paid_invoice_export_wizard_form" model="ir.ui.view">
+        <field name="name">paid.invoice.export.wizard.form</field>
+        <field name="model">paid.invoice.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Exportar Facturas Pagadas">
+                <group>
+                    <group string="Filtros">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="company_ids" widget="many2many_tags"/>
+                    </group>
+                    <group string="Estado de pago">
+                        <field name="incl_paid"/>
+                        <field name="incl_partial"/>
+                        <field name="incl_in_payment"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export"
+                            string="Descargar Excel"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancelar"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_paid_invoice_export_wizard" model="ir.actions.act_window">
+        <field name="name">Exportar Facturas Pagadas</field>
+        <field name="res_model">paid.invoice.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_paid_invoice_export"
+              name="Exportar Facturas Pagadas"
+              parent="account.menu_finance_reports"
+              action="action_paid_invoice_export_wizard"
+              groups="account.group_account_user"
+              sequence="99"/>
+
+</odoo>
