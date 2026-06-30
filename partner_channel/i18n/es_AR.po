@@ -1,0 +1,107 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* partner_channel
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: es_AR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: partner_channel
+#: model:ir.model,name:partner_channel.model_res_partner_channel
+msgid "Partner Channel"
+msgstr "Canal del contacto"
+
+#. module: partner_channel
+#: model:ir.model,name:partner_channel.model_res_partner_channel_detail
+msgid "Partner Channel Detail"
+msgstr "Detalle del canal"
+
+#. module: partner_channel
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner__channel_id
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner_channel_detail__channel_id
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner_channel__name
+#: model:ir.model.fields,field_description:partner_channel.field_sale_order__channel_id
+msgid "Channel"
+msgstr "Canal"
+
+#. module: partner_channel
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner_channel_detail__name
+msgid "Channel Detail"
+msgstr "Detalle del canal"
+
+#. module: partner_channel
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner__channel_detail_ids
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner_channel__detail_ids
+#: model:ir.model.fields,field_description:partner_channel.field_sale_order__channel_detail_ids
+msgid "Channel Details"
+msgstr "Detalles del canal"
+
+#. module: partner_channel
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner_channel__sequence
+msgid "Sequence"
+msgstr "Secuencia"
+
+#. module: partner_channel
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner_channel__active
+#: model:ir.model.fields,field_description:partner_channel.field_res_partner_channel_detail__active
+msgid "Active"
+msgstr "Activo"
+
+#. module: partner_channel
+#: model:ir.actions.act_window,name:partner_channel.action_res_partner_channel
+#: model:ir.ui.menu,name:partner_channel.menu_res_partner_channel
+msgid "Channels"
+msgstr "Canales"
+
+#. module: partner_channel
+#: model_terms:ir.ui.view,arch_db:partner_channel.view_res_partner_channel_search
+#: model_terms:ir.ui.view,arch_db:partner_channel.view_res_partner_channel_detail_search
+msgid "Archived"
+msgstr "Archivado"
+
+#. module: partner_channel
+#: model_terms:ir.ui.view,arch_db:partner_channel.view_res_partner_channel_detail_search
+msgid "Group By"
+msgstr "Agrupar por"
+
+#. module: partner_channel
+#: model:ir.model.fields,help:partner_channel.field_res_partner__channel_id
+msgid "Commercial channel this contact belongs to."
+msgstr "Canal comercial al que pertenece este contacto."
+
+#. module: partner_channel
+#: model:ir.model.fields,help:partner_channel.field_res_partner__channel_detail_ids
+msgid ""
+"Details of the channel this contact belongs to. A contact may belong to "
+"several details of the same channel."
+msgstr ""
+"Detalles del canal al que pertenece este contacto. Un contacto puede "
+"pertenecer a varios detalles del mismo canal."
+
+#. module: partner_channel
+#: model:ir.model.fields,help:partner_channel.field_sale_order__channel_id
+msgid "Channel for this order. Auto-filled from the customer, editable."
+msgstr "Canal de este pedido. Se completa desde el cliente, editable."
+
+#. module: partner_channel
+#: model:ir.model.fields,help:partner_channel.field_sale_order__channel_detail_ids
+msgid "Channel details for this order. Auto-filled from the customer, editable."
+msgstr "Detalles del canal de este pedido. Se completan desde el cliente, editables."
+
+#. module: partner_channel
+#: model:ir.model.constraint,message:partner_channel.constraint_res_partner_channel_name_uniq
+msgid "The channel name must be unique."
+msgstr "El nombre del canal debe ser único."
+
+#. module: partner_channel
+#: model:ir.model.constraint,message:partner_channel.constraint_res_partner_channel_detail_name_channel_uniq
+msgid "The detail name must be unique within its channel."
+msgstr "El nombre del detalle debe ser único dentro de su canal."

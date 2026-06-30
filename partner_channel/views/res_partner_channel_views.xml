@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Channel views -->
+    <record id="view_res_partner_channel_list" model="ir.ui.view">
+        <field name="name">res.partner.channel.list</field>
+        <field name="model">res.partner.channel</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_res_partner_channel_form" model="ir.ui.view">
+        <field name="name">res.partner.channel.form</field>
+        <field name="model">res.partner.channel</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active" widget="boolean_toggle"/>
+                    </group>
+                    <notebook>
+                        <page string="Channel Details" name="details">
+                            <field name="detail_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_res_partner_channel_search" model="ir.ui.view">
+        <field name="name">res.partner.channel.search</field>
+        <field name="model">res.partner.channel</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_res_partner_channel" model="ir.actions.act_window">
+        <field name="name">Channels</field>
+        <field name="res_model">res.partner.channel</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Channel Detail views -->
+    <record id="view_res_partner_channel_detail_list" model="ir.ui.view">
+        <field name="name">res.partner.channel.detail.list</field>
+        <field name="model">res.partner.channel.detail</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="channel_id"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_res_partner_channel_detail_search" model="ir.ui.view">
+        <field name="name">res.partner.channel.detail.search</field>
+        <field name="model">res.partner.channel.detail</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="channel_id"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Channel" name="group_channel" context="{'group_by': 'channel_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_res_partner_channel_detail" model="ir.actions.act_window">
+        <field name="name">Channel Details</field>
+        <field name="res_model">res.partner.channel.detail</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menus under Sales > Configuration -->
+    <menuitem id="menu_res_partner_channel"
+              name="Channels"
+              parent="sale.menu_sale_config"
+              action="action_res_partner_channel"
+              sequence="60"/>
+
+    <menuitem id="menu_res_partner_channel_detail"
+              name="Channel Details"
+              parent="sale.menu_sale_config"
+              action="action_res_partner_channel_detail"
+              sequence="61"/>
+
+</odoo>
