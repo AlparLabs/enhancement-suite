@@ -9,24 +9,25 @@ from odoo.exceptions import UserError
 
 HEADERS = [
     'Factura',              # 0
-    'Cliente',              # 1
-    'Moneda',               # 2
-    'Total',                # 3
-    'Total en moneda',      # 4
-    'Saldo Pendiente',      # 5
-    'Equipo de Ventas',     # 6
-    'Estado de Pago',       # 7
-    'Pago Referencia',      # 8
-    'Fecha de Pago',        # 9
-    'Moneda Pago',          # 10
-    'Monto Pagado',         # 11
-    'Monto Aplicado (ARS)', # 12
-    'Es Nota de Crédito',   # 13
+    'Fecha de Factura',     # 1
+    'Cliente',              # 2
+    'Moneda',               # 3
+    'Total',                # 4
+    'Total en moneda',      # 5
+    'Saldo Pendiente',      # 6
+    'Equipo de Ventas',     # 7
+    'Estado de Pago',       # 8
+    'Pago Referencia',      # 9
+    'Fecha de Pago',        # 10
+    'Moneda Pago',          # 11
+    'Monto Pagado',         # 12
+    'Monto Aplicado (ARS)', # 13
+    'Es Nota de Crédito',   # 14
 ]
 
 # 0-based column indices for formatting
-NUMERIC_COLS = {3, 4, 5, 11, 12}
-DATE_COLS = {9}
+NUMERIC_COLS = {4, 5, 6, 12, 13}
+DATE_COLS = {1, 10}
 
 
 def _safe_field(record, field_name, default=''):
@@ -44,8 +45,8 @@ class PaidInvoiceExportWizard(models.TransientModel):
     _name = 'paid.invoice.export.wizard'
     _description = 'Paid Invoice Excel Export'
 
-    date_from = fields.Date(string='Fecha Desde')
-    date_to = fields.Date(string='Fecha Hasta')
+    date_from = fields.Date(string='Fecha de Pago Desde')
+    date_to = fields.Date(string='Fecha de Pago Hasta')
     company_ids = fields.Many2many(
         comodel_name='res.company',
         string='Empresas',
@@ -66,16 +67,15 @@ class PaidInvoiceExportWizard(models.TransientModel):
         return states
 
     def _get_invoice_domain(self):
+        # Note: date_from / date_to filter by PAYMENT date, which lives on the
+        # reconciliation, not on account.move. So the date range is applied
+        # per-payment in _build_rows, not here in the search domain.
         states = self._selected_payment_states()
         domain = [
             ('move_type', '=', 'out_invoice'),
             ('state', '=', 'posted'),
             ('payment_state', 'in', states),
         ]
-        if self.date_from:
-            domain.append(('invoice_date', '>=', self.date_from))
-        if self.date_to:
-            domain.append(('invoice_date', '<=', self.date_to))
         if self.company_ids:
             domain.append(('company_id', 'in', self.company_ids.ids))
         return domain
@@ -100,12 +100,33 @@ class PaidInvoiceExportWizard(models.TransientModel):
                 counterpart = partial.credit_move_id.move_id
                 yield partial, counterpart
 
+    @staticmethod
+    def _as_datetime(value):
+        """Convert a date to a datetime (for xlsx date formatting), or None."""
+        return datetime.combine(value, datetime.min.time()) if value else None
+
+    def _payment_date(self, partial, counterpart):
+        """Effective payment date of a reconciliation."""
+        return partial.max_date or counterpart.date
+
+    def _payment_in_range(self, partial, counterpart):
+        """True if the payment date falls within date_from / date_to."""
+        pay_date = self._payment_date(partial, counterpart)
+        if not pay_date:
+            return False
+        if self.date_from and pay_date < self.date_from:
+            return False
+        if self.date_to and pay_date > self.date_to:
+            return False
+        return True
+
     def _base_row(self, move):
-        """Header-level columns shared by every row of an invoice (cols 0-7)."""
+        """Header-level columns shared by every row of an invoice (cols 0-8)."""
         currency_code = _safe_field(move, 'l10n_ar_currency_code', '') \
             or (move.currency_id.name or '')
         return [
             move.name or '',                                    # Factura
+            self._as_datetime(move.invoice_date),               # Fecha de Factura
             move.partner_id.name or '',                         # Cliente
             currency_code,                                      # Moneda
             move.amount_total,                                  # Total
@@ -116,12 +137,8 @@ class PaidInvoiceExportWizard(models.TransientModel):
         ]
 
     def _payment_row(self, move, partial, counterpart):
-        """Full row (cols 0-13) for one applied payment."""
-        pay_date = partial.max_date or counterpart.date
-        pay_datetime = (
-            datetime.combine(pay_date, datetime.min.time())
-            if pay_date else None
-        )
+        """Full row (cols 0-14) for one applied payment."""
+        pay_datetime = self._as_datetime(self._payment_date(partial, counterpart))
         is_refund = counterpart.move_type == 'out_refund'
         # 'Monto Pagado' is the full counterpart move total (mirrors the original
         # script): a payment split across several invoices repeats the whole
@@ -145,10 +162,18 @@ class PaidInvoiceExportWizard(models.TransientModel):
             self._get_invoice_domain(),
             order='invoice_date asc, name asc',
         )
+        date_filter = bool(self.date_from or self.date_to)
         rows = []
         for move in moves:
             partials = list(self._invoice_partials(move))
-            if not partials:
+            if date_filter:
+                # Filtering by payment date: keep only payments in range and
+                # drop invoices that have no payment inside the range (an
+                # invoice with no reconciliation has no payment date).
+                for partial, counterpart in partials:
+                    if self._payment_in_range(partial, counterpart):
+                        rows.append(self._payment_row(move, partial, counterpart))
+            elif not partials:
                 rows.append(self._empty_payment_row(move))
             else:
                 for partial, counterpart in partials:
