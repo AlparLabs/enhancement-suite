@@ -32,7 +32,13 @@ comprometidas, por lo que el apartado de lotes lo complementa sin duplicar datos
   (`warehouse_id`).
 - **Datos por lote:** nombre del lote, cantidad en stock, reservado y disponible,
   tomados de `stock.quant` (campos `quantity`, `reserved_quantity`,
-  `available_quantity`) en ubicaciones internas del almacén.
+  `available_quantity`) en ubicaciones internas del almacén. El alcance de
+  ubicaciones usa `warehouse.view_location_id` (todo el árbol del almacén:
+  WH/Stock, WH/Input, WH/Output, WH/Pack, control de calidad, etc.) filtrado a
+  `usage = 'internal'`, en vez de limitarse solo a `warehouse.lot_stock_id`.
+  Es una elección deliberada: así el disponible por lote coincide con el mismo
+  criterio que usa el resto del informe nativo para calcular el disponible del
+  producto a nivel de almacén.
 - **Orden:** disponible ascendente — las bobinas con pocos metros aparecen
   primero, que son las que conviene liquidar.
 - **Unidades:** cantidades expresadas en la unidad de medida del producto.
