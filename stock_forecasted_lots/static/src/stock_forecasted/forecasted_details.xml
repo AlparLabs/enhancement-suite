@@ -6,17 +6,15 @@
         <xpath expr="//table[hasclass('o_forecasted_details_table')]" position="after">
             <div t-if="props.docs.lots and props.docs.lots.length"
                  class="o_forecasted_lots mt-3">
-                <h6><t t-esc="'Available lots'"/></h6>
+                <h6>Available lots</h6>
                 <table class="table table-sm table-bordered">
                     <thead>
                         <tr>
-                            <th><t t-esc="'Lot'"/></th>
-                            <th t-if="props.docs.multiple_product">
-                                <t t-esc="'Product'"/>
-                            </th>
-                            <th class="text-end"><t t-esc="'In Stock'"/></th>
-                            <th class="text-end"><t t-esc="'Reserved'"/></th>
-                            <th class="text-end"><t t-esc="'Available'"/></th>
+                            <th>Lot</th>
+                            <th t-if="props.docs.multiple_product">Product</th>
+                            <th class="text-end">In Stock</th>
+                            <th class="text-end">Reserved</th>
+                            <th class="text-end">Available</th>
                         </tr>
                     </thead>
                     <tbody>
