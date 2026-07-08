@@ -56,3 +56,38 @@ class TestForecastedLots(TransactionCase):
         )._get_report_data(product_ids=self.product.ids)
 
         self.assertEqual([lot['id'] for lot in data['lots']], [self.lot_a.id])
+
+    def test_product_without_lot_tracking_returns_no_lots(self):
+        untracked_product = self.env['product.product'].create({
+            'name': 'Cinta aislante',
+            'type': 'consu',
+            'is_storable': True,
+            'tracking': 'none',
+        })
+        self.env['stock.quant']._update_available_quantity(
+            untracked_product, self.stock_location, 20.0)
+
+        data = self.report_model.with_context(
+            warehouse_id=self.warehouse.id
+        )._get_report_data(product_ids=untracked_product.ids)
+
+        self.assertEqual(data['lots'], [])
+
+    def test_lot_tracked_product_without_stock_returns_no_lots(self):
+        data = self.report_model.with_context(
+            warehouse_id=self.warehouse.id
+        )._get_report_data(product_ids=self.product.ids)
+
+        self.assertEqual(data['lots'], [])
+
+    def test_lot_depleted_to_zero_is_excluded(self):
+        self.env['stock.quant']._update_available_quantity(
+            self.product, self.stock_location, 10.0, lot_id=self.lot_a)
+        self.env['stock.quant']._update_available_quantity(
+            self.product, self.stock_location, -10.0, lot_id=self.lot_a)
+
+        data = self.report_model.with_context(
+            warehouse_id=self.warehouse.id
+        )._get_report_data(product_ids=self.product.ids)
+
+        self.assertEqual(data['lots'], [])
