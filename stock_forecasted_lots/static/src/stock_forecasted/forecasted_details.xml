@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="stock_forecasted_lots.ForecastedDetailsLots"
+       t-inherit="stock.ForecastedDetails"
+       t-inherit-mode="extension">
+        <xpath expr="//table[hasclass('o_forecasted_details_table')]" position="after">
+            <div t-if="props.docs.lots and props.docs.lots.length"
+                 class="o_forecasted_lots mt-3">
+                <h6><t t-esc="'Available lots'"/></h6>
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th><t t-esc="'Lot'"/></th>
+                            <th t-if="props.docs.multiple_product">
+                                <t t-esc="'Product'"/>
+                            </th>
+                            <th class="text-end"><t t-esc="'In Stock'"/></th>
+                            <th class="text-end"><t t-esc="'Reserved'"/></th>
+                            <th class="text-end"><t t-esc="'Available'"/></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="props.docs.lots" t-as="lot" t-key="lot.id">
+                            <tr>
+                                <td><t t-esc="lot.display_name"/></td>
+                                <td t-if="props.docs.multiple_product">
+                                    <t t-esc="lot.product_display_name"/>
+                                </td>
+                                <td class="text-end">
+                                    <t t-esc="lot.quantity"/> <t t-esc="lot.uom"/>
+                                </td>
+                                <td class="text-end">
+                                    <t t-esc="lot.reserved_quantity"/> <t t-esc="lot.uom"/>
+                                </td>
+                                <td class="text-end">
+                                    <t t-esc="lot.available_quantity"/> <t t-esc="lot.uom"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+        </xpath>
+    </t>
+</templates>
