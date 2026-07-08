@@ -555,3 +555,47 @@ Expected: exits 0, no traceback, no missing-dependency errors (depends only on `
 - [ ] **Step 3: Repeat the manual browser verification from Task 6, Step 2**
 
 This confirms the end-to-end flow once more after all commits: create a lot-tracked product, register two lots, open the forecast report from a sale order line, and visually confirm the "Available lots" table renders correctly and updates when the warehouse changes.
+
+---
+
+## Task 9: Verify lots data via the `stock.forecasted_product_template` model
+
+**Files:**
+- Modify: `stock_forecasted_lots/tests/test_forecasted_lots.py`
+
+A whole-feature code review flagged that the module's design spec assumes — but no test ever exercises — that patching `stock.forecasted_product_product._get_report_data` (via plain `_inherit`, no `_name`) also applies to `stock.forecasted_product_template`, since Odoo core defines that model as `_inherit = ['stock.forecasted_product_product']`. This second model backs the "Forecast" button on a product form and is called with `product_template_ids=` instead of `product_ids=`, exercising the other branch of `_get_lot_tracked_products`. All 6 existing tests only ever call the `stock.forecasted_product_product` model with `product_ids=`, so this entry point has zero coverage. This task adds one test to close that gap.
+
+- [ ] **Step 1: Write the test**
+
+Add to `TestForecastedLots` in `stock_forecasted_lots/tests/test_forecasted_lots.py`:
+
+```python
+    def test_lots_via_product_template_report_model(self):
+        self.env['stock.quant']._update_available_quantity(
+            self.product, self.stock_location, 100.0, lot_id=self.lot_a)
+        self.env['stock.quant']._update_available_quantity(
+            self.product, self.stock_location, 30.0, lot_id=self.lot_b)
+
+        data = self.env['stock.forecasted_product_template'].with_context(
+            warehouse_id=self.warehouse.id
+        )._get_report_data(product_template_ids=self.product.product_tmpl_id.ids)
+
+        self.assertEqual(len(data['lots']), 2)
+        self.assertEqual(data['lots'][0]['id'], self.lot_b.id)
+        self.assertEqual(data['lots'][0]['available_quantity'], 30.0)
+        self.assertEqual(data['lots'][1]['id'], self.lot_a.id)
+        self.assertEqual(data['lots'][1]['available_quantity'], 100.0)
+```
+
+- [ ] **Step 2: Run test to verify it passes**
+
+Run: `odoo-bin -d <test_db> --test-enable --stop-after-init -i stock_forecasted_lots --test-tags TestForecastedLots`
+
+Expected: PASS — `stock.forecasted_product_template`'s registry-built class inherits `_get_report_data` from the already-patched `stock.forecasted_product_product` class (core declares `_inherit = ['stock.forecasted_product_product']`, no override of this method), so the call resolves to our override and exercises the `product_template_ids` branch of `_get_lot_tracked_products` for the first time.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add stock_forecasted_lots/tests/test_forecasted_lots.py docs/superpowers/plans/2026-07-08-stock-forecasted-lots.md
+git commit -m "test(stock_forecasted_lots): verify lots data via the forecasted_product_template model"
+```
