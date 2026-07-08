@@ -91,3 +91,17 @@ class TestForecastedLots(TransactionCase):
         )._get_report_data(product_ids=self.product.ids)
 
         self.assertEqual(data['lots'], [])
+
+    def test_partial_reservation_reflected_in_available_quantity(self):
+        self.env['stock.quant']._update_available_quantity(
+            self.product, self.stock_location, 100.0,
+            reserved_quantity=30.0, lot_id=self.lot_a)
+
+        data = self.report_model.with_context(
+            warehouse_id=self.warehouse.id
+        )._get_report_data(product_ids=self.product.ids)
+
+        lot_data = data['lots'][0]
+        self.assertEqual(lot_data['quantity'], 100.0)
+        self.assertEqual(lot_data['reserved_quantity'], 30.0)
+        self.assertEqual(lot_data['available_quantity'], 70.0)
