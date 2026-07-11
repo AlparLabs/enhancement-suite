@@ -5,10 +5,10 @@
             <t t-call="web.external_layout">
                 <div class="page cash-closure">
                     <style>
-                        .cash-closure { font-size: 7px; line-height: 1.05; }
+                        .cash-closure { font-size: 8px; line-height: 1.05; }
                         .cash-closure h2.cc-title { font-size: 13px; margin: 0; }
                         .cash-closure h4.cc-date { font-size: 10px; margin: 0 0 4px 0; }
-                        .cash-closure .cc-vendor { font-size: 8px; font-weight: bold; margin: 4px 0 1px 0; }
+                        .cash-closure .cc-vendor { font-size: 9px; font-weight: bold; margin: 4px 0 1px 0; }
                         .cash-closure table.cc-table { width: 100%; border-collapse: collapse; margin: 0; }
                         .cash-closure table.cc-table th,
                         .cash-closure table.cc-table td { border: none; padding: 0 3px; white-space: nowrap; }
@@ -16,7 +16,7 @@
                         .cash-closure table.cc-table tfoot td { font-weight: bold; }
                         .cash-closure .cc-num { text-align: right; }
                         .cash-closure table.cc-total { width: auto; margin-left: auto; border-collapse: collapse; }
-                        .cash-closure table.cc-total td { border: none; padding: 0 6px; }
+                        .cash-closure table.cc-total td { border: none; padding: 0 7px; }
                     </style>
 
                     <div class="text-center">
