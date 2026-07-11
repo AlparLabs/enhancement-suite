@@ -3,7 +3,7 @@
 **Fecha:** 2026-07-11
 **Cliente:** Electricidad Maza S.R.L.
 **Repo/rama destino:** enhancement-suite / 19.0
-**Módulo nuevo:** `sale_vendor_cash_closure_report`
+**Módulo nuevo:** `sale_vendor_cash_closure`
 
 ## Objetivo
 
@@ -92,7 +92,7 @@ Notas:
 ## Estructura del módulo
 
 ```
-sale_vendor_cash_closure_report/
+sale_vendor_cash_closure/
 ├── __init__.py
 ├── __manifest__.py          # depends: account, sale, point_of_sale,
 │                            #          l10n_latam_invoice_document
