@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="paperformat_cash_closure_vendor" model="report.paperformat">
+        <field name="name">Cierre de Caja Vendedor (Apaisado)</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">20</field>
+        <field name="margin_bottom">20</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">20</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_cash_closure_vendor" model="ir.actions.report">
+        <field name="name">Cierre de Caja por Vendedor</field>
+        <field name="model">cash.closure.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">sale_vendor_cash_closure.cash_closure_vendor</field>
+        <field name="report_file">sale_vendor_cash_closure.cash_closure_vendor</field>
+        <field name="paperformat_id" ref="paperformat_cash_closure_vendor"/>
+    </record>
+</odoo>

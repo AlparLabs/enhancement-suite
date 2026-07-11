@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="cash_closure_vendor">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page cash-closure">
+                    <style>
+                        .cash-closure { font-size: 8px; line-height: 1.05; }
+                        .cash-closure h2.cc-title { font-size: 13px; margin: 0; }
+                        .cash-closure h4.cc-date { font-size: 10px; margin: 0 0 4px 0; }
+                        .cash-closure .cc-vendor { font-size: 9px; font-weight: bold; margin: 4px 0 1px 0; }
+                        .cash-closure table.cc-table { width: 100%; border-collapse: collapse; margin: 0; }
+                        .cash-closure table.cc-table th,
+                        .cash-closure table.cc-table td { border: none; padding: 0 3px; white-space: nowrap; }
+                        .cash-closure table.cc-table thead th { font-weight: bold; }
+                        .cash-closure table.cc-table tfoot td { font-weight: bold; }
+                        .cash-closure .cc-num { text-align: right; }
+                        .cash-closure table.cc-total { width: auto; margin-left: auto; border-collapse: collapse; }
+                        .cash-closure table.cc-total td { border: none; padding: 0 7px; }
+                    </style>
+
+                    <div class="text-center">
+                        <h2 class="cc-title">Cierre de Caja</h2>
+                        <h4 class="cc-date" t-esc="date"/>
+                    </div>
+
+                    <t t-foreach="groups" t-as="group">
+                        <div class="cc-vendor">
+                            Vendedor: <t t-esc="group['salesperson_name']"/>
+                        </div>
+                        <table class="cc-table">
+                            <thead>
+                                <tr>
+                                    <th>Comprobante</th>
+                                    <th>Cliente</th>
+                                    <th class="cc-num">Contado</th>
+                                    <th class="cc-num">Cta.Cte/ND</th>
+                                    <th class="cc-num">N/C Cont.</th>
+                                    <th class="cc-num">Dev.CtaCte D/Ant</th>
+                                    <th class="cc-num">N/C Dev.CtaCte del Día</th>
+                                    <th class="cc-num">Fact. MiPyme</th>
+                                    <th class="cc-num">N/C MiPyme</th>
+                                    <th class="cc-num">% Desc</th>
+                                    <th class="cc-num">Desct.</th>
+                                    <th class="cc-num">Cantid. CC</th>
+                                    <th>Lista</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="group['rows']" t-as="row">
+                                    <tr>
+                                        <td><t t-esc="row['number']"/></td>
+                                        <td><t t-esc="row['partner_name']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['contado']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['cta_cte_nd']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['nc_contado']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['dev_ctacte_dia_ant']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['nc_dev_ctacte_dia']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['fact_mipyme']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['nc_mipyme']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['pct_desc']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['desct']"/></td>
+                                        <td class="cc-num"><t t-esc="'%.2f' % row['cantidad_cc']"/></td>
+                                        <td><t t-esc="row['lista']"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>Subtotal</td>
+                                    <td/>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['contado']"/></td>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['cta_cte_nd']"/></td>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['nc_contado']"/></td>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['dev_ctacte_dia_ant']"/></td>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['nc_dev_ctacte_dia']"/></td>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['fact_mipyme']"/></td>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['nc_mipyme']"/></td>
+                                    <td/>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['desct']"/></td>
+                                    <td class="cc-num"><t t-esc="'%.2f' % group['subtotal']['cantidad_cc']"/></td>
+                                    <td/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </t>
+
+                    <div class="text-end" style="margin-top: 6px;">
+                        <div class="cc-vendor">Total General</div>
+                        <table class="cc-total">
+                            <tbody>
+                                <tr><td>Contado</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['contado']"/></td></tr>
+                                <tr><td>Cta.Cte/ND</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['cta_cte_nd']"/></td></tr>
+                                <tr><td>N/C Cont.</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['nc_contado']"/></td></tr>
+                                <tr><td>Dev.CtaCte D/Ant</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['dev_ctacte_dia_ant']"/></td></tr>
+                                <tr><td>N/C Dev.CtaCte del Día</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['nc_dev_ctacte_dia']"/></td></tr>
+                                <tr><td>Fact. MiPyme</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['fact_mipyme']"/></td></tr>
+                                <tr><td>N/C MiPyme</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['nc_mipyme']"/></td></tr>
+                                <tr><td>Desct.</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['desct']"/></td></tr>
+                                <tr><td>Cantid. CC</td><td class="cc-num"><t t-esc="'%.2f' % grand_total['cantidad_cc']"/></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
