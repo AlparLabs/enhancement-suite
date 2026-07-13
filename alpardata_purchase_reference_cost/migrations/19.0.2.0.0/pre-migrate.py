@@ -139,6 +139,20 @@ def _migrate_float_values(cr) -> None:
     _create_supplierinfo_records(cr, rows)
 
 
+def _get_company_currency(cr, company_id) -> int | None:
+    """Devuelve el currency_id de la compañía indicada (respaldo cuando el
+    proveedor principal no tiene moneda). Si no se resuelve, usa la primera
+    compañía disponible."""
+    if company_id:
+        cr.execute("SELECT currency_id FROM res_company WHERE id = %s", (company_id,))
+        row = cr.fetchone()
+        if row and row[0]:
+            return row[0]
+    cr.execute("SELECT currency_id FROM res_company ORDER BY id LIMIT 1")
+    row = cr.fetchone()
+    return row[0] if row else None
+
+
 def _create_supplierinfo_records(cr, rows) -> None:
     """
     Para cada (product_tmpl_id, company_id, reference_cost):
@@ -154,7 +168,7 @@ def _create_supplierinfo_records(cr, rows) -> None:
 
         # Buscar proveedor principal vigente
         cr.execute("""
-            SELECT id, partner_id, price, sequence
+            SELECT id, partner_id, price, sequence, currency_id
             FROM product_supplierinfo
             WHERE product_tmpl_id = %s
               AND (company_id IS NULL OR company_id = %s)
@@ -173,20 +187,26 @@ def _create_supplierinfo_records(cr, rows) -> None:
             skipped += 1
             continue
 
-        seller_id, partner_id, price, sequence = seller
+        seller_id, partner_id, price, sequence, currency_id = seller
+
+        # currency_id es NOT NULL en product_supplierinfo. El INSERT en SQL crudo
+        # no aplica el default del ORM (moneda de la compañía), así que lo tomamos
+        # del proveedor principal existente y, como respaldo, de la compañía.
+        if not currency_id:
+            currency_id = _get_company_currency(cr, company_id)
 
         cr.execute("""
             INSERT INTO product_supplierinfo
                 (product_tmpl_id, partner_id, company_id, reference_cost,
-                 price, date_start, sequence,
+                 price, currency_id, date_start, sequence,
                  create_date, write_date, create_uid, write_uid)
             VALUES
                 (%s, %s, %s, %s,
-                 %s, CURRENT_DATE, %s,
+                 %s, %s, CURRENT_DATE, %s,
                  NOW(), NOW(), 1, 1)
         """, (
             product_tmpl_id, partner_id, company_id, reference_cost,
-            price or 0.0, sequence,
+            price or 0.0, currency_id, sequence,
         ))
         created += 1
 
