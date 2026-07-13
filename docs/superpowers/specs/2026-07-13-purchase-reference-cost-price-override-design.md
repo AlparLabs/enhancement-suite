@@ -102,6 +102,12 @@ respetando el estilo tipado de esa rama.
   (`date_start`/`date_end`), y `company_id` en esa cadena (o sin empresa).
 - Orden de selección: **más específico primero** (menor índice en la cadena),
   desempate por `sequence`, luego `id`.
+- **Lectura con `sudo()`:** el cómputo lee `tmpl.sudo().seller_ids`. Sin esto, las
+  reglas de registro multiempresa filtran los proveedores de la empresa principal
+  cuando el usuario opera desde una sucursal que no la tiene habilitada, y el
+  fallback nunca vería el precio de la matriz. El filtro por cadena jerárquica
+  sigue impidiendo que una empresa independiente tome precios de otra empresa (solo
+  ve los suyos + los globales `company_id = False`).
 - Semántica multiempresa resultante:
   - **Sucursal:** ve sus propios supplierinfo; si no tiene, cae al de su matriz;
     si no, al global.
@@ -130,7 +136,7 @@ def _compute_reference_cost(self):
     global_rank = len(pref)  # company_id=False rankea después de las específicas
 
     for tmpl in self:
-        candidates = tmpl.seller_ids.filtered(
+        candidates = tmpl.sudo().seller_ids.filtered(
             lambda s: s.reference_cost > 0
             and (not s.date_start or s.date_start <= today)
             and (not s.date_end or s.date_end >= today)
