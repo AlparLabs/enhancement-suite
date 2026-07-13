@@ -9,7 +9,7 @@ class ProductTemplate(models.Model):
         string='Costo de referencia',
         digits='Product Price',
         compute='_compute_reference_cost',
-        store=True,
+        store=False,
         help=(
             'Calculado automáticamente desde el Costo de Referencia del '
             'proveedor principal vigente (menor sequence, fecha válida hoy). '
@@ -54,17 +54,40 @@ class ProductTemplate(models.Model):
         'seller_ids.sequence',
         'seller_ids.company_id',
     )
+    @api.depends_context('company')
     def _compute_reference_cost(self) -> None:
         today = fields.Date.today()
+        # Cadena de preferencia de empresas: la empresa activa y sus matrices
+        # (más específica primero), recorriendo parent_id. Los proveedores sin
+        # empresa (globales) se consideran al final.
+        preferred_ids = []
         company = self.env.company
+        while company:
+            preferred_ids.append(company.id)
+            company = company.parent_id
+        rank = {cid: idx for idx, cid in enumerate(preferred_ids)}
+        global_rank = len(preferred_ids)
+
+        def _sort_key(seller):
+            if seller.company_id:
+                company_rank = rank.get(seller.company_id.id, global_rank)
+            else:
+                company_rank = global_rank
+            return (company_rank, seller.sequence, seller.id)
+
         for tmpl in self:
-            valid = tmpl.seller_ids.filtered(
+            # sudo(): las reglas multiempresa filtrarían los proveedores de la
+            # matriz cuando se opera desde una sucursal que no la tiene habilitada.
+            # El filtro por `rank` evita que una empresa independiente tome
+            # precios ajenos (solo ve los suyos + los globales).
+            candidates = tmpl.sudo().seller_ids.filtered(
                 lambda s: s.reference_cost > 0
                 and (not s.date_start or s.date_start <= today)
                 and (not s.date_end or s.date_end >= today)
-                and (not s.company_id or s.company_id == company)
-            ).sorted('sequence')
-            tmpl.reference_cost = valid[0].reference_cost if valid else 0.0
+                and (not s.company_id or s.company_id.id in rank)
+            )
+            ordered = candidates.sorted(key=_sort_key)
+            tmpl.reference_cost = ordered[0].reference_cost if ordered else 0.0
 
     @api.depends('standard_price', 'reference_cost')
     def _compute_cost_divergence(self) -> None:
