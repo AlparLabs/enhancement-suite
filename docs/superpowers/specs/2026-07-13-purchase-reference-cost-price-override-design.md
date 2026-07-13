@@ -61,14 +61,40 @@ así que la inconsistencia también puede ensuciar precios de venta.
     desde `seller_ids`.
   - *Descartado:* dejarlo almacenado global y resolver empresa solo en el punto de
     uso — duplica lógica y no arregla las listas de precio.
-- **La carga masiva NO se afecta:** importa a `product.supplierinfo.reference_cost`
-  (float directo, almacenado). El campo del template es computed sin `inverse`, o
-  sea nunca fue importable. Ninguna vista filtra/agrupa por él, así que `store=True`
-  no aportaba nada.
+- **La carga masiva NO se afecta:** importa/escribe en
+  `product.supplierinfo.reference_cost` (float directo, almacenado). El campo del
+  template es computed sin `inverse`, o sea nunca fue importable. Ninguna vista
+  filtra/agrupa por él, así que `store=True` no aportaba nada.
+  - En 19.0 el wizard `product.reference.cost.mass.update`
+    ([wizards/mass_update_wizard.py]) confirma esto: **lee** `product.reference_cost`
+    para calcular el incremento y **escribe** creando `product.supplierinfo` (o
+    `product.cost.schedule`). Nunca escribe el campo del template. `store=False` lo
+    deja intacto.
+
+## Divergencia entre ramas 18.0 y 19.0
+
+Las ramas ya divergieron durante el port a 19. Esto condiciona qué se toca en cada
+una:
+
+| Aspecto | 18.0 | 19.0 (`claude/19-migration-notnull-error-e000b6`) |
+|---|---|---|
+| Integración línea de compra (`purchase_order_line.py` + `views/purchase_order_views.xml`) | Existe (campo `reference_cost` related) | **No existe** (se portó sin ella) |
+| Wizard actualización masiva | No | Sí (`product.reference.cost.mass.update`) |
+| Smart button historial (`cost_history_count`) | No | Sí |
+| Compute `_compute_reference_cost` | `store=True`, con bug multiempresa | `store=True`, mismo bug |
+| Estilo de código | Plano | `from __future__ import annotations`, campos tipados (`x: float = fields.Float(...)`), `@api.model_create_multi` |
+| Base de migración | `18.0.2.0.1` | `19.0.2.0.0` |
+
+**Consecuencia:** el cambio del compute (`store=False` + fallback) y la migración
+son comunes a ambas, pero la integración con la línea de compra se **modifica** en
+18.0 y se **crea desde cero** en 19.0. Cada rama se implementa respetando su propio
+estilo (19.0 con anotaciones de tipo). Se producen dos entregas (una por rama/PR).
 
 ## Diseño
 
 ### 1. `product_template.py` — `reference_cost` no almacenado + fallback jerárquico
+
+*(Común a ambas ramas.)* En 19.0 respetar el estilo tipado del archivo existente.
 
 - `reference_cost`: `store=False`, agregar `@api.depends_context('company')`.
 - El cómputo arma una lista de preferencia de empresas recorriendo `parent_id`:
@@ -123,6 +149,17 @@ jerarquía disponible en 18 y 19 (lo es en ambas).
 
 ### 2. `purchase_order_line.py` — pisar `price_unit` como default editable
 
+**En 18.0:** modificar el `purchase_order_line.py` existente (ya tiene el campo
+`reference_cost` related). Agregar el override de precio.
+
+**En 19.0:** **crear** `purchase_order_line.py` (campo `reference_cost` related +
+override de precio, con estilo tipado), **crear** `views/purchase_order_views.xml`
+(mostrar el campo en la línea, igual que en 18.0), y registrarlos en
+`models/__init__.py` y en la lista `data` del manifest. Hoy en 19.0 el costo de
+referencia no se muestra en la OC — esta es la parte que lo reincorpora.
+
+Lógica del override (idéntica en ambas ramas):
+
 - Override del compute de precio del core (nombre a confirmar:
   `_compute_price_unit_and_date_planned_and_name` en 18 y 19).
 - Flujo: `super()` primero; luego, por cada línea con producto, resolver el costo
@@ -161,9 +198,13 @@ huérfanas, pero se dropea por higiene y para evitar confusión.
 
 ### 4. Vistas
 
-Sin cambios. El campo `reference_cost` ya se muestra en la línea de compra
-([purchase_order_views.xml:11](../../../alpardata_purchase_reference_cost/views/purchase_order_views.xml))
-y ahora reflejará el valor correcto por empresa.
+- **18.0:** sin cambios. El campo `reference_cost` ya se muestra en la línea de
+  compra
+  ([purchase_order_views.xml:11](../../../alpardata_purchase_reference_cost/views/purchase_order_views.xml))
+  y ahora reflejará el valor correcto por empresa.
+- **19.0:** crear `views/purchase_order_views.xml` (mismo xpath que 18.0: agregar
+  `reference_cost` después de `price_unit` en la lista de `order_line`) y sumarlo al
+  manifest.
 
 ## Contexto de la migración a 19.0 (referencia)
 
@@ -180,9 +221,11 @@ base 19 sobre la que se aplican estos cambios sea la correcta.
 ## Alcance / fuera de alcance
 
 **En alcance:**
-- `store=False` + fallback jerárquico en `product.template.reference_cost`.
+- `store=False` + fallback jerárquico en `product.template.reference_cost` (ambas
+  ramas).
 - Override de `price_unit` en la línea de compra (default editable, con conversión
-  de moneda).
+  de moneda): modificar en 18.0, **re-crear** la integración de línea de compra en
+  19.0 (modelo + vista + registro en `__init__`/manifest).
 - Migraciones drop-column en 18.0 y 19.0 con sus bumps de versión.
 
 **Fuera de alcance:**
