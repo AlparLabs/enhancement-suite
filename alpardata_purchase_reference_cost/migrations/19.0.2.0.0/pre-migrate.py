@@ -97,7 +97,7 @@ def _migrate_company_dependent_values(cr) -> None:
         'pre-migrate: encontrados %d valores de reference_cost para migrar a supplierinfo.',
         len(rows),
     )
-    _create_supplierinfo_records(cr, rows)
+    _apply_reference_cost_to_sellers(cr, rows)
 
 
 def _migrate_float_values(cr) -> None:
@@ -136,30 +136,23 @@ def _migrate_float_values(cr) -> None:
         'pre-migrate: encontrados %d valores float de reference_cost para migrar.',
         len(rows),
     )
-    _create_supplierinfo_records(cr, rows)
+    _apply_reference_cost_to_sellers(cr, rows)
 
 
-def _get_company_currency(cr, company_id) -> int | None:
-    """Devuelve el currency_id de la compañía indicada (respaldo cuando el
-    proveedor principal no tiene moneda). Si no se resuelve, usa la primera
-    compañía disponible."""
-    if company_id:
-        cr.execute("SELECT currency_id FROM res_company WHERE id = %s", (company_id,))
-        row = cr.fetchone()
-        if row and row[0]:
-            return row[0]
-    cr.execute("SELECT currency_id FROM res_company ORDER BY id LIMIT 1")
-    row = cr.fetchone()
-    return row[0] if row else None
-
-
-def _create_supplierinfo_records(cr, rows) -> None:
+def _apply_reference_cost_to_sellers(cr, rows) -> None:
     """
     Para cada (product_tmpl_id, company_id, reference_cost):
     - Busca el proveedor principal vigente del producto.
-    - Si existe, crea un nuevo supplierinfo con el reference_cost preservado.
+    - Si existe, le asigna el reference_cost preservado.
+
+    Se ACTUALIZA el supplierinfo existente en lugar de crear uno nuevo. Crear un
+    registro por SQL crudo obligaría a replicar todos los defaults del ORM de las
+    columnas requeridas del core (currency_id, delay, min_qty, product_uom_id, …)
+    y, además, dejaría dos líneas de proveedor activas para el mismo par
+    (producto, partner). Actualizar el registro vigente preserva el valor sin
+    duplicar líneas ni depender de esos defaults.
     """
-    created = 0
+    updated = 0
     skipped = 0
 
     for product_tmpl_id, company_id, reference_cost in rows:
@@ -168,7 +161,7 @@ def _create_supplierinfo_records(cr, rows) -> None:
 
         # Buscar proveedor principal vigente
         cr.execute("""
-            SELECT id, partner_id, price, sequence, currency_id
+            SELECT id
             FROM product_supplierinfo
             WHERE product_tmpl_id = %s
               AND (company_id IS NULL OR company_id = %s)
@@ -187,30 +180,15 @@ def _create_supplierinfo_records(cr, rows) -> None:
             skipped += 1
             continue
 
-        seller_id, partner_id, price, sequence, currency_id = seller
-
-        # currency_id es NOT NULL en product_supplierinfo. El INSERT en SQL crudo
-        # no aplica el default del ORM (moneda de la compañía), así que lo tomamos
-        # del proveedor principal existente y, como respaldo, de la compañía.
-        if not currency_id:
-            currency_id = _get_company_currency(cr, company_id)
-
         cr.execute("""
-            INSERT INTO product_supplierinfo
-                (product_tmpl_id, partner_id, company_id, reference_cost,
-                 price, currency_id, date_start, sequence,
-                 create_date, write_date, create_uid, write_uid)
-            VALUES
-                (%s, %s, %s, %s,
-                 %s, %s, CURRENT_DATE, %s,
-                 NOW(), NOW(), 1, 1)
-        """, (
-            product_tmpl_id, partner_id, company_id, reference_cost,
-            price or 0.0, currency_id, sequence,
-        ))
-        created += 1
+            UPDATE product_supplierinfo
+            SET reference_cost = %s,
+                write_date = NOW()
+            WHERE id = %s
+        """, (reference_cost, seller[0]))
+        updated += 1
 
     _logger.info(
-        'pre-migrate: supplierinfo records creados: %d | omitidos (sin proveedor): %d',
-        created, skipped,
+        'pre-migrate: supplierinfo actualizados: %d | omitidos (sin proveedor): %d',
+        updated, skipped,
     )
