@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-07-13
 **Módulo:** `alpardata_purchase_reference_cost`
-**Versiones objetivo:** 18.0 y 19.0 (paridad)
+**Versión objetivo:** 18.0 (19.0 **diferido** — ver sección de divergencia)
 
 ## Contexto y problema
 
@@ -85,16 +85,15 @@ una:
 | Estilo de código | Plano | `from __future__ import annotations`, campos tipados (`x: float = fields.Float(...)`), `@api.model_create_multi` |
 | Base de migración | `18.0.2.0.1` | `19.0.2.0.0` |
 
-**Consecuencia:** el cambio del compute (`store=False` + fallback) y la migración
-son comunes a ambas, pero la integración con la línea de compra se **modifica** en
-18.0 y se **crea desde cero** en 19.0. Cada rama se implementa respetando su propio
-estilo (19.0 con anotaciones de tipo). Se producen dos entregas (una por rama/PR).
+**Decisión de alcance:** se implementa **solo en 18.0** por ahora. 19.0 queda
+**diferido**. Esta sección se conserva como referencia para cuando se retome 19: allí
+el cambio del compute y la migración son análogos, pero además hay que **re-crear
+desde cero** la integración con la línea de compra (modelo + vista + registro),
+respetando el estilo tipado de esa rama.
 
 ## Diseño
 
 ### 1. `product_template.py` — `reference_cost` no almacenado + fallback jerárquico
-
-*(Común a ambas ramas.)* En 19.0 respetar el estilo tipado del archivo existente.
 
 - `reference_cost`: `store=False`, agregar `@api.depends_context('company')`.
 - El cómputo arma una lista de preferencia de empresas recorriendo `parent_id`:
@@ -149,16 +148,8 @@ jerarquía disponible en 18 y 19 (lo es en ambas).
 
 ### 2. `purchase_order_line.py` — pisar `price_unit` como default editable
 
-**En 18.0:** modificar el `purchase_order_line.py` existente (ya tiene el campo
-`reference_cost` related). Agregar el override de precio.
-
-**En 19.0:** **crear** `purchase_order_line.py` (campo `reference_cost` related +
-override de precio, con estilo tipado), **crear** `views/purchase_order_views.xml`
-(mostrar el campo en la línea, igual que en 18.0), y registrarlos en
-`models/__init__.py` y en la lista `data` del manifest. Hoy en 19.0 el costo de
-referencia no se muestra en la OC — esta es la parte que lo reincorpora.
-
-Lógica del override (idéntica en ambas ramas):
+Modificar el `purchase_order_line.py` existente (ya tiene el campo `reference_cost`
+related). Agregar el override de precio:
 
 - Override del compute de precio del core (nombre a confirmar:
   `_compute_price_unit_and_date_planned_and_name` en 18 y 19).
@@ -181,30 +172,24 @@ Consideraciones:
   documentar como limitación conocida.
 - Respetar guardas del core: no tocar líneas con `invoice_lines`, ni sin producto.
 
-### 3. Migraciones (18.0 y 19.0)
+### 3. Migración (18.0)
 
 Al dejar de estar almacenado, se dropea la columna huérfana
 `product_template.reference_cost`. El valor se recalcula desde los supplierinfo
 (fuente de verdad) → no se pierde nada. Estrictamente Odoo tolera columnas
 huérfanas, pero se dropea por higiene y para evitar confusión.
 
-- **18.0:** bump de manifest `18.0.2.0.1` → `18.0.2.1.0` +
+- Bump de manifest `18.0.2.0.1` → `18.0.2.1.0` +
   `migrations/18.0.2.1.0/pre-migrate.py`.
-- **19.0:** bump de manifest `19.0.2.0.0` → `19.0.2.1.0` +
-  `migrations/19.0.2.1.0/pre-migrate.py`.
-- Contenido de ambos pre-migrate: `DROP COLUMN IF EXISTS reference_cost` sobre
+- Contenido del pre-migrate: `DROP COLUMN IF EXISTS reference_cost` sobre
   `product_template` (guardando el patrón de logging existente y el early-return
   `if not version`).
 
 ### 4. Vistas
 
-- **18.0:** sin cambios. El campo `reference_cost` ya se muestra en la línea de
-  compra
-  ([purchase_order_views.xml:11](../../../alpardata_purchase_reference_cost/views/purchase_order_views.xml))
-  y ahora reflejará el valor correcto por empresa.
-- **19.0:** crear `views/purchase_order_views.xml` (mismo xpath que 18.0: agregar
-  `reference_cost` después de `price_unit` en la lista de `order_line`) y sumarlo al
-  manifest.
+Sin cambios. El campo `reference_cost` ya se muestra en la línea de compra
+([purchase_order_views.xml:11](../../../alpardata_purchase_reference_cost/views/purchase_order_views.xml))
+y ahora reflejará el valor correcto por empresa.
 
 ## Contexto de la migración a 19.0 (referencia)
 
@@ -220,18 +205,16 @@ base 19 sobre la que se aplican estos cambios sea la correcta.
 
 ## Alcance / fuera de alcance
 
-**En alcance:**
-- `store=False` + fallback jerárquico en `product.template.reference_cost` (ambas
-  ramas).
+**En alcance (18.0):**
+- `store=False` + fallback jerárquico en `product.template.reference_cost`.
 - Override de `price_unit` en la línea de compra (default editable, con conversión
-  de moneda): modificar en 18.0, **re-crear** la integración de línea de compra en
-  19.0 (modelo + vista + registro en `__init__`/manifest).
-- Migraciones drop-column en 18.0 y 19.0 con sus bumps de versión.
+  de moneda), modificando el `purchase_order_line.py` existente.
+- Migración drop-column en 18.0 con su bump de versión.
 
 **Fuera de alcance:**
+- Todo lo de 19.0 (diferido a un trabajo posterior).
 - Conversión de UoM del costo de referencia.
 - Cambios en la lógica de importación masiva (ya cae en supplierinfo).
-- Reabrir los fixes de migración 19.0 ya resueltos.
 
 ## Testing
 
