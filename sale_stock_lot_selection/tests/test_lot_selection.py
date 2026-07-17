@@ -131,3 +131,30 @@ class TestLotSelection(TransactionCase):
         # native Odoo behaves.
         self.assertEqual(line.move_ids.state, 'confirmed')
         self.assertFalse(line.move_ids.move_line_ids)
+
+    def test_wizard_prefills_available_lots(self):
+        self._add_stock(self.lot_a, 100.0)
+        self._add_stock(self.lot_b, 30.0)
+        _, line = self._create_order(qty=80.0)
+        wizard = self.env['sale.line.lot.selection'].with_context(
+            default_sale_line_id=line.id).create({})
+        # Prefilled from stock_forecasted_lots: ascending availability.
+        self.assertEqual(
+            wizard.line_ids.mapped('lot_id'), self.lot_b | self.lot_a)
+        self.assertEqual(
+            wizard.line_ids.mapped('available_quantity'), [30.0, 100.0])
+        self.assertEqual(
+            wizard.line_ids.mapped('quantity_to_take'), [0.0, 0.0])
+
+    def test_wizard_apply_writes_requested_lots(self):
+        self._add_stock(self.lot_a, 100.0)
+        self._add_stock(self.lot_b, 30.0)
+        _, line = self._create_order(qty=80.0)
+        wizard = self.env['sale.line.lot.selection'].with_context(
+            default_sale_line_id=line.id).create({})
+        wizard.line_ids.filtered(
+            lambda l: l.lot_id == self.lot_b).quantity_to_take = 30.0
+        wizard.action_apply()
+        self.assertEqual(line.requested_lot_ids.lot_id, self.lot_b)
+        self.assertEqual(line.requested_lot_ids.quantity, 30.0)
+        self.assertEqual(line.lot_selection_status, 'selected')
