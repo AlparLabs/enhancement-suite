@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_order_line_lot_sale_user,sale.order.line.lot sale user,model_sale_order_line_lot,sales_team.group_sale_salesman,1,1,1,1
+access_sale_order_line_lot_stock_user,sale.order.line.lot stock user,model_sale_order_line_lot,stock.group_stock_user,1,0,0,0
+access_sale_line_lot_selection_sale_user,sale.line.lot.selection sale user,model_sale_line_lot_selection,sales_team.group_sale_salesman,1,1,1,1
+access_sale_line_lot_selection_line_sale_user,sale.line.lot.selection.line sale user,model_sale_line_lot_selection_line,sales_team.group_sale_salesman,1,1,1,1
