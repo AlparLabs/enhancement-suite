@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_lot_selection" model="ir.ui.view">
+        <field name="name">sale.order.form.lot.selection</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="after">
+                <field name="lot_selection_status" optional="show" widget="badge"
+                       decoration-warning="lot_selection_status == 'pending'"
+                       decoration-success="lot_selection_status == 'selected'"
+                       invisible="lot_selection_status == 'not_applicable'"/>
+                <button name="action_open_lot_selection" type="object"
+                        icon="fa-cubes" title="Select lots to deliver"
+                        invisible="lot_selection_status == 'not_applicable' or parent.state not in ('draft', 'sent')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
