@@ -1,0 +1,140 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* sale_stock_lot_selection
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: es_AR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model,name:sale_stock_lot_selection.model_sale_order_line_lot
+msgid "Requested Lot on Sale Order Line"
+msgstr "Lote solicitado en línea de venta"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_order_line__requested_lot_ids
+msgid "Requested Lots"
+msgstr "Lotes solicitados"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_order_line_lot__sale_line_id
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_line_lot_selection__sale_line_id
+msgid "Sale Line"
+msgstr "Línea de venta"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_order_line_lot__lot_id
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_line_lot_selection_line__lot_id
+msgid "Lot"
+msgstr "Lote"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_order_line_lot__quantity
+msgid "Quantity"
+msgstr "Cantidad"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,help:sale_stock_lot_selection.field_sale_order_line_lot__quantity
+msgid "Quantity to take from this lot, in the product's unit of measure."
+msgstr "Cantidad a tomar de este lote, en la unidad de medida del producto."
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.constraint,message:sale_stock_lot_selection.constraint_sale_order_line_lot_lot_per_line_uniq
+msgid "The same lot cannot be requested twice on the same line."
+msgstr "El mismo lote no puede solicitarse dos veces en la misma línea."
+
+#. module: sale_stock_lot_selection
+#. odoo-python
+#: code:addons/sale_stock_lot_selection/models/sale_order_line_lot.py:0
+msgid "Lot %(lot)s does not belong to product %(product)s."
+msgstr "El lote %(lot)s no pertenece al producto %(product)s."
+
+#. module: sale_stock_lot_selection
+#. odoo-python
+#: code:addons/sale_stock_lot_selection/models/sale_order_line_lot.py:0
+msgid "The requested lot quantity must be greater than zero."
+msgstr "La cantidad solicitada del lote debe ser mayor a cero."
+
+#. module: sale_stock_lot_selection
+#. odoo-python
+#: code:addons/sale_stock_lot_selection/models/sale_order_line_lot.py:0
+msgid ""
+"The requested lot quantities (%(total)s) exceed the line quantity "
+"(%(line_qty)s)."
+msgstr ""
+"Las cantidades de lotes solicitadas (%(total)s) superan la cantidad de la "
+"línea (%(line_qty)s)."
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_order_line__lot_selection_status
+msgid "Lot Selection"
+msgstr "Selección de lote"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields.selection,name:sale_stock_lot_selection.selection__sale_order_line__lot_selection_status__not_applicable
+msgid "Not Applicable"
+msgstr "No aplica"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields.selection,name:sale_stock_lot_selection.selection__sale_order_line__lot_selection_status__pending
+msgid "No Lot Selected"
+msgstr "Sin lote elegido"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields.selection,name:sale_stock_lot_selection.selection__sale_order_line__lot_selection_status__selected
+msgid "Lots Selected"
+msgstr "Lotes seleccionados"
+
+#. module: sale_stock_lot_selection
+#. odoo-python
+#: code:addons/sale_stock_lot_selection/models/sale_order_line.py:0
+msgid "Select Lots to Deliver"
+msgstr "Seleccionar lotes a entregar"
+
+#. module: sale_stock_lot_selection
+#: model_terms:ir.ui.view,arch_db:sale_stock_lot_selection.view_order_form_lot_selection
+msgid "Select lots to deliver"
+msgstr "Seleccionar lotes a entregar"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model,name:sale_stock_lot_selection.model_sale_line_lot_selection
+msgid "Sale Line Lot Selection"
+msgstr "Selección de lotes de línea de venta"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model,name:sale_stock_lot_selection.model_sale_line_lot_selection_line
+msgid "Sale Line Lot Selection Line"
+msgstr "Línea de selección de lotes"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_line_lot_selection__line_ids
+msgid "Lots"
+msgstr "Lotes"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_line_lot_selection_line__available_quantity
+msgid "Available"
+msgstr "Disponible"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_line_lot_selection_line__quantity_to_take
+msgid "Quantity to Take"
+msgstr "Cantidad a tomar"
+
+#. module: sale_stock_lot_selection
+#: model_terms:ir.ui.view,arch_db:sale_stock_lot_selection.view_lot_selection_wizard_form
+msgid "Apply"
+msgstr "Aplicar"
+
+#. module: sale_stock_lot_selection
+#: model_terms:ir.ui.view,arch_db:sale_stock_lot_selection.view_lot_selection_wizard_form
+msgid "Cancel"
+msgstr "Cancelar"
