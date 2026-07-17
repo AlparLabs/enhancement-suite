@@ -130,6 +130,30 @@ msgid "Quantity to Take"
 msgstr "Cantidad a tomar"
 
 #. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_line_lot_selection__line_quantity
+msgid "Quantity to Sell"
+msgstr "Cantidad a vender"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,help:sale_stock_lot_selection.field_sale_line_lot_selection__line_quantity
+msgid "Quantity being sold on the line, in the product's unit of measure."
+msgstr "Cantidad que se está vendiendo en la línea, en la unidad de medida del producto."
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,field_description:sale_stock_lot_selection.field_sale_line_lot_selection__remaining_quantity
+msgid "Left to Assign"
+msgstr "Pendiente de asignar"
+
+#. module: sale_stock_lot_selection
+#: model:ir.model.fields,help:sale_stock_lot_selection.field_sale_line_lot_selection__remaining_quantity
+msgid ""
+"Line quantity not yet covered by the selected lots. It will be reserved "
+"with Odoo's automatic strategy."
+msgstr ""
+"Cantidad de la línea aún no cubierta por los lotes seleccionados. Se "
+"reservará con la estrategia automática de Odoo."
+
+#. module: sale_stock_lot_selection
 #: model_terms:ir.ui.view,arch_db:sale_stock_lot_selection.view_lot_selection_wizard_form
 msgid "Apply"
 msgstr "Aplicar"

@@ -158,3 +158,15 @@ class TestLotSelection(TransactionCase):
         self.assertEqual(line.requested_lot_ids.lot_id, self.lot_b)
         self.assertEqual(line.requested_lot_ids.quantity, 30.0)
         self.assertEqual(line.lot_selection_status, 'selected')
+
+    def test_wizard_shows_line_and_remaining_quantities(self):
+        self._add_stock(self.lot_a, 100.0)
+        self._add_stock(self.lot_b, 30.0)
+        _, line = self._create_order(qty=80.0)
+        wizard = self.env['sale.line.lot.selection'].with_context(
+            default_sale_line_id=line.id).create({})
+        self.assertEqual(wizard.line_quantity, 80.0)
+        self.assertEqual(wizard.remaining_quantity, 80.0)
+        wizard.line_ids.filtered(
+            lambda l: l.lot_id == self.lot_b).quantity_to_take = 30.0
+        self.assertEqual(wizard.remaining_quantity, 50.0)

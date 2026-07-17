@@ -107,6 +107,11 @@ Restricciones:
 
 `sale.line.lot.selection.wizard` (transient) con líneas
 (`lot_id`, `available_quantity` solo lectura, `quantity_to_take`):
+- Muestra en la cabecera dos totales de ayuda al vendedor (pedido explícito
+  del cliente): **Cantidad a vender** (la cantidad de la línea, en la UdM del
+  producto) y **Pendiente de asignar** (cantidad de la línea menos la suma de
+  lo cargado en el wizard, recalculado en vivo mientras el vendedor tipea; lo
+  pendiente se reserva con la estrategia automática).
 - Se precarga con los lotes disponibles llamando a la lógica ya probada de
   `stock_forecasted_lots` (`stock.forecasted_product_product._get_lots_data`),
   con el almacén de la orden en el contexto — mismo criterio de ubicaciones

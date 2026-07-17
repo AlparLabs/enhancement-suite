@@ -10,6 +10,27 @@ class SaleLineLotSelection(models.TransientModel):
     product_id = fields.Many2one(related='sale_line_id.product_id')
     line_ids = fields.One2many(
         'sale.line.lot.selection.line', 'wizard_id', string="Lots")
+    line_quantity = fields.Float(
+        string="Quantity to Sell", digits='Product Unit',
+        compute='_compute_quantities',
+        help="Quantity being sold on the line, in the product's unit of measure.")
+    remaining_quantity = fields.Float(
+        string="Left to Assign", digits='Product Unit',
+        compute='_compute_quantities',
+        help="Line quantity not yet covered by the selected lots. "
+             "It will be reserved with Odoo's automatic strategy.")
+
+    @api.depends('sale_line_id', 'line_ids.quantity_to_take')
+    def _compute_quantities(self):
+        for wizard in self:
+            line = wizard.sale_line_id
+            line_qty = 0.0
+            if line:
+                line_qty = line.product_uom_id._compute_quantity(
+                    line.product_uom_qty, line.product_id.uom_id)
+            wizard.line_quantity = line_qty
+            wizard.remaining_quantity = line_qty - sum(
+                wizard.line_ids.mapped('quantity_to_take'))
 
     @api.model
     def default_get(self, fields_list):
