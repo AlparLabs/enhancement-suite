@@ -87,3 +87,47 @@ class TestLotSelection(TransactionCase):
         })
         _, untracked_line = self._create_order(qty=5.0, product=untracked)
         self.assertEqual(untracked_line.lot_selection_status, 'not_applicable')
+
+    def test_requested_lot_reserved_on_confirm(self):
+        self._add_stock(self.lot_a, 100.0)
+        self._add_stock(self.lot_b, 100.0)
+        order, line = self._create_order(
+            qty=80.0, requested=[(self.lot_b, 80.0)])
+        order.action_confirm()
+        move_lines = line.move_ids.move_line_ids
+        self.assertEqual(move_lines.lot_id, self.lot_b)
+        self.assertEqual(sum(move_lines.mapped('quantity_product_uom')), 80.0)
+        self.assertEqual(line.move_ids.state, 'assigned')
+
+    def test_insufficient_requested_lot_falls_back(self):
+        self._add_stock(self.lot_a, 100.0)
+        self._add_stock(self.lot_b, 30.0)
+        order, line = self._create_order(
+            qty=80.0, requested=[(self.lot_b, 80.0)])
+        order.action_confirm()
+        by_lot = {ml.lot_id: ml.quantity_product_uom
+                  for ml in line.move_ids.move_line_ids}
+        self.assertEqual(by_lot.get(self.lot_b), 30.0)
+        self.assertEqual(by_lot.get(self.lot_a), 50.0)
+        self.assertEqual(line.move_ids.state, 'assigned')
+
+    def test_split_across_two_requested_lots(self):
+        self._add_stock(self.lot_a, 100.0)
+        self._add_stock(self.lot_b, 100.0)
+        order, line = self._create_order(
+            qty=100.0, requested=[(self.lot_b, 60.0), (self.lot_a, 40.0)])
+        order.action_confirm()
+        by_lot = {ml.lot_id: ml.quantity_product_uom
+                  for ml in line.move_ids.move_line_ids}
+        self.assertEqual(by_lot.get(self.lot_b), 60.0)
+        self.assertEqual(by_lot.get(self.lot_a), 40.0)
+
+    def test_no_selection_keeps_native_behavior(self):
+        self._add_stock(self.lot_a, 100.0)
+        order, line = self._create_order(qty=50.0)
+        order.action_confirm()
+        # reservation_method='manual' and no requested lots: nothing must be
+        # forced — the move stays confirmed with no move lines, exactly as
+        # native Odoo behaves.
+        self.assertEqual(line.move_ids.state, 'confirmed')
+        self.assertFalse(line.move_ids.move_line_ids)
