@@ -37,6 +37,33 @@ class TestPurchaseLineReferenceCost(TransactionCase):
         line = self._new_line(self.product)
         self.assertEqual(line.price_unit, 100.0)
 
+    def test_reference_cost_respects_order_vendor(self):
+        """Con varios proveedores, la línea toma el costo del proveedor de la
+        orden, no el del proveedor principal (menor sequence)."""
+        principal = self.env['res.partner'].create({'name': 'Proveedor Principal'})
+        secundario = self.env['res.partner'].create({'name': 'Proveedor Secundario'})
+        product = self.env['product.product'].create({'name': 'Producto multi proveedor'})
+        self.env['product.supplierinfo'].create({
+            'partner_id': principal.id,
+            'product_tmpl_id': product.product_tmpl_id.id,
+            'sequence': 1,
+            'reference_cost': 16500.0,
+        })
+        self.env['product.supplierinfo'].create({
+            'partner_id': secundario.id,
+            'product_tmpl_id': product.product_tmpl_id.id,
+            'sequence': 2,
+            'reference_cost': 8800.0,
+        })
+        po = self.env['purchase.order'].create({'partner_id': secundario.id})
+        line = self.env['purchase.order.line'].create({
+            'order_id': po.id,
+            'product_id': product.id,
+            'product_qty': 1.0,
+        })
+        self.assertEqual(line.reference_cost, 8800.0)
+        self.assertEqual(line.price_unit, 8800.0)
+
     def test_price_unit_is_editable(self):
         """El comprador puede pisar el precio a mano y persiste."""
         line = self._new_line(self.product)
