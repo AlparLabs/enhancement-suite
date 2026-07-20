@@ -20,9 +20,12 @@ class PurchaseOrderLine(models.Model):
     @api.depends(
         'product_id',
         'order_id.partner_id',
-        'order_id.date_order',
         'company_id',
-        'product_qty',
+        'product_id.seller_ids.reference_cost',
+        'product_id.seller_ids.company_id',
+        'product_id.seller_ids.sequence',
+        'product_id.seller_ids.date_start',
+        'product_id.seller_ids.date_end',
     )
     def _compute_reference_cost(self):
         for line in self:
@@ -32,22 +35,18 @@ class PurchaseOrderLine(models.Model):
         """Costo de referencia del proveedor cargado en la orden.
 
         Resuelve el `product.supplierinfo` correspondiente al proveedor de la
-        orden vía `_select_seller` (mismo mecanismo que usa el core para elegir
-        el proveedor y calcular el precio), respetando empresa y fecha, y
-        devuelve su `reference_cost`. Si el proveedor no comunicó un costo de
-        referencia —o la orden aún no tiene proveedor— devuelve 0.0 y el precio
-        no se pisa.
+        orden respetando la jerarquía de empresas de la línea (sucursal → matriz
+        → global), reutilizando la misma lógica que el costo de referencia a
+        nivel de producto. Si el proveedor no comunicó un costo de referencia
+        —o la orden aún no tiene proveedor— devuelve 0.0 y el precio no se pisa.
         """
         self.ensure_one()
         partner = self.order_id.partner_id
         if not self.product_id or not self.company_id or not partner:
             return 0.0
-        date_order = self.order_id.date_order
-        seller = self.product_id.with_company(self.company_id)._select_seller(
-            partner_id=partner,
-            quantity=self.product_qty,
-            date=date_order.date() if date_order else fields.Date.context_today(self),
-        )
+        seller = self.product_id.product_tmpl_id.with_company(
+            self.company_id
+        )._get_reference_cost_seller(partner=partner)
         return seller.reference_cost if seller else 0.0
 
     def _compute_price_unit_and_date_planned_and_name(self):

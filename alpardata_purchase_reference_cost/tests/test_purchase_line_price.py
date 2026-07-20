@@ -64,6 +64,35 @@ class TestPurchaseLineReferenceCost(TransactionCase):
         self.assertEqual(line.reference_cost, 8800.0)
         self.assertEqual(line.price_unit, 8800.0)
 
+    def test_reference_cost_falls_back_to_parent_company(self):
+        """En una sucursal sin proveedor propio, la linea toma el costo de
+        referencia cargado en la empresa matriz para ese mismo proveedor
+        (respeta la jerarquia de empresas y el proveedor de la orden)."""
+        main = self.env['res.company'].create({'name': 'Matriz POL'})
+        branch = self.env['res.company'].create({
+            'name': 'Sucursal POL',
+            'parent_id': main.id,
+        })
+        partner = self.env['res.partner'].create({'name': 'Proveedor Jerarquia'})
+        product = self.env['product.product'].create({'name': 'Producto Jerarquia'})
+        self.env['product.supplierinfo'].create({
+            'partner_id': partner.id,
+            'product_tmpl_id': product.product_tmpl_id.id,
+            'company_id': main.id,
+            'reference_cost': 12000.0,
+        })
+        po = self.env['purchase.order'].create({
+            'partner_id': partner.id,
+            'company_id': branch.id,
+        })
+        line = self.env['purchase.order.line'].create({
+            'order_id': po.id,
+            'product_id': product.id,
+            'product_qty': 1.0,
+        })
+        self.assertEqual(line.reference_cost, 12000.0)
+        self.assertEqual(line.price_unit, 12000.0)
+
     def test_price_unit_is_editable(self):
         """El comprador puede pisar el precio a mano y persiste."""
         line = self._new_line(self.product)

@@ -56,6 +56,24 @@ class ProductTemplate(models.Model):
     )
     @api.depends_context('company')
     def _compute_reference_cost(self) -> None:
+        for tmpl in self:
+            seller = tmpl._get_reference_cost_seller()
+            tmpl.reference_cost = seller.reference_cost if seller else 0.0
+
+    def _get_reference_cost_seller(self, partner=None):
+        """Devuelve el `product.supplierinfo` vigente con mejor ranking para la
+        empresa activa.
+
+        Ranking: empresa más específica primero (la activa y sus matrices,
+        recorriendo `parent_id`), luego los proveedores globales (sin empresa)
+        y, dentro de cada nivel, por `sequence`. Solo considera registros con
+        `reference_cost > 0` y fecha válida hoy.
+
+        Si se pasa `partner`, restringe al proveedor indicado (comparando por
+        `commercial_partner_id`). La línea de compra lo usa así para respetar el
+        proveedor cargado en la orden sin perder la jerarquía de empresas.
+        """
+        self.ensure_one()
         today = fields.Date.today()
         # Cadena de preferencia de empresas: la empresa activa y sus matrices
         # (más específica primero), recorriendo parent_id. Los proveedores sin
@@ -75,19 +93,20 @@ class ProductTemplate(models.Model):
                 company_rank = global_rank
             return (company_rank, seller.sequence, seller.id)
 
-        for tmpl in self:
-            # sudo(): las reglas multiempresa filtrarían los proveedores de la
-            # matriz cuando se opera desde una sucursal que no la tiene habilitada.
-            # El filtro por `rank` evita que una empresa independiente tome
-            # precios ajenos (solo ve los suyos + los globales).
-            candidates = tmpl.sudo().seller_ids.filtered(
-                lambda s: s.reference_cost > 0
-                and (not s.date_start or s.date_start <= today)
-                and (not s.date_end or s.date_end >= today)
-                and (not s.company_id or s.company_id.id in rank)
-            )
-            ordered = candidates.sorted(key=_sort_key)
-            tmpl.reference_cost = ordered[0].reference_cost if ordered else 0.0
+        commercial = partner.commercial_partner_id if partner else None
+        # sudo(): las reglas multiempresa filtrarían los proveedores de la
+        # matriz cuando se opera desde una sucursal que no la tiene habilitada.
+        # El filtro por `rank` evita que una empresa independiente tome
+        # precios ajenos (solo ve los suyos + los globales).
+        candidates = self.sudo().seller_ids.filtered(
+            lambda s: s.reference_cost > 0
+            and (not s.date_start or s.date_start <= today)
+            and (not s.date_end or s.date_end >= today)
+            and (not s.company_id or s.company_id.id in rank)
+            and (commercial is None or s.partner_id.commercial_partner_id == commercial)
+        )
+        ordered = candidates.sorted(key=_sort_key)
+        return ordered[0] if ordered else self.env['product.supplierinfo']
 
     @api.depends('standard_price', 'reference_cost')
     def _compute_cost_divergence(self) -> None:
