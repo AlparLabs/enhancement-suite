@@ -1,0 +1,10 @@
+<odoo>
+    <data>
+        <record id="group_purchase_minimum_approver" model="res.groups">
+            <field name="name">Compras: Aprobar Mínimo de Compra</field>
+            <field name="category_id" ref="base.module_category_inventory_purchase"/>
+            <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+            <field name="comment">Permite aprobar órdenes de compra que no alcanzan el mínimo del proveedor.</field>
+        </record>
+    </data>
+</odoo>
