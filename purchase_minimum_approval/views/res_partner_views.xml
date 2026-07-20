@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!--
-        Agrega los campos de mínimo de compra en la pestaña Compras del
-        formulario de contacto. Se hereda de la vista del módulo purchase, que
-        es la que crea dicha pestaña y el campo de advertencia de proveedor.
+        Agrega los campos de mínimo de compra en la sección "Compra" de la
+        pestaña "Ventas y Compras" del formulario de contacto. El grupo
+        name="purchase" lo define account.view_partner_property_form (moneda de
+        compra, condiciones de pago del proveedor, etc.), que es el lugar
+        natural para la configuración de compras del proveedor.
     -->
     <record id="view_partner_form_purchase_minimum" model="ir.ui.view">
         <field name="name">res.partner.form.purchase.minimum</field>
@@ -11,7 +13,7 @@
         <field name="inherit_id" ref="purchase.view_partner_property_form"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//field[@name='purchase_warn']" position="before">
+            <xpath expr="//group[@name='purchase']" position="inside">
                 <field name="apply_purchase_minimum"/>
                 <field
                     name="purchase_minimum_amount"
