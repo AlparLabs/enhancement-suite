@@ -56,3 +56,22 @@ class TestReferenceCostCompany(TransactionCase):
         self._add_seller(False, 90.0)
         self._add_seller(self.main_company, 100.0)
         self.assertEqual(self.template.with_company(self.main_company).reference_cost, 100.0)
+
+    def test_unsaved_sellers_do_not_break_sort(self):
+        """Regresión: proveedores sin guardar (onchange) no rompen el orden.
+
+        En un onchange las líneas nuevas tienen id de tipo NewId. Si dos empatan
+        en (empresa, sequence), el sort los comparaba y fallaba con
+        'TypeError: < not supported between instances of NewId and NewId'.
+        """
+        form_template = self.env['product.template'].new({'name': 'Producto Onchange'})
+        for _ in range(2):
+            form_template.seller_ids = [
+                (0, 0, {
+                    'partner_id': self.partner.id,
+                    'reference_cost': 100.0,
+                    'sequence': 10,
+                }),
+            ]
+        # No debe lanzar TypeError al resolver el proveedor.
+        self.assertEqual(form_template.reference_cost, 100.0)
