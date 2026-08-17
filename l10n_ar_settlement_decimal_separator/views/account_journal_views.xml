@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_account_journal_form" model="ir.ui.view">
+        <field name="name">account.journal.form.decimal.separator</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account_tax_settlement.view_account_journal_form"/>
+        <field name="arch" type="xml">
+            <field name="settlement_tax" position="after">
+                <field name="l10n_ar_txt_decimal_separator"
+                       invisible="settlement_tax not in ['sicore_aplicado']"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>
