@@ -91,7 +91,12 @@ class ProductTemplate(models.Model):
                 company_rank = rank.get(seller.company_id.id, global_rank)
             else:
                 company_rank = global_rank
-            return (company_rank, seller.sequence, seller.id)
+            # `_origin.id` en vez de `id`: en un onchange las líneas de proveedor
+            # sin guardar tienen un id de tipo NewId, que no soporta `<`. Al
+            # empatar (company_rank, sequence) el sort intentaría compararlos y
+            # rompería con TypeError. Los registros nuevos caen a 0 y el orden
+            # estable de Python preserva el del recordset.
+            return (company_rank, seller.sequence, seller._origin.id or 0)
 
         commercial = partner.commercial_partner_id if partner else None
         # sudo(): las reglas multiempresa filtrarían los proveedores de la
