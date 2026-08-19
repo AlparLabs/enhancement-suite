@@ -19,5 +19,23 @@ class AccountPaymentRegister(models.TransientModel):
         """Sugiere el próximo número de cheque en el wizard de registro de pago."""
         for rec in self:
             if rec._is_own_check_payment() and rec.journal_id and rec.journal_id.check_sequence_enabled:
-                if not rec.check_number:
-                    rec.check_number = rec.journal_id._get_next_check_number_formatted()
+                next_num = rec.journal_id._get_next_check_number_formatted()
+                if hasattr(rec, 'check_number') and not rec.check_number:
+                    rec.check_number = next_num
+                if hasattr(rec, 'l10n_latam_new_check_ids'):
+                    for check in rec.l10n_latam_new_check_ids:
+                        if not check.name:
+                            check.name = next_num
+
+
+class L10nLatamPaymentRegisterCheck(models.TransientModel):
+    _inherit = 'l10n_latam.payment.register.check'
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('name') and vals.get('payment_register_id'):
+                reg = self.env['account.payment.register'].browse(vals['payment_register_id'])
+                if reg._is_own_check_payment() and reg.journal_id and reg.journal_id.check_sequence_enabled:
+                    vals['name'] = reg.journal_id._get_next_check_number_formatted()
+        return super().create(vals_list)
