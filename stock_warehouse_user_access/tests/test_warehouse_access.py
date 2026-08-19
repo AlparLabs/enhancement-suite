@@ -112,3 +112,9 @@ class TestWarehouseAccess(TransactionCase):
             self.wh_a.lot_stock_id,
         )
         self.assertNotIn(picking, self._visible_pickings(self.user_none))
+
+    def test_warehouse_access_invalidates_rule_cache(self):
+        self.assertIn(
+            'warehouse_access_ids',
+            self.env['res.users']._get_invalidation_fields(),
+        )

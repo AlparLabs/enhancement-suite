@@ -33,3 +33,13 @@ class ResUsers(models.Model):
                     "sus almacenes permitidos.",
                     user=user.name,
                 ))
+
+    @api.model
+    def _get_invalidation_fields(self):
+        """Incluye los almacenes permitidos en la invalidación de caché.
+
+        `ir.rule._compute_domain` cachea el dominio ya evaluado, con los ids de
+        almacén adentro. Sin esto, quitarle un almacén a un usuario no surte
+        efecto hasta que algo más limpie la caché del registro.
+        """
+        return super()._get_invalidation_fields() | {'warehouse_access_ids'}
