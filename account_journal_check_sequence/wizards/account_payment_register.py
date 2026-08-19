@@ -23,9 +23,31 @@ class AccountPaymentRegister(models.TransientModel):
                 if hasattr(rec, 'check_number') and not rec.check_number:
                     rec.check_number = next_num
                 if hasattr(rec, 'l10n_latam_new_check_ids'):
+                    last_num = False
                     for check in rec.l10n_latam_new_check_ids:
                         if not check.name:
-                            check.name = next_num
+                            calc_num = next_num if not last_num else rec.journal_id._calculate_next_number(last_num)
+                            check.name = calc_num
+                            last_num = calc_num
+                        else:
+                            last_num = check.name
+
+    @api.onchange('l10n_latam_new_check_ids')
+    def _onchange_l10n_latam_new_check_ids_suggest_sequence(self):
+        """Sugiere el próximo número de cheque al agregar líneas en el wizard."""
+        for rec in self:
+            if rec._is_own_check_payment() and rec.journal_id and rec.journal_id.check_sequence_enabled:
+                last_num = False
+                for check in rec.l10n_latam_new_check_ids:
+                    if check.name:
+                        last_num = check.name
+                    else:
+                        if not last_num:
+                            next_num = rec.journal_id._get_next_check_number_formatted()
+                        else:
+                            next_num = rec.journal_id._calculate_next_number(last_num)
+                        check.name = next_num
+                        last_num = next_num
 
 
 class L10nLatamPaymentRegisterCheck(models.TransientModel):
