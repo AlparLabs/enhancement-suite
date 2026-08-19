@@ -54,3 +54,61 @@ class TestWarehouseAccess(TransactionCase):
     def test_default_warehouse_must_be_allowed(self):
         with self.assertRaises(ValidationError):
             self.user_a.default_warehouse_id = self.wh_b
+
+    def _make_picking(self, picking_type, location, location_dest):
+        return self.env['stock.picking'].create({
+            'picking_type_id': picking_type.id,
+            'location_id': location.id,
+            'location_dest_id': location_dest.id,
+        })
+
+    def _visible_pickings(self, user):
+        return self.env['stock.picking'].with_user(user).search([])
+
+    def test_picking_of_own_warehouse_is_visible(self):
+        picking = self._make_picking(
+            self.wh_a.in_type_id,
+            self.env.ref('stock.stock_location_suppliers'),
+            self.wh_a.lot_stock_id,
+        )
+        self.assertIn(picking, self._visible_pickings(self.user_a))
+
+    def test_picking_of_other_warehouse_is_hidden(self):
+        picking = self._make_picking(
+            self.wh_b.in_type_id,
+            self.env.ref('stock.stock_location_suppliers'),
+            self.wh_b.lot_stock_id,
+        )
+        self.assertNotIn(picking, self._visible_pickings(self.user_a))
+
+    def test_inter_warehouse_transfer_visible_from_both_sides(self):
+        picking = self._make_picking(
+            self.wh_a.int_type_id,
+            self.wh_a.lot_stock_id,
+            self.wh_b.lot_stock_id,
+        )
+        self.assertIn(picking, self._visible_pickings(self.user_a))
+        self.assertIn(picking, self._visible_pickings(self.user_b))
+
+    def test_exempt_user_sees_every_picking(self):
+        picking_a = self._make_picking(
+            self.wh_a.in_type_id,
+            self.env.ref('stock.stock_location_suppliers'),
+            self.wh_a.lot_stock_id,
+        )
+        picking_b = self._make_picking(
+            self.wh_b.in_type_id,
+            self.env.ref('stock.stock_location_suppliers'),
+            self.wh_b.lot_stock_id,
+        )
+        visible = self._visible_pickings(self.user_all)
+        self.assertIn(picking_a, visible)
+        self.assertIn(picking_b, visible)
+
+    def test_user_without_warehouses_sees_no_picking(self):
+        picking = self._make_picking(
+            self.wh_a.in_type_id,
+            self.env.ref('stock.stock_location_suppliers'),
+            self.wh_a.lot_stock_id,
+        )
+        self.assertNotIn(picking, self._visible_pickings(self.user_none))
