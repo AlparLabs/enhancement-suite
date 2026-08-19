@@ -5,7 +5,7 @@
         <field name="model">account.journal</field>
         <field name="inherit_id" ref="account.view_account_journal_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='outgoing_payments']" position="inside">
+            <xpath expr="//page[@name='advanced_settings']" position="inside">
                 <group string="Chequera / Numeración de Cheques Propios" invisible="type != 'bank'">
                     <group>
                         <field name="check_sequence_enabled"/>

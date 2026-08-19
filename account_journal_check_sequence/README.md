@@ -28,7 +28,7 @@ Módulo para **Odoo 18 / 19** que añade gestión de numeración correlativa ("m
 
 1. Ir a **Contabilidad > Configuración > Diarios Contables**.
 2. Seleccionar un diario de tipo **Banco** (ej. *Banco Galicia*, *Banco Santander*).
-3. En la pestaña **Pagos Salientes**, ubicar la sección **Chequera / Numeración de Cheques Propios**.
+3. En la pestaña **Configuración Avanzada**, ubicar la sección **Chequera / Numeración de Cheques Propios**.
 4. Ingresar el número del próximo cheque físico/electrónico a emitir (ej. `00001001`).
 5. Guardar.
 
