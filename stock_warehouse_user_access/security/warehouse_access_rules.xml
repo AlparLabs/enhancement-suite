@@ -25,5 +25,22 @@
             <field name="groups" eval="[(4, ref('stock_warehouse_user_access.group_warehouse_access_all'))]"/>
         </record>
 
+        <record id="purchase_order_warehouse_access_rule" model="ir.rule">
+            <field name="name">purchase.order: solo almacenes del usuario</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="domain_force">['|', '|',
+                ('picking_type_id', '=', False),
+                ('picking_type_id.warehouse_id', '=', False),
+                ('picking_type_id.warehouse_id', 'in', user.warehouse_access_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <record id="purchase_order_warehouse_access_all_rule" model="ir.rule">
+            <field name="name">purchase.order: ver todos los almacenes</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('stock_warehouse_user_access.group_warehouse_access_all'))]"/>
+        </record>
+
     </data>
 </odoo>

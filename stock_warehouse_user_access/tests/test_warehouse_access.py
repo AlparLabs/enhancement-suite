@@ -118,3 +118,46 @@ class TestWarehouseAccess(TransactionCase):
             'warehouse_access_ids',
             self.env['res.users']._get_invalidation_fields(),
         )
+
+    def _make_purchase(self, picking_type):
+        return self.env['purchase.order'].create({
+            'partner_id': self.vendor.id,
+            'picking_type_id': picking_type.id,
+            'order_line': [(0, 0, {
+                'product_id': self.product.id,
+                'product_qty': 1.0,
+                'price_unit': 100.0,
+            })],
+        })
+
+    def _visible_purchases(self, user):
+        return self.env['purchase.order'].with_user(user).search([])
+
+    def _make_warehouseless_picking_type(self):
+        return self.env['stock.picking.type'].create({
+            'name': 'Recepción sin almacén',
+            'sequence_code': 'SINWH',
+            'code': 'incoming',
+            'company_id': self.company.id,
+            'warehouse_id': False,
+            'default_location_src_id': self.env.ref('stock.stock_location_suppliers').id,
+            'default_location_dest_id': self.wh_a.lot_stock_id.id,
+        })
+
+    def test_purchase_of_other_warehouse_is_hidden(self):
+        order = self._make_purchase(self.wh_b.in_type_id)
+        self.assertNotIn(order, self._visible_purchases(self.user_a))
+        self.assertIn(order, self._visible_purchases(self.user_b))
+
+    def test_purchase_without_warehouse_is_visible_to_everyone(self):
+        order = self._make_purchase(self._make_warehouseless_picking_type())
+        self.assertIn(order, self._visible_purchases(self.user_a))
+        self.assertIn(order, self._visible_purchases(self.user_b))
+        self.assertIn(order, self._visible_purchases(self.user_all))
+
+    def test_exempt_user_sees_every_purchase(self):
+        order_a = self._make_purchase(self.wh_a.in_type_id)
+        order_b = self._make_purchase(self.wh_b.in_type_id)
+        visible = self._visible_purchases(self.user_all)
+        self.assertIn(order_a, visible)
+        self.assertIn(order_b, visible)
