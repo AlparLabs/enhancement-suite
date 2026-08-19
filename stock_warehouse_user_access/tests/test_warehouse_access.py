@@ -161,3 +161,33 @@ class TestWarehouseAccess(TransactionCase):
         visible = self._visible_purchases(self.user_all)
         self.assertIn(order_a, visible)
         self.assertIn(order_b, visible)
+
+    def _searched_types(self, user, restrict):
+        context = {'restrict_to_user_warehouses': True} if restrict else {}
+        return self.env['stock.picking.type'].with_user(user).with_context(
+            **context
+        ).search([])
+
+    def test_picking_type_search_filters_with_context(self):
+        types = self._searched_types(self.user_a, restrict=True)
+        self.assertIn(self.wh_a.in_type_id, types)
+        self.assertNotIn(self.wh_b.in_type_id, types)
+
+    def test_picking_type_search_unfiltered_without_context(self):
+        types = self._searched_types(self.user_a, restrict=False)
+        self.assertIn(self.wh_a.in_type_id, types)
+        self.assertIn(self.wh_b.in_type_id, types)
+
+    def test_picking_type_search_not_filtered_for_exempt_user(self):
+        types = self._searched_types(self.user_all, restrict=True)
+        self.assertIn(self.wh_a.in_type_id, types)
+        self.assertIn(self.wh_b.in_type_id, types)
+
+    def test_picking_type_search_not_filtered_without_warehouses(self):
+        types = self._searched_types(self.user_none, restrict=True)
+        self.assertIn(self.wh_a.in_type_id, types)
+        self.assertIn(self.wh_b.in_type_id, types)
+
+    def test_picking_type_search_keeps_warehouseless_types(self):
+        picking_type = self._make_warehouseless_picking_type()
+        self.assertIn(picking_type, self._searched_types(self.user_a, restrict=True))
