@@ -163,8 +163,10 @@ produciría un desplegable vacío sin explicación.
 
 - Campo `picking_type_id` del formulario de orden de compra ("Entregar a").
 - Campo `picking_type_id` del formulario de transferencia.
-- Acción del panel de Inventario (`stock.action_picking_type_list`), para que el
-  kanban muestre solo las tarjetas de operación de sus almacenes.
+- Acción del panel de Inventario (`stock.stock_picking_type_action`, la del menú
+  "Resumen" en vista kanban — no confundir con `stock.action_picking_type_list`,
+  que es la lista de configuración de Tipos de Operación), para que el kanban
+  muestre solo las tarjetas de operación de sus almacenes.
 
 ### Valores por defecto
 
