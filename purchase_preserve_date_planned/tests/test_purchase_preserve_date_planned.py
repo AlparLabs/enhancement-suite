@@ -14,8 +14,8 @@ class TestPurchasePreserveDatePlanned(TransactionCase):
         cls.uom_unit = cls.env.ref('uom.product_uom_unit')
         cls.uom_dozen = cls.env.ref('uom.product_uom_dozen')
 
-        cls.product = cls.env['product.product'].create({
-            'name': 'Product with Lead Time',
+        cls.product_10_days = cls.env['product.product'].create({
+            'name': 'Product with 10 Days Lead Time',
             'type': 'consu',
             'seller_ids': [(0, 0, {
                 'partner_id': cls.partner.id,
@@ -25,13 +25,24 @@ class TestPurchasePreserveDatePlanned(TransactionCase):
             })],
         })
 
+        cls.product_2_days = cls.env['product.product'].create({
+            'name': 'Product with 2 Days Lead Time',
+            'type': 'consu',
+            'seller_ids': [(0, 0, {
+                'partner_id': cls.partner.id,
+                'min_qty': 1,
+                'price': 50.0,
+                'delay': 2,
+            })],
+        })
+
     def test_new_line_gets_default_lead_time_date(self):
-        """When creating a new line without date_planned, standard calculates date_planned using seller delay."""
+        """When creating a new line without order date_planned, standard calculates date_planned using seller delay."""
         po = self.env['purchase.order'].create({
             'partner_id': self.partner.id,
             'date_order': fields.Datetime.now(),
             'order_line': [(0, 0, {
-                'product_id': self.product.id,
+                'product_id': self.product_10_days.id,
                 'product_qty': 1.0,
                 'price_unit': 100.0,
             })],
@@ -40,6 +51,33 @@ class TestPurchasePreserveDatePlanned(TransactionCase):
         expected_date = (po.date_order + timedelta(days=10)).date()
         self.assertEqual(line.date_planned.date(), expected_date)
 
+    def test_new_line_inherits_existing_order_date_planned(self):
+        """Adding a new product to a PO with an established date_planned must inherit the PO date and not overwrite header date_planned."""
+        po_date = fields.Datetime.now() + timedelta(days=45)
+        po = self.env['purchase.order'].create({
+            'partner_id': self.partner.id,
+            'date_order': fields.Datetime.now(),
+            'order_line': [(0, 0, {
+                'product_id': self.product_10_days.id,
+                'product_qty': 1.0,
+                'price_unit': 100.0,
+                'date_planned': po_date,
+            })],
+        })
+        self.assertEqual(po.date_planned, po_date)
+
+        # Add a new line with product_2_days (delay 2 days)
+        # Without our fix, this line would get now + 2 days, pulling po.date_planned down to now + 2 days
+        line_2 = self.env['purchase.order.line'].create({
+            'order_id': po.id,
+            'product_id': self.product_2_days.id,
+            'product_qty': 1.0,
+            'price_unit': 50.0,
+        })
+
+        self.assertEqual(line_2.date_planned, po_date, 'New line did not inherit the order date_planned')
+        self.assertEqual(po.date_planned, po_date, 'Order header date_planned was rewritten when adding a new product')
+
     def test_modify_qty_preserves_manual_date_planned(self):
         """Modifying product_qty must not overwrite a manually set date_planned."""
         manual_date = fields.Datetime.now() + timedelta(days=45)
@@ -47,7 +85,7 @@ class TestPurchasePreserveDatePlanned(TransactionCase):
             'partner_id': self.partner.id,
             'date_order': fields.Datetime.now(),
             'order_line': [(0, 0, {
-                'product_id': self.product.id,
+                'product_id': self.product_10_days.id,
                 'product_qty': 1.0,
                 'price_unit': 100.0,
                 'date_planned': manual_date,
@@ -67,7 +105,7 @@ class TestPurchasePreserveDatePlanned(TransactionCase):
             'partner_id': self.partner.id,
             'date_order': fields.Datetime.now(),
             'order_line': [(0, 0, {
-                'product_id': self.product.id,
+                'product_id': self.product_10_days.id,
                 'product_qty': 1.0,
                 'price_unit': 100.0,
                 'product_uom': self.uom_unit.id,
@@ -87,7 +125,7 @@ class TestPurchasePreserveDatePlanned(TransactionCase):
             'partner_id': self.partner.id,
             'date_order': fields.Datetime.now(),
             'order_line': [(0, 0, {
-                'product_id': self.product.id,
+                'product_id': self.product_10_days.id,
                 'product_qty': 1.0,
                 'price_unit': 100.0,
             })],
