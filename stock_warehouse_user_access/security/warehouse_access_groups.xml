@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="module_category_warehouse_access" model="ir.module.category">
+            <field name="name">Acceso por Almacén</field>
+            <field name="description">Controla qué almacenes puede ver cada usuario en transferencias y compras.</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="group_warehouse_access_all" model="res.groups">
+            <field name="name">Ver todos los almacenes</field>
+            <field name="category_id" ref="module_category_warehouse_access"/>
+            <field name="comment">Exime al usuario del filtro por almacén: ve todas las transferencias y órdenes de compra de sus compañías.</field>
+        </record>
+
+    </data>
+</odoo>
