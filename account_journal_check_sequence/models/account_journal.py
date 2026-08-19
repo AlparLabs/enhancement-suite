@@ -35,6 +35,22 @@ class AccountJournal(models.Model):
             return f"{prefix}{str(val).zfill(padding)}{suffix}"
         return current_num
 
+    def _calculate_next_number(self, base_number=None):
+        """Calcula el siguiente número a partir de un valor base sin modificar el diario."""
+        self.ensure_one()
+        ref_str = str(base_number).strip() if base_number else str(self.next_check_number or '0').strip()
+        match = re.match(r'^(.*?)(\d+)(\D*)$', ref_str)
+        if match:
+            try:
+                prefix, digits_str, suffix = match.groups()
+                used_val = int(digits_str)
+                next_val = used_val + 1
+                padding = max(self.check_number_padding or 8, len(digits_str))
+                return f"{prefix}{str(next_val).zfill(padding)}{suffix}"
+            except (ValueError, IndexError):
+                pass
+        return base_number or self.next_check_number
+
     def _increment_check_number(self, used_number=None):
         """
         Incrementa la secuencia del diario en base al número efectivamente utilizado
@@ -43,15 +59,4 @@ class AccountJournal(models.Model):
         self.ensure_one()
         if not self.check_sequence_enabled:
             return
-
-        ref_str = str(used_number).strip() if used_number else str(self.next_check_number or '0').strip()
-        match = re.match(r'^(.*?)(\d+)(\D*)$', ref_str)
-        if match:
-            try:
-                prefix, digits_str, suffix = match.groups()
-                used_val = int(digits_str)
-                next_val = used_val + 1
-                padding = max(self.check_number_padding or 8, len(digits_str))
-                self.next_check_number = f"{prefix}{str(next_val).zfill(padding)}{suffix}"
-            except (ValueError, IndexError):
-                pass
+        self.next_check_number = self._calculate_next_number(used_number)
