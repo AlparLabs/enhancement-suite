@@ -191,3 +191,33 @@ class TestWarehouseAccess(TransactionCase):
     def test_picking_type_search_keeps_warehouseless_types(self):
         picking_type = self._make_warehouseless_picking_type()
         self.assertIn(picking_type, self._searched_types(self.user_a, restrict=True))
+
+    def test_purchase_default_picking_type_is_user_warehouse(self):
+        defaults = self.env['purchase.order'].with_user(
+            self.user_a
+        ).default_get(['picking_type_id'])
+        self.assertEqual(defaults.get('picking_type_id'), self.wh_a.in_type_id.id)
+
+    def test_purchase_default_respects_explicit_context(self):
+        defaults = self.env['purchase.order'].with_user(self.user_a).with_context(
+            default_picking_type_id=self.wh_b.in_type_id.id
+        ).default_get(['picking_type_id'])
+        self.assertEqual(defaults.get('picking_type_id'), self.wh_b.in_type_id.id)
+
+    def test_purchase_default_falls_back_without_default_warehouse(self):
+        defaults = self.env['purchase.order'].with_user(
+            self.user_none
+        ).default_get(['picking_type_id'])
+        self.assertTrue(defaults.get('picking_type_id'))
+
+    def test_picking_default_picking_type_is_user_warehouse(self):
+        defaults = self.env['stock.picking'].with_user(
+            self.user_a
+        ).default_get(['picking_type_id'])
+        self.assertEqual(defaults.get('picking_type_id'), self.wh_a.int_type_id.id)
+
+    def test_picking_default_respects_restricted_picking_type_code(self):
+        defaults = self.env['stock.picking'].with_user(self.user_a).with_context(
+            restricted_picking_type_code='incoming'
+        ).default_get(['picking_type_id'])
+        self.assertEqual(defaults.get('picking_type_id'), self.wh_a.in_type_id.id)
