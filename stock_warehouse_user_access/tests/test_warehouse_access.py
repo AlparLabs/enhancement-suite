@@ -221,3 +221,24 @@ class TestWarehouseAccess(TransactionCase):
             restricted_picking_type_code='incoming'
         ).default_get(['picking_type_id'])
         self.assertEqual(defaults.get('picking_type_id'), self.wh_a.in_type_id.id)
+
+    def test_post_init_hook_exempts_existing_managers(self):
+        from odoo.addons.stock_warehouse_user_access.hooks import post_init_hook
+
+        manager = self.env['res.users'].create({
+            'name': 'Gerente de stock',
+            'login': 'gerente_stock_wh',
+            'groups_id': [(6, 0, [self.env.ref('stock.group_stock_manager').id])],
+        })
+        plain = self.env['res.users'].create({
+            'name': 'Operario',
+            'login': 'operario_wh',
+            'groups_id': [(6, 0, [self.env.ref('stock.group_stock_user').id])],
+        })
+        manager.write({'groups_id': [(3, self.group_all.id)]})
+        plain.write({'groups_id': [(3, self.group_all.id)]})
+
+        post_init_hook(self.env)
+
+        self.assertIn(self.group_all, manager.groups_id)
+        self.assertNotIn(self.group_all, plain.groups_id)
