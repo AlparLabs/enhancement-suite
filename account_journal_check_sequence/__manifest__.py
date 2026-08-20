@@ -1,17 +1,17 @@
 # account_journal_check_sequence/__manifest__.py
 {
     'name': 'Secuencia de Cheques Propios en Diarios de Banco',
-    'version': '18.0.2.1.0',
+    'version': '18.0.2.1.1',
     'category': 'Accounting/Localizations',
     'summary': 'Gestión de chequeras y numeración secuencial de cheques propios por diario de banco.',
     'description': """
         Secuencia de Cheques Propios por Diario de Banco (Odoo 18 / ADHOC)
         ===================================================================
         * Añade numeración secuencial ("tipo chequera") a nivel de cada diario de banco.
-        * Aplica al método de pago "Cheques propios" (own_checks) de l10n_latam_check.
-          El flujo estándar de impresión de cheques (check_printing) ya cuenta con
-          numeración propia en Odoo (check_manual_sequencing / check_next_number) y
-          queda fuera del alcance de este módulo.
+        * Aplica a los métodos "Cheques propios" (own_checks, de l10n_latam_check) y
+          "Cheques" (check_printing). Para check_printing, Odoo ya trae numeración
+          nativa (check_manual_sequencing / check_next_number): una constraint impide
+          activar las dos sobre el mismo diario.
         * Sugiere automáticamente el próximo número de cheque al registrar pagos (compatible con Órdenes de Pago de ADHOC y pagos estándar).
         * Permite al usuario editar libremente el número de cheque si necesita saltear números.
         * Actualiza automáticamente el contador del diario al confirmar/publicar el pago.

@@ -1,9 +1,15 @@
 from odoo import api, models
 
-# Sólo el método de cheque propio de la localización (l10n_latam_check).
-# El flujo estándar 'check_printing' queda deliberadamente fuera: Odoo ya lo
-# numera con check_manual_sequencing / check_next_number en el diario.
-OWN_CHECK_METHOD_CODES = ('own_checks',)
+# Métodos de pago considerados "cheque propio":
+#   - own_checks: cheques propios de la localización (l10n_latam_check),
+#     numerados en las líneas de l10n_latam_new_check_ids.
+#   - check_printing: flujo estándar de impresión de cheques, numerado en el
+#     campo check_number del pago.
+# Odoo tiene numeración propia para check_printing (check_manual_sequencing /
+# check_next_number en el diario). Este módulo sólo interviene si esa
+# numeración nativa está desactivada; la constraint
+# account.journal._check_no_double_check_numbering impide que convivan.
+OWN_CHECK_METHOD_CODES = ('own_checks', 'check_printing')
 
 
 class CheckSequenceMixin(models.AbstractModel):
@@ -44,10 +50,15 @@ class CheckSequenceMixin(models.AbstractModel):
         números de otra chequera. Los cargados a mano se respetan.
         """
         for rec in self:
-            if rec._use_check_sequence():
-                rec.journal_id._assign_check_numbers(
-                    rec.l10n_latam_new_check_ids, force_all=True
-                )
+            if not rec._use_check_sequence():
+                continue
+            # check_number sólo existe en account.payment (lo agrega
+            # account_check_printing), no en account.payment.register.
+            if 'check_number' in rec._fields and not rec.check_number:
+                rec.check_number = rec.journal_id._get_next_check_number_formatted()
+            rec.journal_id._assign_check_numbers(
+                rec.l10n_latam_new_check_ids, force_all=True
+            )
 
     @api.onchange('l10n_latam_new_check_ids')
     def _onchange_l10n_latam_new_check_ids_suggest_sequence(self):

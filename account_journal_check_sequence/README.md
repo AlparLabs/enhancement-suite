@@ -11,9 +11,9 @@ Módulo para **Odoo 18 / 19** que añade gestión de numeración correlativa ("m
    * Campo **Próximo Número de Cheque** (`next_check_number`), editable en cualquier momento.
    * Campo **Dígitos del Cheque** (`check_number_padding`, por defecto 8 dígitos con ceros a la izquierda, ej. `00000001`). **Mínimo 8**: `l10n_latam.check._onchange_name` hace `name.zfill(8)`, así que un padding menor dejaría el contador desalineado con el número guardado en el cheque.
 
-2. **Alcance: sólo cheques propios de la localización (`own_checks`):**
-   * El flujo estándar de impresión de cheques (`check_printing`) **queda fuera**: Odoo ya lo numera con `check_manual_sequencing` / `check_next_number` / `check_sequence_id` en el diario, respaldado por un `ir.sequence` real.
-   * Una constraint impide activar ambas numeraciones sobre el mismo diario.
+2. **Alcance: ambos flujos de cheque propio:**
+   * `own_checks` (localización, `l10n_latam_check`): numera las líneas de la pestaña **Cheques** (`l10n_latam_new_check_ids`).
+   * `check_printing` (flujo estándar): numera el campo `check_number` del pago. Odoo ya trae numeración nativa para este método (`check_manual_sequencing` / `check_next_number` / `check_sequence_id`, respaldada por un `ir.sequence` real); **una constraint impide activar ambas sobre el mismo diario**, así que este módulo sólo actúa si la nativa está apagada.
 
 3. **Propuesta Automática en Órdenes de Pago (ADHOC) y Pagos:**
    * Al crear una **Orden de Pago** (`account.payment.group`) y agregar una línea de pago con Diario de Banco y método *Cheque Propio* (`own_checks`), el número de cheque se autocompleta con el próximo correlativo del diario.

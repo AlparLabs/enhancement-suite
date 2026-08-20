@@ -8,7 +8,10 @@ class AccountPayment(models.Model):
     def _get_check_numbers_used(self):
         """Devuelve una lista con todos los números de cheque utilizados en este pago."""
         self.ensure_one()
-        return [chk.name for chk in self.l10n_latam_new_check_ids if chk.name]
+        numbers = [chk.name for chk in self.l10n_latam_new_check_ids if chk.name]
+        if 'check_number' in self._fields and self.check_number:
+            numbers.append(self.check_number)
+        return numbers
 
     def action_post(self):
         """

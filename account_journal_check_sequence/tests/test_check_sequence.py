@@ -176,9 +176,9 @@ class TestCheckSequence(TransactionCase):
                 )
 
     def test_61_own_check_method_codes_scope(self):
-        """El módulo sólo actúa sobre el método de cheque propio de la localización."""
+        """Se cubren los dos flujos de cheque propio: localización y estándar."""
         from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
             OWN_CHECK_METHOD_CODES,
         )
-        self.assertEqual(OWN_CHECK_METHOD_CODES, ('own_checks',))
-        self.assertNotIn('check_printing', OWN_CHECK_METHOD_CODES)
+        self.assertIn('own_checks', OWN_CHECK_METHOD_CODES)
+        self.assertIn('check_printing', OWN_CHECK_METHOD_CODES)
