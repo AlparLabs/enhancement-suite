@@ -1,6 +1,6 @@
 {
     'name': 'AlparData - Costo de Referencia Comercial',
-    'version': '18.0.2.1.2',
+    'version': '18.0.2.1.3',
     'summary': 'Costo de referencia por proveedor con historial de listas de precios',
     'description': """
         Módulo desarrollado por AlparData para Grupo Broda.
