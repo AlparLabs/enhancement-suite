@@ -1,5 +1,7 @@
 from odoo import api, fields, models
 
+from .check_sequence_mixin import get_check_number_from_context
+
 
 class L10nLatamCheck(models.Model):
     _inherit = 'l10n_latam.check'
@@ -28,14 +30,18 @@ class L10nLatamCheck(models.Model):
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         if 'name' in fields_list and not res.get('name'):
-            payment_id = res.get('payment_id') or self.env.context.get('default_payment_id')
-            if not payment_id and self.env.context.get('active_model') == 'account.payment':
-                # active_id sólo es un pago si el modelo activo lo es: en el wizard de
-                # registro de pagos, por ejemplo, apunta a un account.move.
-                payment_id = self.env.context.get('active_id')
-            payment = self._get_check_sequence_payment(payment_id)
-            if payment:
-                number = payment.journal_id._get_next_check_number_formatted()
+            # Camino principal: el diario viene en el contexto de la O2M.
+            number = get_check_number_from_context(self.env)
+            if not number:
+                payment_id = res.get('payment_id') or self.env.context.get('default_payment_id')
+                if not payment_id and self.env.context.get('active_model') == 'account.payment':
+                    # active_id sólo es un pago si el modelo activo lo es: en el
+                    # wizard de registro, por ejemplo, apunta a un account.move.
+                    payment_id = self.env.context.get('active_id')
+                payment = self._get_check_sequence_payment(payment_id)
+                if payment:
+                    number = payment.journal_id._get_next_check_number_formatted()
+            if number:
                 res['name'] = number
                 res['autofilled_check_number'] = number
         return res

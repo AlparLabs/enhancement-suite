@@ -12,6 +12,26 @@ from odoo import api, models
 OWN_CHECK_METHOD_CODES = ('own_checks', 'check_printing')
 
 
+def get_check_number_from_context(env):
+    """Próximo número de chequera segun el contexto de la O2M de cheques.
+
+    Las vistas del pago y del wizard pasan ``check_sequence_journal_id`` y
+    ``check_sequence_method_code`` del padre en el contexto del campo
+    ``l10n_latam_new_check_ids``. Asi ``default_get`` puede numerar la linea
+    nueva apenas se agrega, sin depender de ``active_id``: ese id no siempre
+    corresponde a un pago (en el wizard de registro apunta a un account.move)
+    y browsearlo a ciegas puede traer el numero de otra chequera.
+    """
+    journal_id = env.context.get('check_sequence_journal_id')
+    method_code = env.context.get('check_sequence_method_code')
+    if not isinstance(journal_id, int) or method_code not in OWN_CHECK_METHOD_CODES:
+        return False
+    journal = env['account.journal'].browse(journal_id).exists()
+    if not journal or not journal.check_sequence_enabled:
+        return False
+    return journal._get_next_check_number_formatted()
+
+
 class CheckSequenceMixin(models.AbstractModel):
     """Lógica de chequera compartida entre el pago y el wizard de registro.
 
@@ -62,7 +82,16 @@ class CheckSequenceMixin(models.AbstractModel):
 
     @api.onchange('l10n_latam_new_check_ids')
     def _onchange_l10n_latam_new_check_ids_suggest_sequence(self):
-        """Numera las líneas nuevas de la pestaña Cheques que estén vacías."""
+        """Renumera correlativamente las líneas de la pestaña Cheques.
+
+        Va con ``force_all=True`` a propósito: ``default_get`` sugiere el mismo
+        número para cada línea nueva (no conoce a las hermanas que todavía sólo
+        existen en el cliente), así que agregar dos líneas seguidas deja el
+        número repetido. Reasignando todo lo autocompletado, esa sugerencia se
+        corrige sola. Lo cargado a mano se sigue respetando.
+        """
         for rec in self:
             if rec._use_check_sequence():
-                rec.journal_id._assign_check_numbers(rec.l10n_latam_new_check_ids)
+                rec.journal_id._assign_check_numbers(
+                    rec.l10n_latam_new_check_ids, force_all=True
+                )

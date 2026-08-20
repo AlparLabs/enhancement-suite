@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Pasamos el diario y el metodo de pago del padre en el contexto de la
+        One2many de cheques. Con eso, default_get puede numerar la linea en el
+        momento en que se agrega, sin depender de active_id (que no siempre
+        apunta al pago, y puede apuntar a un account.move).
+    -->
+    <record id="view_account_payment_form_check_sequence" model="ir.ui.view">
+        <field name="name">account.payment.form.check.sequence</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="l10n_latam_check.view_account_payment_form_inherited"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="attributes">
+                <attribute name="context">{
+                    'check_sequence_journal_id': journal_id,
+                    'check_sequence_method_code': payment_method_code,
+                }</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_account_payment_register_form_check_sequence" model="ir.ui.view">
+        <field name="name">account.payment.register.form.check.sequence</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="l10n_latam_check.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="attributes">
+                <attribute name="context">{
+                    'check_sequence_journal_id': journal_id,
+                    'check_sequence_method_code': payment_method_code,
+                }</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

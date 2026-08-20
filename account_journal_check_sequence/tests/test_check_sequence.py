@@ -182,3 +182,52 @@ class TestCheckSequence(TransactionCase):
         )
         self.assertIn('own_checks', OWN_CHECK_METHOD_CODES)
         self.assertIn('check_printing', OWN_CHECK_METHOD_CODES)
+
+    # ------------------------------------------------------------------
+    # Numeración inmediata al agregar la línea (default_get por contexto)
+    # ------------------------------------------------------------------
+    def _context_number(self, journal, method_code='own_checks'):
+        from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
+            get_check_number_from_context,
+        )
+        env = self.env(context=dict(
+            self.env.context,
+            check_sequence_journal_id=journal.id,
+            check_sequence_method_code=method_code,
+        ))
+        return get_check_number_from_context(env)
+
+    def test_70_context_number_from_journal(self):
+        """La vista pasa el diario por contexto: default_get numera sin active_id."""
+        self.assertEqual(self._context_number(self.bank_journal), '00001001')
+
+    def test_71_context_number_ignores_other_methods(self):
+        """Un método de pago que no es cheque propio no debe numerar."""
+        self.assertFalse(self._context_number(self.bank_journal, 'manual'))
+
+    def test_72_context_number_ignores_disabled_journal(self):
+        """Sin chequera activa no se sugiere nada."""
+        self.bank_journal.check_sequence_enabled = False
+        self.assertFalse(self._context_number(self.bank_journal))
+
+    def test_73_context_number_survives_garbage_context(self):
+        """Un journal_id que no es un id entero no debe romper default_get."""
+        from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
+            get_check_number_from_context,
+        )
+        env = self.env(context=dict(
+            self.env.context,
+            check_sequence_journal_id='no-soy-un-id',
+            check_sequence_method_code='own_checks',
+        ))
+        self.assertFalse(get_check_number_from_context(env))
+
+    def test_74_duplicate_suggestions_are_corrected(self):
+        """default_get repite el número en cada línea nueva; el onchange lo corrige."""
+        # Dos líneas agregadas seguidas: ambas traen 00001001 de default_get.
+        checks = [
+            self._new_check('00001001', '00001001'),
+            self._new_check('00001001', '00001001'),
+        ]
+        self.bank_journal._assign_check_numbers(checks, force_all=True)
+        self.assertEqual([c.name for c in checks], ['00001001', '00001002'])
