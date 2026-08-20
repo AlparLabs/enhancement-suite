@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- La primera rama del dominio deja visibles para todos los albaranes
+             cuyo tipo de operación no tiene almacén (dropship y tipos sin
+             almacén). Es deliberado: sin ella esos documentos no los vería
+             nadie. Las otras tres ramas hacen que una transferencia entre
+             almacenes sea visible desde las dos puntas. -->
+        <record id="stock_picking_warehouse_access_rule" model="ir.rule">
+            <field name="name">stock.picking: solo almacenes del usuario</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="domain_force">['|', '|', '|',
+                ('picking_type_id.warehouse_id', '=', False),
+                ('picking_type_id.warehouse_id', 'in', user.warehouse_access_ids.ids),
+                ('location_id.warehouse_id', 'in', user.warehouse_access_ids.ids),
+                ('location_dest_id.warehouse_id', 'in', user.warehouse_access_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <record id="stock_picking_warehouse_access_all_rule" model="ir.rule">
+            <field name="name">stock.picking: ver todos los almacenes</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('stock_warehouse_user_access.group_warehouse_access_all'))]"/>
+        </record>
+
+        <record id="purchase_order_warehouse_access_rule" model="ir.rule">
+            <field name="name">purchase.order: solo almacenes del usuario</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="domain_force">['|', '|',
+                ('picking_type_id', '=', False),
+                ('picking_type_id.warehouse_id', '=', False),
+                ('picking_type_id.warehouse_id', 'in', user.warehouse_access_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <record id="purchase_order_warehouse_access_all_rule" model="ir.rule">
+            <field name="name">purchase.order: ver todos los almacenes</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('stock_warehouse_user_access.group_warehouse_access_all'))]"/>
+        </record>
+
+    </data>
+</odoo>

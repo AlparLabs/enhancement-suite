@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="purchase_order_form_warehouse_access" model="ir.ui.view">
+            <field name="name">purchase.order.form.warehouse.access</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase_stock.purchase_order_view_form_inherit"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='picking_type_id']" position="attributes">
+                    <attribute name="context">{'restrict_to_user_warehouses': True}</attribute>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
