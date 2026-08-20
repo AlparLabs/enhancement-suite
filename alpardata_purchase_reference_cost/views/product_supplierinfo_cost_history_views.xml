@@ -65,7 +65,7 @@
         <field name="name">Historial de Precios de Referencia</field>
         <field name="res_model">product.supplierinfo.cost.history</field>
         <field name="view_mode">list</field>
-        <field name="groups_id" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
+        <field name="group_ids" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
     </record>
 
 </odoo>
