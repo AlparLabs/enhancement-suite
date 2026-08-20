@@ -93,6 +93,34 @@ class TestPurchaseLineReferenceCost(TransactionCase):
         self.assertEqual(line.reference_cost, 12000.0)
         self.assertEqual(line.price_unit, 12000.0)
 
+    def test_catalog_adds_line_with_reference_cost(self):
+        """Al agregar un producto desde el catalogo, el precio unitario toma el
+        costo de referencia del proveedor de la orden (no el seller.price)."""
+        po = self.env['purchase.order'].create({'partner_id': self.partner.id})
+        po._update_order_line_info(self.product.id, 1)
+        line = po.order_line.filtered(lambda l: l.product_id == self.product)
+        self.assertEqual(line.price_unit, 100.0)
+
+    def test_catalog_card_price_uses_reference_cost(self):
+        """La tarjeta del catalogo muestra el costo de referencia del proveedor
+        de la orden, no el precio de lista del proveedor."""
+        po = self.env['purchase.order'].create({'partner_id': self.partner.id})
+        info = po._get_product_price_and_data(self.product)
+        self.assertEqual(info['price'], 100.0)
+
+    def test_catalog_without_reference_cost_keeps_seller_price(self):
+        """Sin costo de referencia, el catalogo respeta el precio del proveedor."""
+        product2 = self.env['product.product'].create({'name': 'Producto catalogo sin ref'})
+        self.env['product.supplierinfo'].create({
+            'partner_id': self.partner.id,
+            'product_tmpl_id': product2.product_tmpl_id.id,
+            'price': 70.0,
+        })
+        po = self.env['purchase.order'].create({'partner_id': self.partner.id})
+        po._update_order_line_info(product2.id, 1)
+        line = po.order_line.filtered(lambda l: l.product_id == product2)
+        self.assertEqual(line.price_unit, 70.0)
+
     def test_price_unit_is_editable(self):
         """El comprador puede pisar el precio a mano y persiste."""
         line = self._new_line(self.product)
