@@ -51,7 +51,7 @@
                 <filter name="decrease"
                         string="Baja"
                         domain="[('variation_pct', '&lt;', 0)]"/>
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter name="group_supplier" string="Proveedor" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_product" string="Producto" context="{'group_by': 'product_tmpl_id'}"/>
                     <filter name="group_category" string="Categoría" context="{'group_by': 'product_categ_id'}"/>

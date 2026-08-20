@@ -169,7 +169,7 @@
                 <separator/>
 
                 <!-- Agrupaciones -->
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter name="group_by_product"
                             string="Producto"
                             context="{'group_by': 'product_tmpl_id'}"/>
