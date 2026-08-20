@@ -7,20 +7,35 @@ Módulo para **Odoo 18 / 19** que añade gestión de numeración correlativa ("m
 ## 🎯 Funcionalidades Principales
 
 1. **Configuración por Diario de Banco (`account.journal`):**
-   * Checkbox **Auto-numerar Cheques Propios** (`check_sequence_enabled`).
+   * Checkbox **Auto-numerar Cheques Propios** (`check_sequence_enabled`), desactivado por defecto: hay que habilitarlo diario por diario.
    * Campo **Próximo Número de Cheque** (`next_check_number`), editable en cualquier momento.
-   * Campo **Dígitos del Cheque** (`check_number_padding`, por defecto 8 dígitos con ceros a la izquierda, ej. `00000001`).
+   * Campo **Dígitos del Cheque** (`check_number_padding`, por defecto 8 dígitos con ceros a la izquierda, ej. `00000001`). **Mínimo 8**: `l10n_latam.check._onchange_name` hace `name.zfill(8)`, así que un padding menor dejaría el contador desalineado con el número guardado en el cheque.
 
-2. **Propuesta Automática en Órdenes de Pago (ADHOC) y Pagos:**
+2. **Alcance: sólo cheques propios de la localización (`own_checks`):**
+   * El flujo estándar de impresión de cheques (`check_printing`) **queda fuera**: Odoo ya lo numera con `check_manual_sequencing` / `check_next_number` / `check_sequence_id` en el diario, respaldado por un `ir.sequence` real.
+   * Una constraint impide activar ambas numeraciones sobre el mismo diario.
+
+3. **Propuesta Automática en Órdenes de Pago (ADHOC) y Pagos:**
    * Al crear una **Orden de Pago** (`account.payment.group`) y agregar una línea de pago con Diario de Banco y método *Cheque Propio* (`own_checks`), el número de cheque se autocompleta con el próximo correlativo del diario.
    * Compatible también con el wizard estándar de pago (`account.payment.register`).
 
-3. **Flexibilidad Total (Saltos de secuencia / Cheques anulados):**
+4. **Flexibilidad Total (Saltos de secuencia / Cheques anulados):**
    * El campo número de cheque sigue siendo **100% editable** por el usuario.
    * Si el usuario modifica el número (ej. salta del `00001002` al `00001005` por rotura/anulación), el sistema respeta el número ingresado.
+   * Si se cambia el diario del pago, los números que había puesto el módulo se recalculan con la chequera nueva; los cargados a mano se respetan.
 
-4. **Auto-incremento al Publicar:**
-   * Al confirmar/publicar la Orden de Pago (`account.payment.group.post()` / `action_post()`), el sistema incrementa automáticamente la secuencia del diario en base al número efectivamente emitido.
+5. **Auto-incremento al Publicar:**
+   * Al confirmar/publicar el pago (`action_post()`), el sistema incrementa la secuencia del diario en base al **mayor** número efectivamente emitido en ese pago.
+   * La secuencia **nunca retrocede**: reemitir un cheque anterior, o volver a publicar un pago que ya avanzó el contador, no altera la chequera.
+   * El diario se bloquea (`SELECT ... FOR UPDATE`) mientras se calcula el próximo número, para que dos pagos publicados en paralelo no consuman el mismo valor.
+
+---
+
+---
+
+## ⚠️ Limitación conocida
+
+El número se **sugiere** al armar el pago y se **consume** recién al publicarlo. Dos usuarios que preparan pagos al mismo tiempo van a ver sugerido el mismo número; el conflicto aparece al validar, contra el índice único `l10n_latam_check_unique` sobre `(name, payment_method_line_id) WHERE outstanding_line_id IS NOT NULL`. Para reserva estricta habría que migrar `next_check_number` a un `ir.sequence` real.
 
 ---
 
@@ -29,7 +44,7 @@ Módulo para **Odoo 18 / 19** que añade gestión de numeración correlativa ("m
 1. Ir a **Contabilidad > Configuración > Diarios Contables**.
 2. Seleccionar un diario de tipo **Banco** (ej. *Banco Galicia*, *Banco Santander*).
 3. En la pestaña **Configuración Avanzada**, ubicar la sección **Chequera / Numeración de Cheques Propios**.
-4. Ingresar el número del próximo cheque físico/electrónico a emitir (ej. `00001001`).
+4. Activar **Auto-numerar Cheques Propios** e ingresar el número del próximo cheque físico/electrónico a emitir (ej. `00001001`).
 5. Guardar.
 
 ---
