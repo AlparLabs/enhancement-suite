@@ -249,3 +249,29 @@ class TestCheckSequence(TransactionCase):
         names = [c.name for c in checks]
         self.assertEqual(len(set(names)), 3, 'no debe quedar ningun numero repetido')
         self.assertIn('00001002', names, 'el numero manual se respeta')
+
+    # ------------------------------------------------------------------
+    # Sugerencia que contempla las líneas ya cargadas
+    # ------------------------------------------------------------------
+    def test_80_context_prefers_parent_suggestion(self):
+        """El número sugerido por el padre gana sobre el contador del diario."""
+        from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
+            get_check_number_from_context,
+        )
+        env = self.env(context=dict(
+            self.env.context,
+            check_sequence_journal_id=self.bank_journal.id,
+            check_sequence_method_code='own_checks',
+            check_sequence_next_number='00001005',
+        ))
+        self.assertEqual(get_check_number_from_context(env), '00001005')
+
+    def test_81_context_falls_back_to_journal(self):
+        """Sin sugerencia del padre se usa el contador del diario."""
+        self.assertEqual(self._context_number(self.bank_journal), '00001001')
+
+    def test_82_suggestion_skips_numbers_already_used(self):
+        """La sugerencia parte del mayor número ya cargado en las líneas."""
+        used = ['00001001', '00001002']
+        highest = self.bank_journal._get_highest_check_number(used)
+        self.assertEqual(self.bank_journal._calculate_next_number(highest), '00001003')

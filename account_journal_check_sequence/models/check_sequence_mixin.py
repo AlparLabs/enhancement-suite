@@ -1,4 +1,4 @@
-from odoo import api, models
+from odoo import api, fields, models
 
 # Métodos de pago considerados "cheque propio":
 #   - own_checks: cheques propios de la localización (l10n_latam_check),
@@ -29,6 +29,12 @@ def get_check_number_from_context(env):
     journal = env['account.journal'].browse(journal_id).exists()
     if not journal or not journal.check_sequence_enabled:
         return False
+    # El padre calcula el proximo numero libre teniendo en cuenta las lineas ya
+    # cargadas; default_get por si solo no las ve, porque hasta que no se
+    # dispara un onchange existen unicamente en el cliente.
+    suggested = env.context.get('check_sequence_next_number')
+    if suggested:
+        return suggested
     return journal._get_next_check_number_formatted()
 
 
@@ -46,6 +52,25 @@ class CheckSequenceMixin(models.AbstractModel):
 
     _name = 'account.journal.check.sequence.mixin'
     _description = 'Numeración de chequera por diario'
+
+    check_sequence_next_number = fields.Char(
+        string='Próximo Número de Cheque Sugerido',
+        compute='_compute_check_sequence_next_number',
+        help='Campo técnico: próximo número libre de la chequera considerando las '
+             'líneas de cheque ya cargadas. Lo consume el contexto de la One2many '
+             'para numerar bien la línea en el momento en que se agrega.',
+    )
+
+    @api.depends('journal_id', 'payment_method_code', 'l10n_latam_new_check_ids.name')
+    def _compute_check_sequence_next_number(self):
+        for rec in self:
+            number = False
+            if rec._use_check_sequence():
+                journal = rec.journal_id
+                used = [chk.name for chk in rec.l10n_latam_new_check_ids if chk.name]
+                highest = journal._get_highest_check_number(used)
+                number = journal._calculate_next_number(highest) if highest                     else journal._get_next_check_number_formatted()
+            rec.check_sequence_next_number = number
 
     def _is_own_check_payment(self):
         """Verifica si corresponde a la emisión de un cheque propio."""

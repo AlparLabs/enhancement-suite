@@ -11,10 +11,14 @@
         <field name="model">account.payment</field>
         <field name="inherit_id" ref="l10n_latam_check.view_account_payment_form_inherited"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="before">
+                <field name="check_sequence_next_number" invisible="1"/>
+            </xpath>
             <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="attributes">
                 <attribute name="context">{
                     'check_sequence_journal_id': journal_id,
                     'check_sequence_method_code': payment_method_code,
+                    'check_sequence_next_number': check_sequence_next_number,
                 }</attribute>
             </xpath>
             <!--
@@ -34,10 +38,14 @@
         <field name="model">account.payment.register</field>
         <field name="inherit_id" ref="l10n_latam_check.view_account_payment_register_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="before">
+                <field name="check_sequence_next_number" invisible="1"/>
+            </xpath>
             <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="attributes">
                 <attribute name="context">{
                     'check_sequence_journal_id': journal_id,
                     'check_sequence_method_code': payment_method_code,
+                    'check_sequence_next_number': check_sequence_next_number,
                 }</attribute>
             </xpath>
             <xpath expr="//field[@name='l10n_latam_new_check_ids']/list/field[@name='name']" position="before">
