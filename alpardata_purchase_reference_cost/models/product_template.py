@@ -93,6 +93,47 @@ class ProductTemplate(models.Model):
             ).sorted('sequence')
             tmpl.reference_cost = valid[0].reference_cost if valid else 0.0
 
+    def _get_reference_cost_seller(self, partner=None):
+        """Devuelve el `product.supplierinfo` vigente con mejor ranking para la
+        empresa activa.
+
+        Ranking: empresa más específica primero (la activa y sus matrices,
+        recorriendo `parent_id`), luego los proveedores globales (sin empresa)
+        y, dentro de cada nivel, por `sequence`. Solo considera registros con
+        `reference_cost > 0` y fecha válida hoy.
+
+        Si se pasa `partner`, restringe al proveedor indicado (comparando por
+        `commercial_partner_id`). La línea de compra lo usa así para respetar el
+        proveedor cargado en la orden sin perder la jerarquía de empresas.
+        """
+        self.ensure_one()
+        today = fields.Date.today()
+        preferred_ids = []
+        company = self.env.company
+        while company:
+            preferred_ids.append(company.id)
+            company = company.parent_id
+        rank = {cid: idx for idx, cid in enumerate(preferred_ids)}
+        global_rank = len(preferred_ids)
+
+        def _sort_key(seller):
+            if seller.company_id:
+                company_rank = rank.get(seller.company_id.id, global_rank)
+            else:
+                company_rank = global_rank
+            return (company_rank, seller.sequence, seller._origin.id or 0)
+
+        commercial = partner.commercial_partner_id if partner else None
+        candidates = self.sudo().seller_ids.filtered(
+            lambda s: s.reference_cost > 0
+            and (not s.date_start or s.date_start <= today)
+            and (not s.date_end or s.date_end >= today)
+            and (not s.company_id or s.company_id.id in rank)
+            and (commercial is None or s.partner_id.commercial_partner_id == commercial)
+        )
+        ordered = candidates.sorted(key=_sort_key)
+        return ordered[0] if ordered else self.env['product.supplierinfo']
+
     # ── Cron: reactivar costos cuya vigencia cambió por el paso del tiempo ────
     @api.model
     def _cron_recompute_reference_cost(self, lookback_days: int = 7) -> None:
