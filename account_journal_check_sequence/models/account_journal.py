@@ -164,23 +164,35 @@ class AccountJournal(models.Model):
         """Completa el número de las líneas de cheque con valores correlativos.
 
         Respeta los números cargados a mano. Con ``force_all=True`` (cambio de
-        diario o de método de pago) también recalcula los que había asignado
-        automáticamente este módulo, para que no queden números de la chequera
-        anterior.
+        diario, o renumerado de la pestaña Cheques) también recalcula los que
+        había asignado automáticamente este módulo, para que no queden números
+        de la chequera anterior ni repetidos.
+
+        Un número repetido dentro del mismo pago se reasigna siempre, tenga o
+        no la marca de autocompletado: dos cheques con el mismo número son
+        inválidos de todas formas (índice único ``l10n_latam_check_unique``),
+        y la marca puede no llegar si la vista no carga el campo.
         """
         self.ensure_one()
         if not self.check_sequence_enabled:
             return
         last_number = False
+        seen = set()
         for check in checks:
             autofilled = check.name and check.name == check.autofilled_check_number
-            if check.name and not (force_all and autofilled):
+            duplicated = check.name and check.name in seen
+            if check.name and not duplicated and not (force_all and autofilled):
+                seen.add(check.name)
                 last_number = check.name
                 continue
-            number = self._calculate_next_number(last_number) if last_number \
-                else self._get_next_check_number_formatted()
+            number = self._calculate_next_number(last_number) if last_number                 else self._get_next_check_number_formatted()
+            # No pisar un número que ya usa otra línea (por ejemplo uno manual
+            # más abajo en la lista). Los números crecen, así que termina.
+            while number in seen:
+                number = self._calculate_next_number(number)
             check.name = number
             check.autofilled_check_number = number
+            seen.add(number)
             last_number = number
 
     def _next_check_number_for_batch(self, last_number=None):

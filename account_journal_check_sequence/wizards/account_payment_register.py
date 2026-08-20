@@ -1,5 +1,7 @@
 from odoo import api, fields, models
 
+from ..models.check_sequence_mixin import get_check_number_from_context
+
 
 class AccountPaymentRegister(models.TransientModel):
     _name = 'account.payment.register'
@@ -13,6 +15,16 @@ class L10nLatamPaymentRegisterCheck(models.TransientModel):
         string='Número Autocompletado',
         help='Campo técnico: último número asignado automáticamente por la chequera del diario.'
     )
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if 'name' in fields_list and not res.get('name'):
+            number = get_check_number_from_context(self.env)
+            if number:
+                res['name'] = number
+                res['autofilled_check_number'] = number
+        return res
 
     @api.model_create_multi
     def create(self, vals_list):

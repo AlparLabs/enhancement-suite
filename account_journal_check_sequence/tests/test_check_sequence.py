@@ -176,9 +176,102 @@ class TestCheckSequence(TransactionCase):
                 )
 
     def test_61_own_check_method_codes_scope(self):
-        """El módulo sólo actúa sobre el método de cheque propio de la localización."""
+        """Se cubren los dos flujos de cheque propio: localización y estándar."""
         from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
             OWN_CHECK_METHOD_CODES,
         )
-        self.assertEqual(OWN_CHECK_METHOD_CODES, ('own_checks',))
-        self.assertNotIn('check_printing', OWN_CHECK_METHOD_CODES)
+        self.assertIn('own_checks', OWN_CHECK_METHOD_CODES)
+        self.assertIn('check_printing', OWN_CHECK_METHOD_CODES)
+
+    # ------------------------------------------------------------------
+    # Numeración inmediata al agregar la línea (default_get por contexto)
+    # ------------------------------------------------------------------
+    def _context_number(self, journal, method_code='own_checks'):
+        from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
+            get_check_number_from_context,
+        )
+        env = self.env(context=dict(
+            self.env.context,
+            check_sequence_journal_id=journal.id,
+            check_sequence_method_code=method_code,
+        ))
+        return get_check_number_from_context(env)
+
+    def test_70_context_number_from_journal(self):
+        """La vista pasa el diario por contexto: default_get numera sin active_id."""
+        self.assertEqual(self._context_number(self.bank_journal), '00001001')
+
+    def test_71_context_number_ignores_other_methods(self):
+        """Un método de pago que no es cheque propio no debe numerar."""
+        self.assertFalse(self._context_number(self.bank_journal, 'manual'))
+
+    def test_72_context_number_ignores_disabled_journal(self):
+        """Sin chequera activa no se sugiere nada."""
+        self.bank_journal.check_sequence_enabled = False
+        self.assertFalse(self._context_number(self.bank_journal))
+
+    def test_73_context_number_survives_garbage_context(self):
+        """Un journal_id que no es un id entero no debe romper default_get."""
+        from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
+            get_check_number_from_context,
+        )
+        env = self.env(context=dict(
+            self.env.context,
+            check_sequence_journal_id='no-soy-un-id',
+            check_sequence_method_code='own_checks',
+        ))
+        self.assertFalse(get_check_number_from_context(env))
+
+    def test_74_duplicate_suggestions_are_corrected(self):
+        """default_get repite el número en cada línea nueva; el onchange lo corrige."""
+        # Dos líneas agregadas seguidas: ambas traen 00001001 de default_get.
+        checks = [
+            self._new_check('00001001', '00001001'),
+            self._new_check('00001001', '00001001'),
+        ]
+        self.bank_journal._assign_check_numbers(checks, force_all=True)
+        self.assertEqual([c.name for c in checks], ['00001001', '00001002'])
+
+    def test_75_duplicates_fixed_without_autofill_marker(self):
+        """El duplicado se corrige aunque la marca de autocompletado no llegue."""
+        checks = [self._new_check('00000183'), self._new_check('00000183')]
+        self.bank_journal._assign_check_numbers(checks)
+        self.assertEqual([c.name for c in checks], ['00000183', '00000184'])
+
+    def test_76_assign_never_collides_with_manual_number(self):
+        """Al renumerar no se pisa un número que ya ocupa otra línea."""
+        checks = [
+            self._new_check('00001001', '00001001'),
+            self._new_check('00001002'),          # cargado a mano
+            self._new_check('00001001', '00001001'),
+        ]
+        self.bank_journal._assign_check_numbers(checks, force_all=True)
+        names = [c.name for c in checks]
+        self.assertEqual(len(set(names)), 3, 'no debe quedar ningun numero repetido')
+        self.assertIn('00001002', names, 'el numero manual se respeta')
+
+    # ------------------------------------------------------------------
+    # Sugerencia que contempla las líneas ya cargadas
+    # ------------------------------------------------------------------
+    def test_80_context_prefers_parent_suggestion(self):
+        """El número sugerido por el padre gana sobre el contador del diario."""
+        from odoo.addons.account_journal_check_sequence.models.check_sequence_mixin import (
+            get_check_number_from_context,
+        )
+        env = self.env(context=dict(
+            self.env.context,
+            check_sequence_journal_id=self.bank_journal.id,
+            check_sequence_method_code='own_checks',
+            check_sequence_next_number='00001005',
+        ))
+        self.assertEqual(get_check_number_from_context(env), '00001005')
+
+    def test_81_context_falls_back_to_journal(self):
+        """Sin sugerencia del padre se usa el contador del diario."""
+        self.assertEqual(self._context_number(self.bank_journal), '00001001')
+
+    def test_82_suggestion_skips_numbers_already_used(self):
+        """La sugerencia parte del mayor número ya cargado en las líneas."""
+        used = ['00001001', '00001002']
+        highest = self.bank_journal._get_highest_check_number(used)
+        self.assertEqual(self.bank_journal._calculate_next_number(highest), '00001003')
