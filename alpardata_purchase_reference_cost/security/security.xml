@@ -5,7 +5,7 @@
 
     <record id="group_reference_cost_editor" model="res.groups">
         <field name="name">Puede editar Costo de Referencia</field>
-        <field name="category_id" ref="base.module_category_inventory_purchase"/>
+        <field name="privilege_id" ref="purchase.res_groups_privilege_purchase"/>
         <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
         <field name="comment">
             Usuarios con este grupo pueden modificar manualmente el campo

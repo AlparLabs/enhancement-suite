@@ -40,19 +40,21 @@
                       groups="purchase.group_purchase_manager">
                     <group>
                         <group string="Costo comercial estable">
+                            <field name="cost_currency_id" invisible="1"/>
                             <field name="reference_cost"
                                    widget="monetary"
+                                   options="{'currency_field': 'cost_currency_id'}"
                                    string="Costo de referencia"
                                    readonly="True"
                                    groups="purchase.group_purchase_manager"/>
                             <field name="standard_price"
                                    widget="monetary"
+                                   options="{'currency_field': 'cost_currency_id'}"
                                    string="Costo AVCO (contable)"
                                    readonly="True"/>
                             <field name="cost_divergence_pct"
                                    string="Divergencia AVCO vs Referencia (%)"
-                                   readonly="True"
-                                   widget="percentage"/>
+                                   readonly="True"/>
                             <field name="cost_divergence_alert"
                                    string="Estado"
                                    readonly="True"
@@ -100,11 +102,7 @@
                 <field name="reference_cost"
                        string="Costo ref."
                        widget="monetary"
-                       optional="show"
-                       groups="purchase.group_purchase_manager"/>
-                <field name="standard_price"
-                       string="Costo AVCO"
-                       widget="monetary"
+                       options="{'currency_field': 'cost_currency_id'}"
                        optional="show"
                        groups="purchase.group_purchase_manager"/>
                 <field name="cost_divergence_pct"

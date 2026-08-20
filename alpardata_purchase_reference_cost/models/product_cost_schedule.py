@@ -59,6 +59,12 @@ class ProductCostSchedule(models.Model):
         index=True,
     )
 
+    currency_id = fields.Many2one(
+        related='company_id.currency_id',
+        string='Moneda',
+        readonly=True,
+    )
+
     current_reference_cost: float = fields.Float(
         string='Costo referencia actual',
         digits='Product Price',
@@ -266,5 +272,10 @@ class ProductCostSchedule(models.Model):
                     schedule.id, schedule.product_tmpl_id.name, str(e)
                 )
                 continue
+
+        # Recalcula los productos cuyos supplierinfo cruzaron una fecha de
+        # vigencia: reference_cost es store=True pero depende de la fecha de hoy,
+        # así que el paso del tiempo por sí solo no dispara el recálculo.
+        self.env['product.template']._cron_recompute_reference_cost()
 
         _logger.info('Cron de costos de referencia: finalizado.')

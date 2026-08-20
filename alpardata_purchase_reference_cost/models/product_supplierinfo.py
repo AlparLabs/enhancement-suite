@@ -60,6 +60,10 @@ class ProductSupplierinfo(models.Model):
         Garantiza que el nuevo registro sea el único vigente desde su fecha de
         inicio, independientemente del sequence.
         Solo aplica cuando el nuevo registro tiene date_start definido.
+
+        Los registros que arrancan DESPUÉS de self.date_start quedan intactos:
+        cerrarlos les dejaría date_end < date_start, matando en silencio las
+        programaciones futuras creadas por product.cost.schedule.
         """
         self.ensure_one()
         if not self.date_start:
@@ -72,6 +76,7 @@ class ProductSupplierinfo(models.Model):
             ('product_tmpl_id', '=', self.product_tmpl_id.id),
             ('company_id', '=', company_id),
             '|', ('date_end', '=', False), ('date_end', '>=', self.date_start),
+            '|', ('date_start', '=', False), ('date_start', '<=', self.date_start),
         ]
         previous = self.env['product.supplierinfo'].sudo().search(domain)
         if previous:

@@ -55,6 +55,7 @@
                                    readonly="state in ('done', 'cancelled')"/>
                         </group>
                         <group string="Costos">
+                            <field name="currency_id" invisible="1"/>
                             <field name="current_reference_cost"
                                    widget="monetary"
                                    string="Costo de referencia actual"
@@ -89,11 +90,7 @@
 
                 </sheet>
 
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
+                <chatter/>
 
             </form>
         </field>
@@ -111,6 +108,7 @@
                   decoration-warning="state == 'scheduled'"
                   decoration-success="state == 'done'"
                   decoration-muted="state == 'cancelled'">
+                <field name="currency_id" column_invisible="True"/>
                 <field name="effective_date" string="Fecha vigencia"/>
                 <field name="product_tmpl_id" string="Producto"/>
                 <field name="product_categ_id" string="Categoría"/>

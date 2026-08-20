@@ -13,21 +13,19 @@
                   decoration-success="variation_pct &gt; 0"
                   decoration-danger="variation_pct &lt; 0"
                   create="false" edit="false" delete="false">
+                <field name="currency_id" column_invisible="True"/>
                 <field name="change_date" string="Fecha"/>
                 <field name="partner_id" string="Proveedor"/>
                 <field name="product_tmpl_id" string="Producto"/>
                 <field name="product_categ_id" string="Categoría" optional="show"/>
                 <field name="old_reference_cost"
                        string="Precio anterior"
-                       widget="monetary"
-                       options="{'currency_field': False}"/>
+                       widget="monetary"/>
                 <field name="new_reference_cost"
                        string="Nuevo precio"
-                       widget="monetary"
-                       options="{'currency_field': False}"/>
+                       widget="monetary"/>
                 <field name="variation_pct"
                        string="Variación %"
-                       widget="percentage"
                        optional="show"/>
                 <field name="change_reason" string="Motivo" optional="show"/>
                 <field name="changed_by" string="Modificado por" optional="show"/>

@@ -58,6 +58,12 @@ class ProductSupplierinfoCostHistory(models.Model):
         readonly=True,
     )
 
+    currency_id = fields.Many2one(
+        related='company_id.currency_id',
+        string='Moneda',
+        readonly=True,
+    )
+
     old_reference_cost: float = fields.Float(
         string='Precio anterior',
         digits='Product Price',
