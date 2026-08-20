@@ -35,7 +35,7 @@
                     invisible="not purchase_minimum_warning"
                     role="alert"
                 >
-                    <i class="fa fa-exclamation-triangle me-2"/>
+                    <i class="fa fa-exclamation-triangle me-2" title="Advertencia"/>
                     <field name="purchase_minimum_warning" readonly="1"/>
                 </div>
                 <div
@@ -43,7 +43,7 @@
                     invisible="state != 'waiting_approval'"
                     role="alert"
                 >
-                    <i class="fa fa-lock me-2"/>
+                    <i class="fa fa-lock me-2" title="Bloqueado"/>
                     <strong>Orden pendiente de aprobación de mínimo de compra.</strong>
                     <field name="minimum_approval_note" readonly="1" class="d-block mt-1"/>
                 </div>
