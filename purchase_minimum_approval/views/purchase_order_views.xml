@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_order_form_minimum_approval" model="ir.ui.view">
+        <field name="name">purchase.order.form.minimum.approval</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Botón de aprobación en el header -->
+            <xpath expr="//header/button[@name='button_confirm']" position="before">
+                <button
+                    name="action_approve_minimum"
+                    string="Aprobar Mínimo"
+                    type="object"
+                    class="btn-success"
+                    invisible="state != 'waiting_approval' or not show_approve_minimum_button"
+                    confirm="¿Aprobar el mínimo de compra y confirmar esta orden?"
+                />
+            </xpath>
+
+            <!-- Estado nuevo en la barra de estados -->
+            <xpath expr="//header/field[@name='state']" position="attributes">
+                <attribute name="statusbar_visible">draft,sent,waiting_approval,purchase,done</attribute>
+            </xpath>
+
+            <!-- Campo auxiliar para la visibilidad del botón -->
+            <xpath expr="//header/field[@name='state']" position="before">
+                <field name="show_approve_minimum_button" invisible="1"/>
+            </xpath>
+
+            <!-- Banner de advertencia (borrador) + nota (esperando aprobación) -->
+            <xpath expr="//sheet" position="before">
+                <div
+                    class="alert alert-warning mb-0"
+                    invisible="not purchase_minimum_warning"
+                    role="alert"
+                >
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    <field name="purchase_minimum_warning" readonly="1"/>
+                </div>
+                <div
+                    class="alert alert-danger mb-0"
+                    invisible="state != 'waiting_approval'"
+                    role="alert"
+                >
+                    <i class="fa fa-lock me-2"/>
+                    <strong>Orden pendiente de aprobación de mínimo de compra.</strong>
+                    <field name="minimum_approval_note" readonly="1" class="d-block mt-1"/>
+                </div>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

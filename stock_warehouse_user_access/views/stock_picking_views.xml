@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_picking_form_warehouse_access" model="ir.ui.view">
+            <field name="name">stock.picking.form.warehouse.access</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='picking_type_id']" position="attributes">
+                    <attribute name="context">{'restrict_to_user_warehouses': True}</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="stock.stock_picking_type_action" model="ir.actions.act_window">
+            <field name="context">{'restrict_to_user_warehouses': True}</field>
+        </record>
+
+    </data>
+</odoo>
