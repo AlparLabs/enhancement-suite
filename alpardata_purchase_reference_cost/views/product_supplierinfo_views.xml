@@ -11,7 +11,11 @@
         <field name="inherit_id" ref="product.product_supplierinfo_form_view"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//div[@name='button_box']" position="inside">
+            <!-- product.product_supplierinfo_form_view no define un button_box
+                 (ni en 18 ni en 19), asi que lo creamos como primer hijo del
+                 sheet, que es donde Odoo espera encontrarlo. -->
+            <xpath expr="//sheet/group" position="before">
+                <div class="oe_button_box" name="button_box">
                 <button name="action_view_supplierinfo_cost_history"
                         type="object"
                         class="oe_stat_button"
@@ -21,6 +25,7 @@
                            widget="statinfo"
                            string="Historial"/>
                 </button>
+                </div>
             </xpath>
 
             <xpath expr="//field[@name='price']/.." position="after">
