@@ -231,3 +231,21 @@ class TestCheckSequence(TransactionCase):
         ]
         self.bank_journal._assign_check_numbers(checks, force_all=True)
         self.assertEqual([c.name for c in checks], ['00001001', '00001002'])
+
+    def test_75_duplicates_fixed_without_autofill_marker(self):
+        """El duplicado se corrige aunque la marca de autocompletado no llegue."""
+        checks = [self._new_check('00000183'), self._new_check('00000183')]
+        self.bank_journal._assign_check_numbers(checks)
+        self.assertEqual([c.name for c in checks], ['00000183', '00000184'])
+
+    def test_76_assign_never_collides_with_manual_number(self):
+        """Al renumerar no se pisa un número que ya ocupa otra línea."""
+        checks = [
+            self._new_check('00001001', '00001001'),
+            self._new_check('00001002'),          # cargado a mano
+            self._new_check('00001001', '00001001'),
+        ]
+        self.bank_journal._assign_check_numbers(checks, force_all=True)
+        names = [c.name for c in checks]
+        self.assertEqual(len(set(names)), 3, 'no debe quedar ningun numero repetido')
+        self.assertIn('00001002', names, 'el numero manual se respeta')

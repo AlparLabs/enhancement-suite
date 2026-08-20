@@ -17,6 +17,15 @@
                     'check_sequence_method_code': payment_method_code,
                 }</attribute>
             </xpath>
+            <!--
+                autofilled_check_number tiene que estar en la vista aunque no se
+                muestre: es la marca que distingue un numero puesto por el modulo
+                de uno cargado a mano. Si no esta, el cliente no lo devuelve en el
+                onchange y el modulo no puede renumerar lo que autocompleto.
+            -->
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']/list[@name='new_checks']/field[@name='name']" position="before">
+                <field name="autofilled_check_number" column_invisible="True"/>
+            </xpath>
         </field>
     </record>
 
@@ -30,6 +39,9 @@
                     'check_sequence_journal_id': journal_id,
                     'check_sequence_method_code': payment_method_code,
                 }</attribute>
+            </xpath>
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']/list/field[@name='name']" position="before">
+                <field name="autofilled_check_number" column_invisible="True"/>
             </xpath>
         </field>
     </record>

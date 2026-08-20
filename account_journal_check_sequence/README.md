@@ -19,6 +19,8 @@ Módulo para **Odoo 18 / 19** que añade gestión de numeración correlativa ("m
    * Al crear una **Orden de Pago** (`account.payment.group`) y agregar una línea de pago con Diario de Banco y método *Cheque Propio* (`own_checks`), el número de cheque se autocompleta con el próximo correlativo del diario.
    * El número aparece **en el momento de agregar la línea**: las vistas pasan `check_sequence_journal_id` y `check_sequence_method_code` en el contexto de la One2many de cheques, y `default_get` los usa. No se depende de `active_id`, que no siempre apunta a un pago.
    * `default_get` sugiere el mismo número para cada línea nueva (no conoce a las hermanas que aún sólo existen en el cliente); el onchange de la One2many renumera lo autocompletado y corrige el duplicado.
+   * Para eso, el campo técnico `autofilled_check_number` **tiene que estar en la vista** (como columna invisible): es la marca que distingue un número puesto por el módulo de uno cargado a mano, y si no está en la vista el cliente no lo devuelve en el onchange. Las vistas del módulo lo agregan a las dos listas de cheques.
+   * Como segunda línea de defensa, un número repetido dentro del mismo pago se reasigna siempre, tenga o no la marca: dos cheques con el mismo número violan el índice único `l10n_latam_check_unique` de todas formas.
    * Compatible también con el wizard estándar de pago (`account.payment.register`).
 
 4. **Flexibilidad Total (Saltos de secuencia / Cheques anulados):**
