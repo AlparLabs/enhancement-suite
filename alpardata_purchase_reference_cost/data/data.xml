@@ -3,7 +3,7 @@
 
     <!-- ── Cron: aplicar programaciones de costo de referencia ─────────────── -->
     <record id="ir_cron_apply_scheduled_costs" model="ir.cron">
-        <field name="name">AlparData: Aplicar programaciones de Costo de Referencia</field>
+        <field name="name">AlparData: Aplicar programaciones y revigencias de Costo de Referencia</field>
         <field name="model_id" ref="model_product_cost_schedule"/>
         <field name="state">code</field>
         <field name="code">model._cron_apply_scheduled_costs()</field>

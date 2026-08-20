@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import logging
+from datetime import timedelta
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductTemplate(models.Model):
@@ -55,6 +60,7 @@ class ProductTemplate(models.Model):
     # ── Computes ──────────────────────────────────────────────────────────────
 
     @api.depends(
+        'company_id',
         'seller_ids.reference_cost',
         'seller_ids.date_start',
         'seller_ids.date_end',
@@ -62,16 +68,70 @@ class ProductTemplate(models.Model):
         'seller_ids.company_id',
     )
     def _compute_reference_cost(self) -> None:
+        """
+        reference_cost es store=True, por lo que debe ser función pura de datos
+        almacenados: la compañía se toma del propio producto y NO de
+        self.env.company, que haría que el valor guardado dependiera de quién
+        dispara el recálculo.
+
+        Nota: el filtro por fecha usa la fecha de hoy, que no es un dato
+        almacenado. Ningún cambio de datos dispara el recálculo cuando
+        simplemente pasa el tiempo; de eso se ocupa
+        _cron_recompute_reference_cost().
+        """
         today = fields.Date.today()
-        company = self.env.company
         for tmpl in self:
             valid = tmpl.seller_ids.filtered(
                 lambda s: s.reference_cost > 0
                 and (not s.date_start or s.date_start <= today)
                 and (not s.date_end or s.date_end >= today)
-                and (not s.company_id or s.company_id == company)
+                and (
+                    not tmpl.company_id
+                    or not s.company_id
+                    or s.company_id == tmpl.company_id
+                )
             ).sorted('sequence')
             tmpl.reference_cost = valid[0].reference_cost if valid else 0.0
+
+    # ── Cron: reactivar costos cuya vigencia cambió por el paso del tiempo ────
+    @api.model
+    def _cron_recompute_reference_cost(self, lookback_days: int = 7) -> None:
+        """
+        Fuerza el recálculo de reference_cost en los productos cuyos
+        supplierinfo cruzaron una fecha de vigencia recientemente.
+
+        Necesario porque _compute_reference_cost depende de la fecha de hoy:
+        un supplierinfo cargado a mano con date_start futuro nunca entraría en
+        vigencia por sí solo, ya que ninguna dependencia almacenada cambia.
+
+        La ventana de lookback_days cubre corridas perdidas del cron (servidor
+        caído, base restaurada) sin tener que recorrer todo el catálogo.
+        """
+        today = fields.Date.today()
+        window_start = today - timedelta(days=lookback_days)
+
+        sellers = self.env['product.supplierinfo'].sudo().search([
+            ('reference_cost', '>', 0),
+            '|',
+            '&', ('date_start', '>=', window_start), ('date_start', '<=', today),
+            '&', ('date_end', '>=', window_start), ('date_end', '<', today),
+        ])
+
+        templates = sellers.product_tmpl_id
+        if not templates:
+            _logger.info(
+                'Cron de costo de referencia: sin vigencias cruzadas en los '
+                'últimos %d días.', lookback_days,
+            )
+            return
+
+        self.env.add_to_compute(self._fields['reference_cost'], templates)
+        templates.flush_recordset(['reference_cost'])
+
+        _logger.info(
+            'Cron de costo de referencia: recalculados %d producto(s) por '
+            'cambio de vigencia.', len(templates),
+        )
 
     @api.depends('standard_price', 'reference_cost')
     def _compute_cost_divergence(self) -> None:
