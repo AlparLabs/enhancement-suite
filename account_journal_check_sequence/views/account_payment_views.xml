@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Pasamos el diario y el metodo de pago del padre en el contexto de la
+        One2many de cheques. Con eso, default_get puede numerar la linea en el
+        momento en que se agrega, sin depender de active_id (que no siempre
+        apunta al pago, y puede apuntar a un account.move).
+    -->
+    <record id="view_account_payment_form_check_sequence" model="ir.ui.view">
+        <field name="name">account.payment.form.check.sequence</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="l10n_latam_check.view_account_payment_form_inherited"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="before">
+                <field name="check_sequence_next_number" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="attributes">
+                <attribute name="context">{
+                    'check_sequence_journal_id': journal_id,
+                    'check_sequence_method_code': payment_method_code,
+                    'check_sequence_next_number': check_sequence_next_number,
+                }</attribute>
+            </xpath>
+            <!--
+                autofilled_check_number tiene que estar en la vista aunque no se
+                muestre: es la marca que distingue un numero puesto por el modulo
+                de uno cargado a mano. Si no esta, el cliente no lo devuelve en el
+                onchange y el modulo no puede renumerar lo que autocompleto.
+            -->
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']/list[@name='new_checks']/field[@name='name']" position="before">
+                <field name="autofilled_check_number" column_invisible="True"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_account_payment_register_form_check_sequence" model="ir.ui.view">
+        <field name="name">account.payment.register.form.check.sequence</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="l10n_latam_check.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="before">
+                <field name="check_sequence_next_number" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']" position="attributes">
+                <attribute name="context">{
+                    'check_sequence_journal_id': journal_id,
+                    'check_sequence_method_code': payment_method_code,
+                    'check_sequence_next_number': check_sequence_next_number,
+                }</attribute>
+            </xpath>
+            <xpath expr="//field[@name='l10n_latam_new_check_ids']/list/field[@name='name']" position="before">
+                <field name="autofilled_check_number" column_invisible="True"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
