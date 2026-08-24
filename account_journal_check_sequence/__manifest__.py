@@ -1,17 +1,18 @@
 # account_journal_check_sequence/__manifest__.py
 {
     'name': 'Secuencia de Cheques Propios en Diarios de Banco',
-    'version': '18.0.1.0.0',
+    'version': '19.0.1.0.0',
     'category': 'Accounting/Localizations',
     'summary': 'Gestión de chequeras y numeración secuencial de cheques propios por diario de banco.',
     'description': """
-        Secuencia de Cheques Propios por Diario de Banco (Odoo 18 / ADHOC)
+        Secuencia de Cheques Propios por Diario de Banco (Odoo 19 / ADHOC)
         ===================================================================
         * Añade numeración secuencial ("tipo chequera") a nivel de cada diario de banco.
         * Sugiere automáticamente el próximo número de cheque al registrar pagos (compatible con Órdenes de Pago de ADHOC y pagos estándar).
         * Permite al usuario editar libremente el número de cheque si necesita saltear números.
-        * Actualiza automáticamente el contador del diario al confirmar/publicar el pago.
+        * Actualiza automáticamente el contador del diario al confirmar/publicar el pago, sin permitir que retroceda.
         * Permite modificar el próximo número directamente desde la configuración del diario.
+        * Alcance: método de pago "Cheque Propio" (own_checks) de l10n_latam_check.
     """,
     'author': 'AlparData SAS',
     'website': 'https://alpardata.com',
