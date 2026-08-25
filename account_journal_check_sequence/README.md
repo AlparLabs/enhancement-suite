@@ -15,10 +15,13 @@ Módulo para **Odoo 19** que añade gestión de numeración correlativa ("modo c
    * Al crear una **Orden de Pago** (`account.payment.group`) y agregar una línea de pago con Diario de Banco y método *Cheque Propio* (`own_checks`), el número de cheque se autocompleta con el próximo correlativo del diario.
    * Compatible también con el wizard estándar de pago (`account.payment.register`).
    * Al cargar varios cheques de una sola vez, cada línea recibe su propio número correlativo.
+   * El próximo número libre se publica en el contexto de la One2many de cheques (campo computado `check_sequence_next_number`), así cada línea nueva nace ya numerada teniendo en cuenta las que están cargadas en pantalla y todavía no se guardaron. El contador del diario por sí solo no alcanza: no avanza hasta postear el pago.
 
 3. **Flexibilidad Total (Saltos de secuencia / Cheques anulados):**
    * El campo número de cheque sigue siendo **100% editable** por el usuario.
-   * Si el usuario modifica el número (ej. salta del `00001002` al `00001005` por rotura/anulación), el sistema respeta el número ingresado y encadena a partir de él.
+   * El módulo distingue lo que autocompletó él de lo que tipeó el usuario, con el campo técnico `autofilled_check_number`. Un número **editado a mano es un ancla fija**: se respeta tal cual y las líneas siguientes encadenan a partir de él. Si el usuario salta del `00001002` al `00001050` porque arrancó otra chequera, la línea siguiente pasa a `00001051`.
+   * Las líneas autocompletadas se recalculan en cada pasada, así que se acomodan solas a esos saltos y no quedan repitiendo un número.
+   * Un número duplicado **tipeado por el usuario** no se reescribe: si fue un error, lo marca el índice único de `l10n_latam.check` al publicar. Es preferible eso a cambiarle en silencio un valor que escribió a mano.
 
 4. **Auto-incremento al Publicar:**
    * Al confirmar/publicar el pago (`action_post()`), el módulo incrementa la secuencia del diario a partir del número **más alto** efectivamente emitido.

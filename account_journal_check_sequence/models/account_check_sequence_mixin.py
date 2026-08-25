@@ -1,4 +1,4 @@
-from odoo import models
+from odoo import api, fields, models
 
 
 class AccountCheckSequenceMixin(models.AbstractModel):
@@ -18,6 +18,14 @@ class AccountCheckSequenceMixin(models.AbstractModel):
     _name = 'account.check.sequence.mixin'
     _description = 'Sugerencia de numeración de cheques propios'
 
+    check_sequence_next_number = fields.Char(
+        string='Próximo Número de Cheque Sugerido',
+        compute='_compute_check_sequence_next_number',
+        help='Campo técnico: próximo número libre de la chequera, considerando las '
+             'líneas de cheque ya cargadas. Las vistas lo pasan por el contexto de la '
+             'One2many para que cada línea nueva nazca con el número correcto.',
+    )
+
     def _is_own_check_payment(self):
         """Indica si el registro emite cheques propios LATAM."""
         self.ensure_one()
@@ -36,18 +44,33 @@ class AccountCheckSequenceMixin(models.AbstractModel):
         self.ensure_one()
         return [check.name for check in self.l10n_latam_new_check_ids if check.name]
 
+    @api.depends(
+        'journal_id.check_sequence_enabled', 'journal_id.next_check_number',
+        'payment_method_line_id', 'l10n_latam_new_check_ids.name',
+    )
+    def _compute_check_sequence_next_number(self):
+        for rec in self:
+            journal = rec._check_sequence_journal()
+            if not journal:
+                rec.check_sequence_next_number = False
+                continue
+            used_numbers = rec._get_check_numbers_used()
+            start_from = journal._get_highest_check_number(used_numbers) if used_numbers else False
+            rec.check_sequence_next_number = journal._peek_check_numbers(1, start_from=start_from)[0]
+
     def _apply_check_sequence_suggestion(self):
         """Completa los números de cheque faltantes con el correlativo del diario.
 
-        Se renumera una línea cuando está vacía o cuando repite un número ya
-        usado en otra línea del mismo registro. Ese segundo caso es el que se
-        da al agregar una línea en la pestaña Cheques: el valor por defecto
-        sale del contador del diario, que no avanza hasta postear el pago, así
-        que todas las líneas nuevas nacen con el mismo número.
+        Las líneas tipeadas por el usuario son anclas fijas: se respetan tal
+        cual y el resto encadena a partir de ellas. Una línea es del usuario
+        cuando tiene número y ese número ya no coincide con
+        ``autofilled_check_number``, es decir apenas la edita.
 
-        Un número distinto cargado por el usuario (por rotura, anulación o
-        salto de chequera) siempre se respeta, y el resto de las líneas
-        encadena a partir del más alto.
+        Todo lo demás (vacío o autocompletado por el módulo) se recalcula en
+        cada pasada. Por eso una línea autocompletada sigue al salto que el
+        usuario haga más arriba: si cambia la primera de 00001001 a 00001050
+        porque arrancó otra chequera, la siguiente pasa a 00001051. Y por eso
+        se corrige sola si quedó repitiendo el número de otra.
         """
         for rec in self:
             journal = rec._check_sequence_journal()
@@ -55,9 +78,11 @@ class AccountCheckSequenceMixin(models.AbstractModel):
                 continue
             used_numbers = []
             for check in rec.l10n_latam_new_check_ids:
-                if check.name and check.name not in used_numbers:
+                is_autofilled = check.name and check.name == check.autofilled_check_number
+                if check.name and not is_autofilled:
                     used_numbers.append(check.name)
                     continue
                 start_from = journal._get_highest_check_number(used_numbers) if used_numbers else False
                 check.name = journal._peek_check_numbers(1, start_from=start_from)[0]
+                check.autofilled_check_number = check.name
                 used_numbers.append(check.name)
