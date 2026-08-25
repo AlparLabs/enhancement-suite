@@ -17,29 +17,7 @@ class AccountPaymentRegister(models.TransientModel):
 
 
 class L10nLatamPaymentRegisterCheck(models.TransientModel):
-    _inherit = 'l10n_latam.payment.register.check'
+    _name = 'l10n_latam.payment.register.check'
+    _inherit = ['l10n_latam.payment.register.check', 'account.check.sequence.line.mixin']
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        """Numera los cheques del wizard encadenando el correlativo del diario."""
-        assigned_by_register = {}
-        for vals in vals_list:
-            register_id = vals.get('payment_register_id')
-            if not register_id:
-                continue
-            register = self.env['account.payment.register'].browse(register_id).exists()
-            journal = register and register._check_sequence_journal()
-            if not journal:
-                continue
-            if register.id not in assigned_by_register:
-                assigned_by_register[register.id] = [
-                    check.name for check in register.l10n_latam_new_check_ids if check.name
-                ]
-            already_used = assigned_by_register[register.id]
-            if vals.get('name'):
-                already_used.append(vals['name'])
-                continue
-            start_from = journal._get_highest_check_number(already_used) if already_used else False
-            vals['name'] = journal._peek_check_numbers(1, start_from=start_from)[0]
-            already_used.append(vals['name'])
-        return super().create(vals_list)
+    _check_sequence_parent_field = 'payment_register_id'

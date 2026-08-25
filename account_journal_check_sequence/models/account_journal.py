@@ -142,6 +142,30 @@ class AccountJournal(models.Model):
             return True
         return new[1] > current[1]
 
+    def _lock_and_read_next_check_number(self):
+        """Toma un lock exclusivo sobre la fila del diario y devuelve el valor en base.
+
+        Sin el lock, dos pagos publicados en paralelo leen el mismo contador y
+        emiten el mismo número de cheque: el segundo en confirmar pisa al
+        primero. Se usa ``FOR UPDATE`` sin ``NOWAIT`` a propósito, para que el
+        segundo espere y recalcule sobre el valor ya actualizado en vez de
+        abortar la publicación del pago. El lock se libera al cerrar la
+        transacción.
+
+        Se invalida la cache para que las lecturas posteriores de
+        ``next_check_number`` vean el valor real y no el que quedó en memoria
+        antes de esperar el lock.
+        """
+        self.ensure_one()
+        self.flush_recordset(['next_check_number'])
+        self.env.cr.execute(
+            'SELECT next_check_number FROM account_journal WHERE id = %s FOR UPDATE',
+            (self.id,),
+        )
+        row = self.env.cr.fetchone()
+        self.invalidate_recordset(['next_check_number'])
+        return row[0] if row else False
+
     def _increment_check_number(self, used_number=None):
         """Avanza el contador del diario en base al número efectivamente emitido.
 
@@ -152,6 +176,8 @@ class AccountJournal(models.Model):
         self.ensure_one()
         if not self.check_sequence_enabled:
             return
+        # Serializa el avance del contador entre pagos publicados en paralelo.
+        self._lock_and_read_next_check_number()
         candidate = self._calculate_next_number(used_number)
         if not candidate or candidate == self.next_check_number:
             return

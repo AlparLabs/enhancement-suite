@@ -88,6 +88,28 @@ class TestCheckSequence(AccountTestInvoicingCommon):
             '00001010',
         )
 
+    def test_lock_reads_persisted_value(self):
+        """El lock devuelve el valor en base y descarta la cache en memoria."""
+        self.bank_journal.next_check_number = '00001007'
+        self.assertEqual(self.bank_journal._lock_and_read_next_check_number(), '00001007')
+
+    def test_increment_recalculates_after_lock(self):
+        """Tras tomar el lock, el contador se evalúa sobre el valor real en base.
+
+        Simula al segundo pago concurrente: el diario ya avanzó en base y la
+        cache del recordset quedó vieja. El lock invalida esa cache, así que el
+        retroceso se detecta y el contador no se pisa.
+        """
+        self.bank_journal.next_check_number = '00001001'
+        self.bank_journal.flush_recordset(['next_check_number'])
+        # Otro pago ya avanzo la secuencia por fuera de este recordset.
+        self.env.cr.execute(
+            "UPDATE account_journal SET next_check_number = '00001010' WHERE id = %s",
+            (self.bank_journal.id,),
+        )
+        self.bank_journal._increment_check_number('00001001')
+        self.assertEqual(self.bank_journal.next_check_number, '00001010')
+
     def test_padding_constraint(self):
         """La cantidad de dígitos está acotada."""
         with self.assertRaises(ValidationError):
@@ -151,8 +173,28 @@ class TestCheckSequence(AccountTestInvoicingCommon):
             ['00001001', '00001002'],
         )
 
-    def test_suggestion_renumbers_duplicated_line(self):
-        """Una línea que repite el número de otra se re-encadena."""
+    def test_suggestion_renumbers_autofilled_duplicate(self):
+        """Un número puesto por el módulo que quedó duplicado se re-encadena."""
+        payment = self._create_own_check_payment([
+            {'name': '00001001', 'autofilled_check_number': '00001001',
+             'payment_date': self.check_date, 'amount': 10},
+            {'name': '00001001', 'autofilled_check_number': '00001001',
+             'payment_date': self.check_date, 'amount': 20},
+        ])
+        payment._apply_check_sequence_suggestion()
+        self.assertEqual(
+            payment.l10n_latam_new_check_ids.mapped('name'),
+            ['00001001', '00001002'],
+        )
+
+    def test_suggestion_respects_user_typed_duplicate(self):
+        """Un número tipeado por el usuario no se reescribe, ni aunque repita.
+
+        Sin `autofilled_check_number` el módulo no puede saber que ese valor lo
+        puso él, así que lo trata como carga manual. Si el usuario se equivocó,
+        el índice único de l10n_latam.check se lo va a marcar al publicar: es
+        preferible eso a cambiarle en silencio un número que escribió a mano.
+        """
         payment = self._create_own_check_payment([
             {'name': '00001001', 'payment_date': self.check_date, 'amount': 10},
             {'name': '00001001', 'payment_date': self.check_date, 'amount': 20},
@@ -160,8 +202,55 @@ class TestCheckSequence(AccountTestInvoicingCommon):
         payment._apply_check_sequence_suggestion()
         self.assertEqual(
             payment.l10n_latam_new_check_ids.mapped('name'),
-            ['00001001', '00001002'],
+            ['00001001', '00001001'],
         )
+
+    def test_suggestion_recalculates_edited_autofilled_line(self):
+        """Si el usuario edita un número autocompletado, pasa a respetarse."""
+        payment = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+            {'payment_date': self.check_date, 'amount': 20},
+        ])
+        first, second = payment.l10n_latam_new_check_ids
+        first.name = '00001050'
+        payment._apply_check_sequence_suggestion()
+        self.assertEqual(first.name, '00001050', 'El valor editado a mano se respeta.')
+        self.assertEqual(
+            second.name, '00001051',
+            'La línea autocompletada encadena desde el número editado.',
+        )
+
+    def test_create_marks_autofilled_number(self):
+        """El número asignado por el módulo queda marcado como autocompletado."""
+        payment = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+        ])
+        check = payment.l10n_latam_new_check_ids
+        self.assertEqual(check.name, '00001001')
+        self.assertEqual(check.autofilled_check_number, '00001001')
+
+    def test_create_does_not_mark_manual_number(self):
+        """Un número pasado explícitamente no se marca como autocompletado."""
+        payment = self._create_own_check_payment([
+            {'name': '00001020', 'payment_date': self.check_date, 'amount': 10},
+        ])
+        self.assertFalse(payment.l10n_latam_new_check_ids.autofilled_check_number)
+
+    def test_next_number_computed_from_loaded_lines(self):
+        """El próximo número sugerido contempla las líneas ya cargadas."""
+        payment = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+            {'payment_date': self.check_date, 'amount': 20},
+        ])
+        self.assertEqual(payment.check_sequence_next_number, '00001003')
+
+    def test_next_number_empty_out_of_scope(self):
+        """Fuera del alcance del módulo no se sugiere ningún número."""
+        self.bank_journal.check_sequence_enabled = False
+        payment = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+        ])
+        self.assertFalse(payment.check_sequence_next_number)
 
     def test_suggestion_keeps_distinct_manual_numbers(self):
         """Números distintos cargados a mano no se tocan."""
@@ -198,6 +287,18 @@ class TestCheckSequence(AccountTestInvoicingCommon):
         self.assertFalse(payment._check_sequence_journal())
         payment.action_post()
         self.assertEqual(self.bank_journal.next_check_number, '00001001')
+
+    def test_default_get_uses_context_next_number(self):
+        """El próximo número publicado por el padre en el contexto tiene prioridad.
+
+        Es el camino que usa la interfaz: contempla las líneas cargadas en el
+        cliente que todavía no se guardaron y que `default_get` no puede ver.
+        """
+        defaults = self.env['l10n_latam.check'].with_context(
+            check_sequence_next_number='00001099',
+        ).default_get(['name'])
+        self.assertEqual(defaults.get('name'), '00001099')
+        self.assertEqual(defaults.get('autofilled_check_number'), '00001099')
 
     def test_default_get_ignores_foreign_active_id(self):
         """Un active_id de otro modelo no debe usarse para resolver el pago."""
