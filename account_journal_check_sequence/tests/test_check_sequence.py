@@ -88,6 +88,28 @@ class TestCheckSequence(AccountTestInvoicingCommon):
             '00001010',
         )
 
+    def test_lock_reads_persisted_value(self):
+        """El lock devuelve el valor en base y descarta la cache en memoria."""
+        self.bank_journal.next_check_number = '00001007'
+        self.assertEqual(self.bank_journal._lock_and_read_next_check_number(), '00001007')
+
+    def test_increment_recalculates_after_lock(self):
+        """Tras tomar el lock, el contador se evalúa sobre el valor real en base.
+
+        Simula al segundo pago concurrente: el diario ya avanzó en base y la
+        cache del recordset quedó vieja. El lock invalida esa cache, así que el
+        retroceso se detecta y el contador no se pisa.
+        """
+        self.bank_journal.next_check_number = '00001001'
+        self.bank_journal.flush_recordset(['next_check_number'])
+        # Otro pago ya avanzo la secuencia por fuera de este recordset.
+        self.env.cr.execute(
+            "UPDATE account_journal SET next_check_number = '00001010' WHERE id = %s",
+            (self.bank_journal.id,),
+        )
+        self.bank_journal._increment_check_number('00001001')
+        self.assertEqual(self.bank_journal.next_check_number, '00001010')
+
     def test_padding_constraint(self):
         """La cantidad de dígitos está acotada."""
         with self.assertRaises(ValidationError):

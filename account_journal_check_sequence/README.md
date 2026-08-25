@@ -24,6 +24,7 @@ Módulo para **Odoo 19** que añade gestión de numeración correlativa ("modo c
    * Al confirmar/publicar el pago (`action_post()`), el módulo incrementa la secuencia del diario a partir del número **más alto** efectivamente emitido.
    * El contador **nunca retrocede**: postear un pago viejo con un número inferior al ya alcanzado no reposiciona la secuencia hacia atrás (evita sugerir números duplicados). Sí se acepta un cambio de serie, es decir un número con otro prefijo o sufijo.
    * La escritura sobre el diario se hace con `sudo()`, para que un usuario de Facturación (sin permiso de escritura sobre `account.journal`) pueda postear pagos sin errores de acceso.
+   * El avance del contador toma un lock exclusivo sobre la fila del diario (`SELECT ... FOR UPDATE`). Dos pagos publicados en paralelo se serializan: el segundo espera y recalcula sobre el valor ya actualizado, en vez de emitir el mismo número. Se usa sin `NOWAIT` a propósito, para que el segundo pago espere en lugar de fallar.
 
 ---
 

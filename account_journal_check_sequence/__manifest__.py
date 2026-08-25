@@ -1,7 +1,7 @@
 # account_journal_check_sequence/__manifest__.py
 {
     'name': 'Secuencia de Cheques Propios en Diarios de Banco',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Accounting/Localizations',
     'summary': 'Gestión de chequeras y numeración secuencial de cheques propios por diario de banco.',
     'description': """
@@ -13,6 +13,7 @@
         * Actualiza automáticamente el contador del diario al confirmar/publicar el pago, sin permitir que retroceda.
         * Permite modificar el próximo número directamente desde la configuración del diario.
         * Alcance: método de pago "Cheque Propio" (own_checks) de l10n_latam_check.
+        * Serializa el avance del contador entre pagos publicados en paralelo.
     """,
     'author': 'AlparData SAS',
     'website': 'https://alpardata.com',
