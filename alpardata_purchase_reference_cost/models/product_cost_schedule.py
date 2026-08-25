@@ -273,9 +273,4 @@ class ProductCostSchedule(models.Model):
                 )
                 continue
 
-        # Recalcula los productos cuyos supplierinfo cruzaron una fecha de
-        # vigencia: reference_cost es store=True pero depende de la fecha de hoy,
-        # así que el paso del tiempo por sí solo no dispara el recálculo.
-        self.env['product.template']._cron_recompute_reference_cost()
-
         _logger.info('Cron de costos de referencia: finalizado.')

@@ -36,12 +36,4 @@
               sequence="30"
               groups="purchase.group_purchase_manager"/>
 
-    <!-- Actualización masiva (wizard) -->
-    <menuitem id="menu_reference_cost_mass_update"
-              name="Actualización Masiva"
-              parent="menu_reference_cost_root"
-              action="action_product_reference_cost_mass_update"
-              sequence="40"
-              groups="purchase.group_purchase_manager"/>
-
 </odoo>
