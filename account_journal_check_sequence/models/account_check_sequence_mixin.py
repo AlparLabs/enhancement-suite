@@ -39,18 +39,25 @@ class AccountCheckSequenceMixin(models.AbstractModel):
     def _apply_check_sequence_suggestion(self):
         """Completa los números de cheque faltantes con el correlativo del diario.
 
-        Solo se tocan los valores vacíos: un número cargado por el usuario
-        (por rotura, anulación o salto de chequera) siempre se respeta, y el
-        resto de las líneas encadena a partir de él.
+        Se renumera una línea cuando está vacía o cuando repite un número ya
+        usado en otra línea del mismo registro. Ese segundo caso es el que se
+        da al agregar una línea en la pestaña Cheques: el valor por defecto
+        sale del contador del diario, que no avanza hasta postear el pago, así
+        que todas las líneas nuevas nacen con el mismo número.
+
+        Un número distinto cargado por el usuario (por rotura, anulación o
+        salto de chequera) siempre se respeta, y el resto de las líneas
+        encadena a partir del más alto.
         """
         for rec in self:
             journal = rec._check_sequence_journal()
             if not journal:
                 continue
-            last_number = False
+            used_numbers = []
             for check in rec.l10n_latam_new_check_ids:
-                if check.name:
-                    last_number = check.name
+                if check.name and check.name not in used_numbers:
+                    used_numbers.append(check.name)
                     continue
-                check.name = journal._peek_check_numbers(1, start_from=last_number)[0]
-                last_number = check.name
+                start_from = journal._get_highest_check_number(used_numbers) if used_numbers else False
+                check.name = journal._peek_check_numbers(1, start_from=start_from)[0]
+                used_numbers.append(check.name)
