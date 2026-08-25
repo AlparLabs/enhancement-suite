@@ -23,12 +23,20 @@ class L10nLatamCheck(models.Model):
 
     @api.model
     def default_get(self, fields_list):
+        """Sugiere el número del cheque encadenando desde las líneas ya cargadas.
+
+        El contador del diario no avanza hasta postear el pago, así que
+        proponerlo sin más haría que cada línea nueva de la pestaña Cheques
+        naciera con el mismo número que la primera.
+        """
         res = super().default_get(fields_list)
         if 'name' in fields_list and not res.get('name'):
             payment = self._resolve_check_sequence_payment(res)
             journal = payment and payment._check_sequence_journal()
             if journal:
-                res['name'] = journal._get_next_check_number_formatted()
+                used_numbers = [check.name for check in payment.l10n_latam_new_check_ids if check.name]
+                start_from = journal._get_highest_check_number(used_numbers) if used_numbers else False
+                res['name'] = journal._peek_check_numbers(1, start_from=start_from)[0]
         return res
 
     @api.onchange('payment_id')

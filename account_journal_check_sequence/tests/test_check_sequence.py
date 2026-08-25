@@ -2,7 +2,7 @@
 from odoo import Command, fields
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.exceptions import ValidationError
-from odoo.tests import tagged
+from odoo.tests import Form, tagged
 
 
 @tagged('post_install', '-at_install')
@@ -127,6 +127,63 @@ class TestCheckSequence(AccountTestInvoicingCommon):
             {'payment_date': self.check_date, 'amount': 10},
         ])
         self.assertFalse(payment.l10n_latam_new_check_ids.name)
+
+    def test_form_new_line_does_not_repeat_number(self):
+        """Agregar líneas en la pestaña Cheques no repite el mismo número.
+
+        Reproduce el flujo de la interfaz: el valor por defecto de cada línea
+        nueva sale del contador del diario, que no avanza hasta postear, así
+        que sin encadenado las dos líneas nacerían con el mismo número.
+        """
+        with Form(self.env['account.payment'].with_context(default_payment_type='outbound')) as payment_form:
+            payment_form.partner_id = self.partner_a
+            payment_form.journal_id = self.bank_journal
+            payment_form.payment_method_line_id = self.own_checks_line
+            with payment_form.l10n_latam_new_check_ids.new() as check_1:
+                check_1.payment_date = self.check_date
+                check_1.amount = 10
+            with payment_form.l10n_latam_new_check_ids.new() as check_2:
+                check_2.payment_date = self.check_date
+                check_2.amount = 20
+        payment = payment_form.save()
+        self.assertEqual(
+            payment.l10n_latam_new_check_ids.mapped('name'),
+            ['00001001', '00001002'],
+        )
+
+    def test_suggestion_renumbers_duplicated_line(self):
+        """Una línea que repite el número de otra se re-encadena."""
+        payment = self._create_own_check_payment([
+            {'name': '00001001', 'payment_date': self.check_date, 'amount': 10},
+            {'name': '00001001', 'payment_date': self.check_date, 'amount': 20},
+        ])
+        payment._apply_check_sequence_suggestion()
+        self.assertEqual(
+            payment.l10n_latam_new_check_ids.mapped('name'),
+            ['00001001', '00001002'],
+        )
+
+    def test_suggestion_keeps_distinct_manual_numbers(self):
+        """Números distintos cargados a mano no se tocan."""
+        payment = self._create_own_check_payment([
+            {'name': '00001010', 'payment_date': self.check_date, 'amount': 10},
+            {'name': '00001020', 'payment_date': self.check_date, 'amount': 20},
+        ])
+        payment._apply_check_sequence_suggestion()
+        self.assertEqual(
+            payment.l10n_latam_new_check_ids.mapped('name'),
+            ['00001010', '00001020'],
+        )
+
+    def test_default_get_chains_from_existing_lines(self):
+        """El valor por defecto encadena desde los cheques ya cargados en el pago."""
+        payment = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+        ])
+        defaults = self.env['l10n_latam.check'].with_context(
+            default_payment_id=payment.id,
+        ).default_get(['name'])
+        self.assertEqual(defaults.get('name'), '00001002')
 
     def test_other_payment_method_is_out_of_scope(self):
         """Solo se numeran los cheques propios LATAM (`own_checks`)."""
