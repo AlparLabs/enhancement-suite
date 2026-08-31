@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from odoo import fields
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -103,3 +104,52 @@ class TestReferenceCostCompany(TransactionCase):
         # La divergencia AVCO (200 vs 200) debe ser 0% ('ok')
         self.assertEqual(product.product_tmpl_id.cost_divergence_pct, 0.0)
         self.assertEqual(product.product_tmpl_id.cost_divergence_alert, 'ok')
+
+    def test_cost_schedule_round_trip_with_vendor_uom(self):
+        """Programar un costo cargado en la unidad del producto no cambia de escala.
+
+        El formulario de programacion muestra `current_reference_cost` en la
+        unidad del producto, porque sale de `product.template.reference_cost`.
+        La ficha de proveedor guarda el costo en su unidad de compra, asi que
+        al aplicar hay que convertir: sin eso, un costo cargado por unidad se
+        guardaba como precio por bulto y el costo de referencia saltaba x24.
+        """
+        uom_unit = self.env['uom.uom'].create({'name': 'Unidad Programacion'})
+        uom_pack24 = self.env['uom.uom'].create({
+            'name': 'Pack x 24 Programacion',
+            'relative_uom_id': uom_unit.id,
+            'relative_factor': 24.0,
+        })
+        product = self.env['product.product'].create({
+            'name': 'Producto Programacion',
+            'uom_id': uom_unit.id,
+        })
+        tmpl = product.product_tmpl_id
+        self.env['product.supplierinfo'].create({
+            'partner_id': self.partner.id,
+            'product_tmpl_id': tmpl.id,
+            'product_uom_id': uom_pack24.id,
+            'reference_cost': 2400.0,
+        })
+        self.assertEqual(tmpl.reference_cost, 100.0)
+
+        schedule = self.env['product.cost.schedule'].create({
+            'name': 'Suba programada',
+            'product_tmpl_id': tmpl.id,
+            'new_reference_cost': 120.0,
+            'effective_date': fields.Date.today(),
+        })
+        # El form muestra el costo actual en la unidad del producto.
+        self.assertEqual(schedule.current_reference_cost, 100.0)
+
+        schedule.action_apply_now()
+
+        # Y el nuevo costo se lee en la misma unidad en la que se cargo.
+        self.assertEqual(schedule.state, 'done')
+        self.assertEqual(tmpl.reference_cost, 120.0)
+        # En la ficha de proveedor quedo guardado por bulto: 120 x 24.
+        new_seller = tmpl.seller_ids.filtered(
+            lambda s: s.date_start == schedule.effective_date
+        )
+        self.assertEqual(new_seller.product_uom_id, uom_pack24)
+        self.assertEqual(new_seller.reference_cost, 2880.0)

@@ -193,6 +193,23 @@ class ProductCostSchedule(models.Model):
         self._apply_cost_change()
 
     # ── Método de aplicación ─────────────────────────────────────────────────
+    def _new_cost_in_seller_uom(self, seller) -> float:
+        """`new_reference_cost` expresado en la unidad de compra del proveedor.
+
+        La programación se carga en la unidad del producto: es la que muestra
+        `current_reference_cost`, que sale de `product.template.reference_cost`.
+        La ficha de proveedor, en cambio, guarda el costo en su propia unidad de
+        compra. Sin convertir, un costo cargado por unidad se guardaba como
+        precio por bulto y el costo de referencia saltaba por el factor de la
+        unidad (x24 con "Packs x 24").
+        """
+        self.ensure_one()
+        seller_uom = seller.product_uom_id
+        product_uom = self.product_tmpl_id.uom_id
+        if not seller_uom or not product_uom or seller_uom == product_uom:
+            return self.new_reference_cost
+        return product_uom._compute_price(self.new_reference_cost, seller_uom)
+
     def _apply_cost_change(self) -> None:
         """
         Aplica el reference_cost creando un nuevo supplierinfo con
@@ -215,7 +232,7 @@ class ProductCostSchedule(models.Model):
                 'partner_id': seller.partner_id.id,
                 'product_tmpl_id': self.product_tmpl_id.id,
                 'company_id': self.company_id.id,
-                'reference_cost': self.new_reference_cost,
+                'reference_cost': self._new_cost_in_seller_uom(seller),
                 'price': seller.price,
                 'date_start': self.effective_date,
                 'sequence': seller.sequence,

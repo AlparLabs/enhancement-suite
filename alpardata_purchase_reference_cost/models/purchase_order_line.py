@@ -51,7 +51,11 @@ class PurchaseOrderLine(models.Model):
         """
         self.ensure_one()
         partner = self.order_id.partner_id or self.partner_id
-        company = self.company_id or self.order_id.company_id or self.env.company
+        # Sin fallback a self.env.company: la empresa tiene que salir de la
+        # orden. Caer en la empresa activa del usuario armaria el ranking de
+        # empresas del resolver contra otra jerarquia y podria devolver el costo
+        # de una empresa ajena a la orden.
+        company = self.company_id or self.order_id.company_id
         if not self.product_id or not partner or not company:
             return 0.0
         seller = self.product_id.product_tmpl_id.with_company(
@@ -87,7 +91,8 @@ class PurchaseOrderLine(models.Model):
         """
         super()._compute_price_unit_and_date_planned_and_name()
         for line in self:
-            if not line.product_id or line.invoice_lines:
+            # `not line.company_id` es el mismo guard que aplica el core.
+            if not line.product_id or line.invoice_lines or not line.company_id:
                 continue
             # Mismo criterio que el core en 19: si el comprador puso el precio a
             # mano (technical_price_unit quedo desfasado de price_unit) no se
