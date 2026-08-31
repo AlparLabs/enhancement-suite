@@ -59,15 +59,39 @@ class PurchaseOrderLine(models.Model):
         se emite con el costo de referencia del proveedor seleccionado; la factura
         final puede diferir. Si ese proveedor no tiene costo de referencia, se
         respeta el precio que calcula Odoo (precio de proveedor / último costo).
+        Si el comprador ya piso el precio a mano, ese precio manda.
         """
         super()._compute_price_unit_and_date_planned_and_name()
         for line in self:
             if not line.product_id or line.invoice_lines or not line.company_id:
                 continue
+            # Mismo criterio que el core en 19: si el comprador puso el precio a
+            # mano (technical_price_unit quedo desfasado de price_unit) no se
+            # pisa. El costo de referencia es un valor por defecto, no una
+            # imposicion.
+            if line.technical_price_unit != line.price_unit:
+                continue
             ref_cost = line._get_order_vendor_reference_cost()
             if ref_cost <= 0:
                 continue
-            line.price_unit = line._reference_cost_in_order_currency(ref_cost)
+            line._reset_reference_price_unit(
+                line._reference_cost_in_order_currency(ref_cost)
+            )
+
+    def _reset_reference_price_unit(self, price_unit: float) -> None:
+        """Fija `price_unit` manteniendo `technical_price_unit` en sincronía.
+
+        Odoo 19 agrego `technical_price_unit` (no existe en 18) y lo usa como
+        marca de "precio puesto a mano": mientras difiera de `price_unit`, el
+        core corta al inicio de `_compute_price_unit_and_date_planned_and_name`
+        y deja de recalcular precio, descripcion, fecha planificada y descuento
+        de la linea. El costo de referencia es un valor por defecto calculado,
+        no una edicion manual, asi que hay que escribir ambos campos —eso es lo
+        que hace `_reset_price_unit()`, el unico camino soportado en 19 para
+        fijar el precio de una linea.
+        """
+        self.ensure_one()
+        self._reset_price_unit(price_unit)
 
     def _reference_cost_in_order_currency(self, ref_cost: float) -> float:
         """Convierte el costo de referencia (moneda de la empresa de la línea)
