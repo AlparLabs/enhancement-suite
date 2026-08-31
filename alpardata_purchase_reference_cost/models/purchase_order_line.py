@@ -21,7 +21,7 @@ class PurchaseOrderLine(models.Model):
 
     @api.depends(
         'product_id',
-        'product_uom',
+        'product_uom_id',
         'order_id.partner_id',
         'order_id.currency_id',
         'order_id.company_id',
@@ -32,9 +32,8 @@ class PurchaseOrderLine(models.Model):
         'product_id.seller_ids.date_start',
         'product_id.seller_ids.date_end',
         'product_id.seller_ids.currency_id',
-        'product_id.seller_ids.product_uom',
+        'product_id.seller_ids.product_uom_id',
         'product_id.uom_id',
-        'product_id.uom_po_id',
     )
     def _compute_reference_cost(self) -> None:
         for line in self:
@@ -62,11 +61,10 @@ class PurchaseOrderLine(models.Model):
             return 0.0
 
         ref_cost = seller.reference_cost
-        seller_uom = seller.product_uom or self.product_id.uom_po_id or self.product_id.uom_id
-        line_uom = self.product_uom or self.product_id.uom_po_id or self.product_id.uom_id
+        seller_uom = seller.product_uom_id or self.product_id.uom_id
+        line_uom = self.product_uom_id or self.product_id.uom_id
         if seller_uom and line_uom and seller_uom != line_uom:
-            if seller_uom.category_id == line_uom.category_id:
-                ref_cost = seller_uom._compute_price(ref_cost, line_uom)
+            ref_cost = seller_uom._compute_price(ref_cost, line_uom)
 
         src_currency = seller.currency_id or company.currency_id
         dst_currency = self.order_id.currency_id or company.currency_id

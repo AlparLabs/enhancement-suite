@@ -61,9 +61,8 @@ class ProductTemplate(models.Model):
         'seller_ids.sequence',
         'seller_ids.company_id',
         'seller_ids.currency_id',
-        'seller_ids.product_uom',
+        'seller_ids.product_uom_id',
         'uom_id',
-        'uom_po_id',
     )
     @api.depends_context('company')
     def _compute_reference_cost(self) -> None:
@@ -86,10 +85,9 @@ class ProductTemplate(models.Model):
                 tmpl.reference_cost = 0.0
                 continue
             cost = seller.reference_cost
-            seller_uom = seller.product_uom or tmpl.uom_po_id or tmpl.uom_id
+            seller_uom = seller.product_uom_id or tmpl.uom_id
             if seller_uom and tmpl.uom_id and seller_uom != tmpl.uom_id:
-                if seller_uom.category_id == tmpl.uom_id.category_id:
-                    cost = seller_uom._compute_price(cost, tmpl.uom_id)
+                cost = seller_uom._compute_price(cost, tmpl.uom_id)
 
             company = tmpl.env.company
             seller_currency = seller.currency_id or company.currency_id
