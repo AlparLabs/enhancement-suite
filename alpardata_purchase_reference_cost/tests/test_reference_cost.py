@@ -80,31 +80,22 @@ class TestReferenceCostCompany(TransactionCase):
 
     def test_product_template_reference_cost_uom_conversion(self):
         """product.template.reference_cost se expresa siempre en la UoM base del
-        producto (uom_id), convirtiendo desde la UoM del proveedor (uom_po_id)."""
-        uom_cat = self.env['uom.category'].create({'name': 'Cat Test UoM'})
-        uom_unit = self.env['uom.uom'].create({
-            'name': 'Unidad Test Tmpl',
-            'category_id': uom_cat.id,
-            'uom_type': 'reference',
-            'rounding': 0.001,
-        })
+        producto (uom_id), convirtiendo desde la UoM del proveedor (product_uom_id)."""
+        uom_unit = self.env['uom.uom'].create({'name': 'Unidad Test Tmpl'})
         uom_pack24 = self.env['uom.uom'].create({
             'name': 'Pack x 24 Tmpl',
-            'category_id': uom_cat.id,
-            'uom_type': 'bigger',
-            'factor_inv': 24.0,
-            'rounding': 0.001,
+            'relative_uom_id': uom_unit.id,
+            'relative_factor': 24.0,
         })
         product = self.env['product.product'].create({
             'name': 'Producto Pack UoM',
             'uom_id': uom_unit.id,
-            'uom_po_id': uom_pack24.id,
             'standard_price': 200.0,
         })
         self.env['product.supplierinfo'].create({
             'partner_id': self.partner.id,
             'product_tmpl_id': product.product_tmpl_id.id,
-            'product_uom': uom_pack24.id,
+            'product_uom_id': uom_pack24.id,
             'reference_cost': 4800.0,
         })
         # 4800 / 24 = 200.0 en la unidad base

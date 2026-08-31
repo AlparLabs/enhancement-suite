@@ -219,6 +219,7 @@ class ProductCostSchedule(models.Model):
                 'price': seller.price,
                 'date_start': self.effective_date,
                 'sequence': seller.sequence,
+                'product_uom_id': seller.product_uom_id.id if seller.product_uom_id else False,
             })
         else:
             _logger.warning(

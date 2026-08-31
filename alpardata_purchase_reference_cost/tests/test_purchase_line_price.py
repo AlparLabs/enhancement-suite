@@ -192,29 +192,20 @@ class TestPurchaseLineReferenceCost(TransactionCase):
     def test_reference_cost_uom_conversion_purchase_uom_to_unit(self):
         """Si el proveedor tiene Costo Ref para Packs x 24 y la linea se crea
         en Unidades, el costo se convierte proporcionalmente (dividiéndose por 24)."""
-        uom_cat = self.env['uom.category'].create({'name': 'Bebidas Cat'})
-        uom_unit = self.env['uom.uom'].create({
-            'name': 'Lata Unidad',
-            'category_id': uom_cat.id,
-            'uom_type': 'reference',
-            'rounding': 0.001,
-        })
+        uom_unit = self.env['uom.uom'].create({'name': 'Lata Unidad'})
         uom_pack24 = self.env['uom.uom'].create({
             'name': 'Pack x 24',
-            'category_id': uom_cat.id,
-            'uom_type': 'bigger',
-            'factor_inv': 24.0,
-            'rounding': 0.001,
+            'relative_uom_id': uom_unit.id,
+            'relative_factor': 24.0,
         })
         product = self.env['product.product'].create({
             'name': 'Energizante 250ml',
             'uom_id': uom_unit.id,
-            'uom_po_id': uom_pack24.id,
         })
         self.env['product.supplierinfo'].create({
             'partner_id': self.partner.id,
             'product_tmpl_id': product.product_tmpl_id.id,
-            'product_uom': uom_pack24.id,
+            'product_uom_id': uom_pack24.id,
             'reference_cost': 2400.0,
         })
         po = self.env['purchase.order'].create({'partner_id': self.partner.id})
@@ -222,7 +213,7 @@ class TestPurchaseLineReferenceCost(TransactionCase):
             'order_id': po.id,
             'product_id': product.id,
             'product_qty': 1.0,
-            'product_uom': uom_unit.id,
+            'product_uom_id': uom_unit.id,
         })
         self.assertEqual(line.reference_cost, 100.0)
         self.assertEqual(line.price_unit, 100.0)
@@ -230,29 +221,20 @@ class TestPurchaseLineReferenceCost(TransactionCase):
 
     def test_reference_cost_uom_purchase_pack(self):
         """Si la linea se crea en Packs x 24, el costo es el del pack entero."""
-        uom_cat = self.env['uom.category'].create({'name': 'Bebidas Cat 2'})
-        uom_unit = self.env['uom.uom'].create({
-            'name': 'Lata Unidad 2',
-            'category_id': uom_cat.id,
-            'uom_type': 'reference',
-            'rounding': 0.001,
-        })
+        uom_unit = self.env['uom.uom'].create({'name': 'Lata Unidad 2'})
         uom_pack24 = self.env['uom.uom'].create({
             'name': 'Pack x 24 2',
-            'category_id': uom_cat.id,
-            'uom_type': 'bigger',
-            'factor_inv': 24.0,
-            'rounding': 0.001,
+            'relative_uom_id': uom_unit.id,
+            'relative_factor': 24.0,
         })
         product = self.env['product.product'].create({
             'name': 'Energizante Pack',
             'uom_id': uom_unit.id,
-            'uom_po_id': uom_pack24.id,
         })
         self.env['product.supplierinfo'].create({
             'partner_id': self.partner.id,
             'product_tmpl_id': product.product_tmpl_id.id,
-            'product_uom': uom_pack24.id,
+            'product_uom_id': uom_pack24.id,
             'reference_cost': 2400.0,
         })
         po = self.env['purchase.order'].create({'partner_id': self.partner.id})
@@ -260,7 +242,7 @@ class TestPurchaseLineReferenceCost(TransactionCase):
             'order_id': po.id,
             'product_id': product.id,
             'product_qty': 1.0,
-            'product_uom': uom_pack24.id,
+            'product_uom_id': uom_pack24.id,
         })
         self.assertEqual(line.reference_cost, 2400.0)
         self.assertEqual(line.price_unit, 2400.0)
@@ -268,29 +250,20 @@ class TestPurchaseLineReferenceCost(TransactionCase):
 
     def test_reference_cost_dynamic_uom_change(self):
         """Cambiar la unidad de medida de la linea recalcula reference_cost y price_unit."""
-        uom_cat = self.env['uom.category'].create({'name': 'Bebidas Cat 3'})
-        uom_unit = self.env['uom.uom'].create({
-            'name': 'Lata Unidad 3',
-            'category_id': uom_cat.id,
-            'uom_type': 'reference',
-            'rounding': 0.001,
-        })
+        uom_unit = self.env['uom.uom'].create({'name': 'Lata Unidad 3'})
         uom_pack24 = self.env['uom.uom'].create({
             'name': 'Pack x 24 3',
-            'category_id': uom_cat.id,
-            'uom_type': 'bigger',
-            'factor_inv': 24.0,
-            'rounding': 0.001,
+            'relative_uom_id': uom_unit.id,
+            'relative_factor': 24.0,
         })
         product = self.env['product.product'].create({
             'name': 'Energizante Dinamico',
             'uom_id': uom_unit.id,
-            'uom_po_id': uom_pack24.id,
         })
         self.env['product.supplierinfo'].create({
             'partner_id': self.partner.id,
             'product_tmpl_id': product.product_tmpl_id.id,
-            'product_uom': uom_pack24.id,
+            'product_uom_id': uom_pack24.id,
             'reference_cost': 2400.0,
         })
         po = self.env['purchase.order'].create({'partner_id': self.partner.id})
@@ -298,13 +271,13 @@ class TestPurchaseLineReferenceCost(TransactionCase):
             'order_id': po.id,
             'product_id': product.id,
             'product_qty': 1.0,
-            'product_uom': uom_pack24.id,
+            'product_uom_id': uom_pack24.id,
         })
         self.assertEqual(line.reference_cost, 2400.0)
         self.assertEqual(line.price_unit, 2400.0)
 
         # Cambiamos la UoM a Unidades
-        line.product_uom = uom_unit
+        line.product_uom_id = uom_unit
         self.assertEqual(line.reference_cost, 100.0)
         self.assertEqual(line.price_unit, 100.0)
         self.assertEqual(line.technical_price_unit, 100.0)
