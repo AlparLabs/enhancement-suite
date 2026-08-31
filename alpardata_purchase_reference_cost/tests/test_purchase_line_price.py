@@ -129,6 +129,35 @@ class TestPurchaseLineReferenceCost(TransactionCase):
         line.price_unit = 90.0
         self.assertEqual(line.price_unit, 90.0)
 
+    def test_technical_price_unit_stays_in_sync(self):
+        """Regresion 19: al aplicar el costo de referencia hay que escribir
+        tambien technical_price_unit.
+
+        El core usa `technical_price_unit != price_unit` como marca de "precio
+        puesto a mano". Si solo escribimos price_unit, la linea queda marcada
+        como manual para siempre y el core deja de recalcular precio, nombre,
+        fecha planificada y descuento.
+        """
+        line = self._new_line(self.product)
+        self.assertEqual(line.price_unit, 100.0)
+        self.assertEqual(line.technical_price_unit, line.price_unit)
+
+    def test_manual_price_survives_quantity_change(self):
+        """El precio puesto a mano no se pisa con el costo de referencia
+        cuando cambia una dependencia del compute (la cantidad)."""
+        line = self._new_line(self.product)
+        line.price_unit = 90.0
+        line.product_qty = 5.0
+        self.assertEqual(line.price_unit, 90.0)
+
+    def test_catalog_line_keeps_technical_price_in_sync(self):
+        """El alta desde el catalogo tambien deja los dos campos alineados."""
+        po = self.env['purchase.order'].create({'partner_id': self.partner.id})
+        po._update_order_line_info(self.product.id, 1)
+        line = po.order_line.filtered(lambda l: l.product_id == self.product)
+        self.assertEqual(line.price_unit, 100.0)
+        self.assertEqual(line.technical_price_unit, line.price_unit)
+
     def test_no_reference_cost_keeps_odoo_price(self):
         """Sin costo de referencia, se respeta el precio del proveedor de Odoo."""
         product2 = self.env['product.product'].create({'name': 'Producto sin costo ref'})
