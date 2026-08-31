@@ -21,13 +21,20 @@ class PurchaseOrderLine(models.Model):
 
     @api.depends(
         'product_id',
+        'product_uom',
         'order_id.partner_id',
+        'order_id.currency_id',
+        'order_id.company_id',
         'company_id',
         'product_id.seller_ids.reference_cost',
         'product_id.seller_ids.company_id',
         'product_id.seller_ids.sequence',
         'product_id.seller_ids.date_start',
         'product_id.seller_ids.date_end',
+        'product_id.seller_ids.currency_id',
+        'product_id.seller_ids.product_uom',
+        'product_id.uom_id',
+        'product_id.uom_po_id',
     )
     def _compute_reference_cost(self) -> None:
         for line in self:
@@ -39,17 +46,36 @@ class PurchaseOrderLine(models.Model):
         Resuelve el `product.supplierinfo` correspondiente al proveedor de la
         orden respetando la jerarquía de empresas de la línea (sucursal → matriz
         → global), reutilizando la misma lógica que el costo de referencia a
-        nivel de producto. Si el proveedor no comunicó un costo de referencia
-        —o la orden aún no tiene proveedor— devuelve 0.0 y el precio no se pisa.
+        nivel de producto. Convierte el costo a la unidad de medida (UoM) y a la
+        moneda de la orden de compra. Si el proveedor no comunicó un costo de
+        referencia —o la orden aún no tiene proveedor— devuelve 0.0.
         """
         self.ensure_one()
-        partner = self.order_id.partner_id
-        if not self.product_id or not self.company_id or not partner:
+        partner = self.order_id.partner_id or self.partner_id
+        company = self.company_id or self.order_id.company_id or self.env.company
+        if not self.product_id or not partner or not company:
             return 0.0
         seller = self.product_id.product_tmpl_id.with_company(
-            self.company_id
+            company
         )._get_reference_cost_seller(partner=partner)
-        return seller.reference_cost if seller else 0.0
+        if not seller or seller.reference_cost <= 0:
+            return 0.0
+
+        ref_cost = seller.reference_cost
+        seller_uom = seller.product_uom or self.product_id.uom_po_id or self.product_id.uom_id
+        line_uom = self.product_uom or self.product_id.uom_po_id or self.product_id.uom_id
+        if seller_uom and line_uom and seller_uom != line_uom:
+            if seller_uom.category_id == line_uom.category_id:
+                ref_cost = seller_uom._compute_price(ref_cost, line_uom)
+
+        src_currency = seller.currency_id or company.currency_id
+        dst_currency = self.order_id.currency_id or company.currency_id
+        if src_currency and dst_currency and src_currency != dst_currency:
+            date = self.order_id.date_order or fields.Date.context_today(self)
+            ref_cost = src_currency._convert(
+                ref_cost, dst_currency, company, date, round=False
+            )
+        return ref_cost
 
     def _compute_price_unit_and_date_planned_and_name(self):
         """Extiende el cálculo de precio del core.
@@ -63,7 +89,7 @@ class PurchaseOrderLine(models.Model):
         """
         super()._compute_price_unit_and_date_planned_and_name()
         for line in self:
-            if not line.product_id or line.invoice_lines or not line.company_id:
+            if not line.product_id or line.invoice_lines:
                 continue
             # Mismo criterio que el core en 19: si el comprador puso el precio a
             # mano (technical_price_unit quedo desfasado de price_unit) no se
@@ -74,9 +100,7 @@ class PurchaseOrderLine(models.Model):
             ref_cost = line._get_order_vendor_reference_cost()
             if ref_cost <= 0:
                 continue
-            line._reset_reference_price_unit(
-                line._reference_cost_in_order_currency(ref_cost)
-            )
+            line._reset_reference_price_unit(ref_cost)
 
     def _reset_reference_price_unit(self, price_unit: float) -> None:
         """Fija `price_unit` manteniendo `technical_price_unit` en sincronía.
@@ -92,16 +116,3 @@ class PurchaseOrderLine(models.Model):
         """
         self.ensure_one()
         self._reset_price_unit(price_unit)
-
-    def _reference_cost_in_order_currency(self, ref_cost: float) -> float:
-        """Convierte el costo de referencia (moneda de la empresa de la línea)
-        a la moneda de la orden de compra."""
-        self.ensure_one()
-        src_currency = self.company_id.currency_id
-        dst_currency = self.order_id.currency_id or src_currency
-        if not src_currency or src_currency == dst_currency:
-            return ref_cost
-        date = self.order_id.date_order or fields.Date.context_today(self)
-        return src_currency._convert(
-            ref_cost, dst_currency, self.company_id, date, round=False
-        )

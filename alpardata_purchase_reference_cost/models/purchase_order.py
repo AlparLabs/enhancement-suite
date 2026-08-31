@@ -30,7 +30,7 @@ class PurchaseOrder(models.Model):
         )[:1]
         if not line or line.invoice_lines:
             return price
-        ref_price = self._get_reference_cost_price(line.product_id)
+        ref_price = self._get_reference_cost_price(line.product_id, uom=line.product_uom)
         if ref_price <= 0:
             return price
         line._reset_reference_price_unit(ref_price)
@@ -45,14 +45,15 @@ class PurchaseOrder(models.Model):
         el precio que tomará la línea al agregarse.
         """
         product_infos = super()._get_product_price_and_data(product)
-        ref_price = self._get_reference_cost_price(product)
+        ref_price = self._get_reference_cost_price(product, uom=product.uom_po_id or product.uom_id)
         if ref_price > 0:
             product_infos['price'] = ref_price
         return product_infos
 
-    def _get_reference_cost_price(self, product) -> float:
+    def _get_reference_cost_price(self, product, uom=None) -> float:
         """Costo de referencia del proveedor de la orden para `product`,
-        convertido a la moneda de la orden. Devuelve 0.0 si no aplica.
+        convertido a la unidad de medida `uom` (por defecto la UoM de compra del
+        producto) y a la moneda de la orden. Devuelve 0.0 si no aplica.
 
         Resuelve el proveedor respetando la jerarquía de empresas (sucursal →
         matriz → global), igual que el costo de referencia a nivel de producto.
@@ -67,8 +68,14 @@ class PurchaseOrder(models.Model):
         if not seller or seller.reference_cost <= 0:
             return 0.0
         ref_cost = seller.reference_cost
-        src_currency = company.currency_id
-        dst_currency = self.currency_id or src_currency
+        seller_uom = seller.product_uom or product.uom_po_id or product.uom_id
+        target_uom = uom or product.uom_po_id or product.uom_id
+        if seller_uom and target_uom and seller_uom != target_uom:
+            if seller_uom.category_id == target_uom.category_id:
+                ref_cost = seller_uom._compute_price(ref_cost, target_uom)
+
+        src_currency = seller.currency_id or company.currency_id
+        dst_currency = self.currency_id or company.currency_id
         if src_currency and dst_currency and src_currency != dst_currency:
             date = self.date_order or fields.Date.context_today(self)
             ref_cost = src_currency._convert(

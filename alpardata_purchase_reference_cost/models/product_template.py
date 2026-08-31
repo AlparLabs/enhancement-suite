@@ -60,13 +60,18 @@ class ProductTemplate(models.Model):
         'seller_ids.date_end',
         'seller_ids.sequence',
         'seller_ids.company_id',
+        'seller_ids.currency_id',
+        'seller_ids.product_uom',
+        'uom_id',
+        'uom_po_id',
     )
     @api.depends_context('company')
     def _compute_reference_cost(self) -> None:
         """
         Delega en `_get_reference_cost_seller()`, el mismo resolver que usa la
         línea de compra: así la ficha de producto y la orden nunca muestran
-        costos distintos.
+        costos distintos. Convierte el costo a la unidad de medida base del
+        producto (`uom_id`) y a la moneda de la empresa activa.
 
         El campo no se almacena a propósito: el resolver depende de la empresa
         activa (jerarquía sucursal → matriz → global) y de la fecha de hoy, dos
@@ -74,9 +79,26 @@ class ProductTemplate(models.Model):
         dependería de quién dispara el recálculo y quedaría desactualizado al
         cruzarse una fecha de vigencia.
         """
+        today = fields.Date.today()
         for tmpl in self:
             seller = tmpl._get_reference_cost_seller()
-            tmpl.reference_cost = seller.reference_cost if seller else 0.0
+            if not seller or seller.reference_cost <= 0:
+                tmpl.reference_cost = 0.0
+                continue
+            cost = seller.reference_cost
+            seller_uom = seller.product_uom or tmpl.uom_po_id or tmpl.uom_id
+            if seller_uom and tmpl.uom_id and seller_uom != tmpl.uom_id:
+                if seller_uom.category_id == tmpl.uom_id.category_id:
+                    cost = seller_uom._compute_price(cost, tmpl.uom_id)
+
+            company = tmpl.env.company
+            seller_currency = seller.currency_id or company.currency_id
+            target_currency = company.currency_id
+            if seller_currency and target_currency and seller_currency != target_currency:
+                cost = seller_currency._convert(
+                    cost, target_currency, company, today, round=False
+                )
+            tmpl.reference_cost = cost
 
     def _get_reference_cost_seller(self, partner=None):
         """Devuelve el `product.supplierinfo` vigente con mejor ranking para la

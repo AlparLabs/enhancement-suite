@@ -77,3 +77,38 @@ class TestReferenceCostCompany(TransactionCase):
             ]
         # No debe lanzar TypeError al resolver el proveedor.
         self.assertEqual(form_template.reference_cost, 100.0)
+
+    def test_product_template_reference_cost_uom_conversion(self):
+        """product.template.reference_cost se expresa siempre en la UoM base del
+        producto (uom_id), convirtiendo desde la UoM del proveedor (uom_po_id)."""
+        uom_cat = self.env['uom.category'].create({'name': 'Cat Test UoM'})
+        uom_unit = self.env['uom.uom'].create({
+            'name': 'Unidad Test Tmpl',
+            'category_id': uom_cat.id,
+            'uom_type': 'reference',
+            'rounding': 0.001,
+        })
+        uom_pack24 = self.env['uom.uom'].create({
+            'name': 'Pack x 24 Tmpl',
+            'category_id': uom_cat.id,
+            'uom_type': 'bigger',
+            'factor_inv': 24.0,
+            'rounding': 0.001,
+        })
+        product = self.env['product.product'].create({
+            'name': 'Producto Pack UoM',
+            'uom_id': uom_unit.id,
+            'uom_po_id': uom_pack24.id,
+            'standard_price': 200.0,
+        })
+        self.env['product.supplierinfo'].create({
+            'partner_id': self.partner.id,
+            'product_tmpl_id': product.product_tmpl_id.id,
+            'product_uom': uom_pack24.id,
+            'reference_cost': 4800.0,
+        })
+        # 4800 / 24 = 200.0 en la unidad base
+        self.assertEqual(product.product_tmpl_id.reference_cost, 200.0)
+        # La divergencia AVCO (200 vs 200) debe ser 0% ('ok')
+        self.assertEqual(product.product_tmpl_id.cost_divergence_pct, 0.0)
+        self.assertEqual(product.product_tmpl_id.cost_divergence_alert, 'ok')
