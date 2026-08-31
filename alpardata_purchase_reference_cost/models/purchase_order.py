@@ -55,18 +55,19 @@ class PurchaseOrder(models.Model):
         convertido a la moneda de la orden. Devuelve 0.0 si no aplica.
 
         Resuelve el proveedor respetando la jerarquía de empresas (sucursal →
-        matriz → global), igual que el costo de referencia a nivel de producto.
+        matriz → global), igual que el costo de referencia a nivel de producto,
+        y lo convierte a la unidad del producto: el catálogo crea la línea en
+        esa unidad, aunque el proveedor cotice por bulto.
         """
         self.ensure_one()
         if not product or not self.partner_id:
             return 0.0
         company = self.company_id or self.env.company
-        seller = product.product_tmpl_id.with_company(
-            company
-        )._get_reference_cost_seller(partner=self.partner_id)
-        if not seller or seller.reference_cost <= 0:
+        tmpl = product.product_tmpl_id.with_company(company)
+        seller = tmpl._get_reference_cost_seller(partner=self.partner_id)
+        ref_cost = tmpl._reference_cost_in_uom(seller)
+        if ref_cost <= 0:
             return 0.0
-        ref_cost = seller.reference_cost
         src_currency = company.currency_id
         dst_currency = self.currency_id or src_currency
         if src_currency and dst_currency and src_currency != dst_currency:

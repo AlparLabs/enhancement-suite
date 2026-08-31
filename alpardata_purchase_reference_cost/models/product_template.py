@@ -55,11 +55,13 @@ class ProductTemplate(models.Model):
     # ── Computes ──────────────────────────────────────────────────────────────
 
     @api.depends(
+        'uom_id',
         'seller_ids.reference_cost',
         'seller_ids.date_start',
         'seller_ids.date_end',
         'seller_ids.sequence',
         'seller_ids.company_id',
+        'seller_ids.product_uom_id',
     )
     @api.depends_context('company')
     def _compute_reference_cost(self) -> None:
@@ -75,8 +77,32 @@ class ProductTemplate(models.Model):
         cruzarse una fecha de vigencia.
         """
         for tmpl in self:
-            seller = tmpl._get_reference_cost_seller()
-            tmpl.reference_cost = seller.reference_cost if seller else 0.0
+            tmpl.reference_cost = tmpl._reference_cost_in_uom(
+                tmpl._get_reference_cost_seller()
+            )
+
+    def _reference_cost_in_uom(self, seller, uom=None) -> float:
+        """Costo de referencia de `seller` expresado en `uom`.
+
+        El costo de referencia se carga en la unidad de compra del proveedor,
+        que no tiene por que ser la del producto (ej: se compra por "Packs x
+        24" y se stockea por "Unidades"). Sin convertir, el precio por pack
+        terminaria cargado como precio por unidad.
+
+        Es la misma conversion que hace el core con `seller.price` en
+        `product.supplierinfo::_compute_price_discounted`. Por defecto convierte
+        a la unidad del producto, que es la unidad en la que esta expresado
+        `standard_price` — asi el semaforo de divergencia AVCO vs referencia
+        compara dos valores en la misma unidad.
+        """
+        self.ensure_one()
+        if not seller or seller.reference_cost <= 0:
+            return 0.0
+        target = uom or self.uom_id
+        source = seller.product_uom_id
+        if not source or not target or source == target:
+            return seller.reference_cost
+        return source._compute_price(seller.reference_cost, target)
 
     def _get_reference_cost_seller(self, partner=None):
         """Devuelve el `product.supplierinfo` vigente con mejor ranking para la

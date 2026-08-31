@@ -21,6 +21,7 @@ class PurchaseOrderLine(models.Model):
 
     @api.depends(
         'product_id',
+        'product_uom_id',
         'order_id.partner_id',
         'company_id',
         'product_id.seller_ids.reference_cost',
@@ -28,6 +29,7 @@ class PurchaseOrderLine(models.Model):
         'product_id.seller_ids.sequence',
         'product_id.seller_ids.date_start',
         'product_id.seller_ids.date_end',
+        'product_id.seller_ids.product_uom_id',
     )
     def _compute_reference_cost(self) -> None:
         for line in self:
@@ -41,15 +43,18 @@ class PurchaseOrderLine(models.Model):
         → global), reutilizando la misma lógica que el costo de referencia a
         nivel de producto. Si el proveedor no comunicó un costo de referencia
         —o la orden aún no tiene proveedor— devuelve 0.0 y el precio no se pisa.
+
+        El valor se devuelve convertido a la unidad de medida de la línea: el
+        proveedor puede comunicar el costo por bulto ("Packs x 24") mientras la
+        línea se compra por unidad.
         """
         self.ensure_one()
         partner = self.order_id.partner_id
         if not self.product_id or not self.company_id or not partner:
             return 0.0
-        seller = self.product_id.product_tmpl_id.with_company(
-            self.company_id
-        )._get_reference_cost_seller(partner=partner)
-        return seller.reference_cost if seller else 0.0
+        tmpl = self.product_id.product_tmpl_id.with_company(self.company_id)
+        seller = tmpl._get_reference_cost_seller(partner=partner)
+        return tmpl._reference_cost_in_uom(seller, self.product_uom_id)
 
     def _compute_price_unit_and_date_planned_and_name(self):
         """Extiende el cálculo de precio del core.

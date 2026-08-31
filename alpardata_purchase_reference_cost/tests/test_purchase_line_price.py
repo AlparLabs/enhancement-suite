@@ -150,6 +150,60 @@ class TestPurchaseLineReferenceCost(TransactionCase):
         line.product_qty = 5.0
         self.assertEqual(line.price_unit, 90.0)
 
+    def _product_priced_by_dozen(self, reference_cost=1200.0):
+        """Producto en Unidades cuyo proveedor cotiza por Docena (x12)."""
+        unit = self.env.ref('uom.product_uom_unit')
+        dozen = self.env.ref('uom.product_uom_dozen')
+        product = self.env['product.product'].create({
+            'name': 'Producto cotizado por bulto',
+            'uom_id': unit.id,
+        })
+        self.env['product.supplierinfo'].create({
+            'partner_id': self.partner.id,
+            'product_tmpl_id': product.product_tmpl_id.id,
+            'product_uom_id': dozen.id,
+            'reference_cost': reference_cost,
+        })
+        return product, unit, dozen
+
+    def test_reference_cost_converted_to_product_uom(self):
+        """El costo de referencia cargado en la unidad de compra del proveedor
+        se expresa en la unidad del producto.
+
+        1200 por docena son 100 por unidad. Sin convertir, la ficha mostraria
+        1200 como costo unitario y el semaforo de divergencia compararia contra
+        un AVCO expresado por unidad.
+        """
+        product, _unit, _dozen = self._product_priced_by_dozen()
+        self.assertAlmostEqual(
+            product.product_tmpl_id.reference_cost, 100.0, places=2
+        )
+
+    def test_line_reference_cost_converted_to_line_uom(self):
+        """La linea toma el costo de referencia en su propia unidad."""
+        product, unit, dozen = self._product_priced_by_dozen()
+        po = self.env['purchase.order'].create({'partner_id': self.partner.id})
+        line = self.env['purchase.order.line'].create({
+            'order_id': po.id,
+            'product_id': product.id,
+            'product_qty': 1.0,
+            'product_uom_id': unit.id,
+        })
+        self.assertAlmostEqual(line.reference_cost, 100.0, places=2)
+        self.assertAlmostEqual(line.price_unit, 100.0, places=2)
+
+        line.product_uom_id = dozen
+        self.assertAlmostEqual(line.reference_cost, 1200.0, places=2)
+        self.assertAlmostEqual(line.price_unit, 1200.0, places=2)
+
+    def test_catalog_price_converted_to_product_uom(self):
+        """El catalogo tambien convierte a la unidad del producto."""
+        product, _unit, _dozen = self._product_priced_by_dozen()
+        po = self.env['purchase.order'].create({'partner_id': self.partner.id})
+        self.assertAlmostEqual(
+            po._get_product_price_and_data(product)['price'], 100.0, places=2
+        )
+
     def test_catalog_line_keeps_technical_price_in_sync(self):
         """El alta desde el catalogo tambien deja los dos campos alineados."""
         po = self.env['purchase.order'].create({'partner_id': self.partner.id})
