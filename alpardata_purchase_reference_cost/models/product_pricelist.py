@@ -79,7 +79,10 @@ class ProductPricelistItem(models.Model):
             )
             ref_cost = product.standard_price
 
-        # reference_cost is stored in the company currency
+        # reference_cost is stored in the company currency and product.uom_id
+        if uom and product.uom_id and uom != product.uom_id:
+            ref_cost = product.uom_id._compute_price(ref_cost, uom)
+
         src_currency = self.env.company.currency_id
 
         if src_currency != currency:
