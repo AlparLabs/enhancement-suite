@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ACTIONS -->
+    <record id="action_queue_ticket_ventas" model="ir.actions.act_window">
+        <field name="name">Turnos de Ventas</field>
+        <field name="res_model">queue.ticket</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('queue_type', '=', 'ventas')]</field>
+        <field name="context">{'search_default_filter_today': 1, 'search_default_filter_waiting': 1, 'default_queue_type': 'ventas'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay turnos de ventas en espera hoy.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_queue_ticket_caja" model="ir.actions.act_window">
+        <field name="name">Turnos de Caja / POS</field>
+        <field name="res_model">queue.ticket</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('queue_type', '=', 'caja')]</field>
+        <field name="context">{'search_default_filter_today': 1, 'search_default_filter_waiting': 1, 'default_queue_type': 'caja'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay turnos de caja en espera hoy.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_queue_ticket_all" model="ir.actions.act_window">
+        <field name="name">Todos los Turnos</field>
+        <field name="res_model">queue.ticket</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="context">{'search_default_filter_today': 1}</field>
+    </record>
+
+    <record id="action_queue_display_url" model="ir.actions.act_url">
+        <field name="name">Abrir Pantalla TV</field>
+        <field name="url">/turnos/pantalla</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- TOP MENUS -->
+    <menuitem id="menu_alpar_queue_root"
+              name="Turnos"
+              sequence="30"
+              web_icon="alpar_queue_ticket,static/description/icon.png"/>
+
+    <menuitem id="menu_alpar_queue_ventas"
+              name="Turnos Ventas"
+              parent="menu_alpar_queue_root"
+              action="action_queue_ticket_ventas"
+              sequence="10"/>
+
+    <menuitem id="menu_alpar_queue_caja"
+              name="Turnos Caja / POS"
+              parent="menu_alpar_queue_root"
+              action="action_queue_ticket_caja"
+              sequence="20"/>
+
+    <menuitem id="menu_alpar_queue_all"
+              name="Historial Completo"
+              parent="menu_alpar_queue_root"
+              action="action_queue_ticket_all"
+              sequence="30"/>
+
+    <menuitem id="menu_alpar_queue_display"
+              name="Pantalla TV (Sala)"
+              parent="menu_alpar_queue_root"
+              action="action_queue_display_url"
+              sequence="40"/>
+
+    <!-- SHORTCUTS INSIDE STANDARD MENUS -->
+    <menuitem id="menu_sale_queue_tickets"
+              name="Turnos de Atenci?n"
+              parent="sale.sale_menu_root"
+              action="action_queue_ticket_ventas"
+              sequence="3"/>
+
+    <menuitem id="menu_pos_queue_tickets"
+              name="Cola de Turnos"
+              parent="point_of_sale.menu_point_root"
+              action="action_queue_ticket_caja"
+              sequence="4"/>
+
+</odoo>

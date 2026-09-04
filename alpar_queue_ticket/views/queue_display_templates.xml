@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="queue_display_page" name="Pantalla de Turnos TV">
+        &lt;!DOCTYPE html&gt;
+        <html lang="es">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                <title>Llamador de Turnos - <t t-esc="company_name"/></title>
+                <link rel="stylesheet" href="/web/static/lib/bootstrap/css/bootstrap.min.css"/>
+                <link rel="stylesheet" href="/alpar_queue_ticket/static/src/display/queue_display.css"/>
+            </head>
+            <body class="queue-body">
+                <div id="initial-data" class="d-none" t-att-data-json="initial_data_json" t-att-data-channel="channel_name"/>
+
+                <div class="display-container">
+                    <!-- HEADER -->
+                    <header class="display-header d-flex justify-content-between align-items-center px-4 py-3">
+                        <div class="header-brand d-flex align-items-center">
+                            <span class="fs-2 fw-bold text-gradient me-3">ALPARLABS</span>
+                            <span class="fs-4 text-light fw-medium"><t t-esc="company_name"/></span>
+                        </div>
+                        <div class="header-clock d-flex align-items-center gap-3">
+                            <span id="display-date" class="fs-5 text-secondary">--/--/----</span>
+                            <span id="display-clock" class="fs-2 fw-bold text-warning font-monospace">--:--:--</span>
+                        </div>
+                    </header>
+
+                    <!-- HERO: ?LTIMO LLAMADO -->
+                    <section class="hero-call-section mx-4 my-3 p-4 rounded-4 text-center">
+                        <div class="hero-label text-uppercase tracking-wider fs-5 mb-1">?LTIMO TURNO LLAMADO</div>
+                        <div class="hero-content d-flex justify-content-center align-items-center gap-5 my-2">
+                            <div id="hero-number" class="hero-ticket-number display-1 fw-black text-warning">---</div>
+                            <div class="hero-destination text-start border-start border-secondary ps-4">
+                                <div class="text-secondary text-uppercase fs-6">DIRIGIRSE A</div>
+                                <div id="hero-station" class="display-5 fw-bold text-white">---</div>
+                                <div id="hero-customer" class="fs-5 text-info mt-1">---</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TWO COLUMNS: CAJA vs VENTAS -->
+                    <main class="columns-grid mx-4 mb-3 row g-4 flex-grow-1">
+                        <!-- CAJA / POS -->
+                        <div class="col-md-6">
+                            <div class="card h-100 queue-column-card card-caja border-0 rounded-4 shadow-lg p-3">
+                                <div class="column-header d-flex justify-content-between align-items-center border-bottom border-dark-subtle pb-2 mb-3">
+                                    <h2 class="fs-3 fw-bold text-warning mb-0">
+                                        <i class="fa fa-shopping-cart me-2"/> CAJA / COBROS
+                                    </h2>
+                                    <span id="badge-waiting-caja" class="badge bg-secondary fs-6">Espera: 0</span>
+                                </div>
+                                <div id="list-called-caja" class="called-list d-flex flex-column gap-2">
+                                    <!-- Filled dynamically -->
+                                    <div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VENTAS / ASESOR?A -->
+                        <div class="col-md-6">
+                            <div class="card h-100 queue-column-card card-ventas border-0 rounded-4 shadow-lg p-3">
+                                <div class="column-header d-flex justify-content-between align-items-center border-bottom border-dark-subtle pb-2 mb-3">
+                                    <h2 class="fs-3 fw-bold text-info mb-0">
+                                        <i class="fa fa-briefcase me-2"/> ASESOR?A Y VENTAS
+                                    </h2>
+                                    <span id="badge-waiting-ventas" class="badge bg-secondary fs-6">Espera: 0</span>
+                                </div>
+                                <div id="list-called-ventas" class="called-list d-flex flex-column gap-2">
+                                    <!-- Filled dynamically -->
+                                    <div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    <!-- FOOTER TICKER -->
+                    <footer class="display-footer px-4 py-2 d-flex justify-content-between align-items-center text-secondary border-top border-dark">
+                        <div><small>Por favor permanezca atento a su n?mero en pantalla</small></div>
+                        <div id="connection-status" class="d-flex align-items-center gap-2">
+                            <span class="status-dot online"></span>
+                            <small id="status-text">Conectado en tiempo real</small>
+                        </div>
+                    </footer>
+                </div>
+
+                <script src="/alpar_queue_ticket/static/src/display/queue_display.js"></script>
+            </body>
+        </html>
+    </template>
+</odoo>

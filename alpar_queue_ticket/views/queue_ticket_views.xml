@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- FORM VIEW -->
+    <record id="view_queue_ticket_form" model="ir.ui.view">
+        <field name="name">queue.ticket.form</field>
+        <field name="model">queue.ticket</field>
+        <field name="arch" type="xml">
+            <form string="Turno de Atenci?n">
+                <header>
+                    <button name="action_call" type="object" string="Llamar Turno" class="btn-primary" invisible="state not in ('waiting')"/>
+                    <button name="action_done" type="object" string="Finalizar Atenci?n" class="btn-success" invisible="state not in ('called')"/>
+                    <button name="action_cancel" type="object" string="Marcar Ausente / Cancelar" class="btn-secondary" invisible="state not in ('waiting', 'called')"/>
+                    <button name="action_reset_waiting" type="object" string="Reingresar a Espera" invisible="state not in ('called', 'cancel')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="waiting,called,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="number" string="N?mero de Turno"/>
+                        <h1>
+                            <field name="number" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Detalles del Turno">
+                            <field name="queue_type" widget="radio"/>
+                            <field name="partner_id" options="{'no_create_edit': True}"/>
+                            <field name="customer_name"/>
+                            <field name="customer_vat"/>
+                            <field name="customer_phone" widget="phone"/>
+                        </group>
+                        <group string="Atenci?n y Tiempos">
+                            <field name="station" placeholder="Ej: Puesto 3, Caja 2"/>
+                            <field name="user_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="call_date"/>
+                            <field name="done_date"/>
+                            <field name="waiting_time_minutes"/>
+                            <field name="service_time_minutes"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notas de Atenci?n">
+                            <field name="note" placeholder="Detalles de la consulta, presupuesto o compra..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- LIST / TREE VIEW -->
+    <record id="view_queue_ticket_tree" model="ir.ui.view">
+        <field name="name">queue.ticket.tree</field>
+        <field name="model">queue.ticket</field>
+        <field name="arch" type="xml">
+            <list string="Turnos de Atenci?n"
+                  decoration-info="state == 'waiting'"
+                  decoration-warning="state == 'called'"
+                  decoration-success="state == 'done'"
+                  decoration-muted="state == 'cancel'">
+                <field name="number" decoration-bf="1"/>
+                <field name="queue_type" widget="badge"
+                       decoration-primary="queue_type == 'ventas'"
+                       decoration-warning="queue_type == 'caja'"/>
+                <field name="customer_name"/>
+                <field name="customer_vat"/>
+                <field name="station"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="create_date" string="Emisi?n" widget="datetime"/>
+                <field name="call_date" widget="datetime"/>
+                <field name="waiting_time_minutes" string="Espera (min)"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'waiting'"
+                       decoration-warning="state == 'called'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'cancel'"/>
+                <button name="action_call" type="object" string="Llamar" icon="fa-bullhorn" invisible="state != 'waiting'"/>
+                <button name="action_done" type="object" string="Atendido" icon="fa-check" invisible="state != 'called'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- KANBAN VIEW -->
+    <record id="view_queue_ticket_kanban" model="ir.ui.view">
+        <field name="name">queue.ticket.kanban</field>
+        <field name="model">queue.ticket</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" quick_create="false" records_draggable="false">
+                <field name="id"/>
+                <field name="number"/>
+                <field name="queue_type"/>
+                <field name="customer_name"/>
+                <field name="customer_vat"/>
+                <field name="partner_id"/>
+                <field name="station"/>
+                <field name="state"/>
+                <field name="create_date"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click p-3 mb-2 rounded shadow-sm border">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge fs-5 px-3 py-2 text-bg-dark" t-esc="record.number.value"/>
+                                <span t-if="record.queue_type.raw_value == 'ventas'" class="badge text-bg-primary">Ventas</span>
+                                <span t-if="record.queue_type.raw_value == 'caja'" class="badge text-bg-warning">Caja / POS</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong class="fs-6 d-block text-truncate" t-esc="record.customer_name.value || record.partner_id.value || 'Cliente An?nimo'"/>
+                                <small t-if="record.customer_vat.value" class="text-muted d-block">
+                                    <i class="fa fa-id-card me-1"/> <t t-esc="record.customer_vat.value"/>
+                                </small>
+                                <small t-if="record.station.value" class="text-info fw-bold d-block">
+                                    <i class="fa fa-map-marker me-1"/> <t t-esc="record.station.value"/>
+                                </small>
+                            </div>
+                            <div class="d-flex justify-content-end gap-1 mt-2 border-top pt-2">
+                                <button t-if="record.state.raw_value == 'waiting'"
+                                        name="action_call" type="object"
+                                        class="btn btn-sm btn-primary w-100">
+                                    <i class="fa fa-bullhorn me-1"/> Llamar
+                                </button>
+                                <button t-if="record.state.raw_value == 'called'"
+                                        name="action_done" type="object"
+                                        class="btn btn-sm btn-success flex-grow-1">
+                                    <i class="fa fa-check me-1"/> Finalizar
+                                </button>
+                                <button t-if="record.state.raw_value == 'called'"
+                                        name="action_cancel" type="object"
+                                        class="btn btn-sm btn-outline-danger">
+                                    <i class="fa fa-times"/>
+                                </button>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- SEARCH VIEW -->
+    <record id="view_queue_ticket_search" model="ir.ui.view">
+        <field name="name">queue.ticket.search</field>
+        <field name="model">queue.ticket</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Turnos">
+                <field name="number" string="N?mero"/>
+                <field name="customer_name" string="Cliente"/>
+                <field name="customer_vat" string="DNI / CUIT"/>
+                <field name="station" string="Puesto / Caja"/>
+                <field name="user_id" string="Operador"/>
+
+                <filter string="Hoy" name="filter_today"
+                        domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+                <separator/>
+                <filter string="En Espera" name="filter_waiting" domain="[('state', '=', 'waiting')]"/>
+                <filter string="Llamando" name="filter_called" domain="[('state', '=', 'called')]"/>
+                <filter string="Atendidos" name="filter_done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter string="Cola Ventas" name="filter_ventas" domain="[('queue_type', '=', 'ventas')]"/>
+                <filter string="Cola Caja" name="filter_caja" domain="[('queue_type', '=', 'caja')]"/>
+
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Tipo de Cola" name="group_queue_type" context="{'group_by': 'queue_type'}"/>
+                    <filter string="Puesto / Caja" name="group_station" context="{'group_by': 'station'}"/>
+                    <filter string="Operador" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'create_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

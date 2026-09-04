@@ -1,0 +1,16 @@
+.queue-call-button {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: #1e293b !important;
+    border: none !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+}

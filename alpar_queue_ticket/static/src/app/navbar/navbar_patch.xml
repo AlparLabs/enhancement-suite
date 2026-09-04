@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="alpar_queue_ticket.Navbar" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('orders-button')]" position="after">
+            <button class="btn btn-lg btn-warning lh-lg ms-1 queue-call-button d-flex align-items-center gap-2 shadow-sm"
+                    t-on-click="() => this.callNextQueueTicket()"
+                    t-att-disabled="queueState.loading"
+                    title="Llamar siguiente turno de Caja">
+                <i class="fa fa-bullhorn fa-lg"/>
+                <span t-if="!ui.isSmall" class="fw-bold">Llamar Turno</span>
+                <span class="badge rounded-pill bg-dark text-warning fs-6" t-esc="queueState.waitingCount"/>
+            </button>
+        </xpath>
+    </t>
+</templates>
