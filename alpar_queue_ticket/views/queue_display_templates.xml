@@ -8,10 +8,13 @@
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
                 <title>Llamador de Turnos - <t t-esc="company_name"/></title>
                 <link rel="stylesheet" href="/web/static/lib/bootstrap/css/bootstrap.min.css"/>
-                <link rel="stylesheet" href="/alpar_queue_ticket/static/src/display/queue_display.css"/>
+                <link rel="stylesheet" href="/alpar_queue_ticket/static/src/display/queue_display.css?v=19.0.1.0.3"/>
             </head>
             <body class="queue-body">
-                <div id="initial-data" class="d-none" t-att-data-json="initial_data_json" t-att-data-channel="channel_name"/>
+                <div id="initial-data" class="d-none"
+                     t-att-data-json="initial_data_json"
+                     t-att-data-channel="channel_name"
+                     t-att-data-company-id="company_id"/>
 
                 <div class="display-container">
                     <!-- HEADER -->
@@ -30,19 +33,66 @@
                     <section class="hero-call-section mx-4 my-3 p-4 rounded-4 text-center">
                         <div class="hero-label text-uppercase tracking-wider fs-5 mb-1 text-secondary">ÚLTIMO TURNO LLAMADO</div>
                         <div class="hero-content d-flex justify-content-center align-items-center gap-5 my-2">
-                            <div id="hero-number" class="hero-ticket-number display-1 fw-black text-warning">---</div>
+                            <div id="hero-number" class="hero-ticket-number display-1 fw-black text-warning">
+                                <t t-if="last_called" t-esc="last_called.get('number', '---')"/>
+                                <t t-else="">---</t>
+                            </div>
                             <div class="hero-destination text-start border-start border-secondary ps-4">
                                 <div class="text-secondary text-uppercase fs-6">DIRIGIRSE A</div>
-                                <div id="hero-station" class="display-5 fw-bold text-white">---</div>
-                                <div id="hero-customer" class="fs-5 text-info mt-1">---</div>
+                                <div id="hero-station" class="display-5 fw-bold text-white">
+                                    <t t-if="last_called" t-esc="last_called.get('station', '---')"/>
+                                    <t t-else="">---</t>
+                                </div>
+                                <div id="hero-customer" class="fs-5 text-info mt-1">
+                                    <t t-if="last_called" t-esc="last_called.get('customer_name', '')"/>
+                                </div>
                             </div>
                         </div>
                     </section>
 
                     <!-- DYNAMIC CATEGORIES GRID -->
                     <main id="categories-container" class="columns-grid mx-4 mb-3 row g-4 flex-grow-1 align-items-stretch">
-                        <!-- Populated dynamically by queue_display.js -->
-                        <div class="col-12 text-center text-secondary py-5">Cargando turnos...</div>
+                        <t t-if="categories">
+                            <t t-set="col_class" t-value="'col-md-6'"/>
+                            <t t-if="len(categories) == 1" t-set="col_class" t-value="'col-12'"/>
+                            <t t-elif="len(categories) == 3" t-set="col_class" t-value="'col-md-4'"/>
+                            <t t-elif="len(categories) == 4" t-set="col_class" t-value="'col-md-6 col-lg-3'"/>
+                            <t t-elif="len(categories) > 4" t-set="col_class" t-value="'col-md-4'"/>
+
+                            <t t-foreach="categories" t-as="cat">
+                                <div t-att-class="col_class">
+                                    <div class="card h-100 queue-column-card border-0 rounded-4 shadow-lg p-3"
+                                         t-attf-style="border-top: 4px solid #{cat.get('color') or '#38bdf8'} !important;">
+                                        <div class="column-header d-flex justify-content-between align-items-center border-bottom border-dark-subtle pb-2 mb-3">
+                                            <h2 class="fs-3 fw-bold mb-0" t-attf-style="color: #{cat.get('color') or '#38bdf8'};">
+                                                <i t-if="cat.get('icon')" t-attf-class="fa #{cat['icon']} me-2"/>
+                                                <t t-esc="cat['name'].upper()"/>
+                                            </h2>
+                                            <span class="badge bg-secondary fs-6">Espera: <t t-esc="cat.get('waiting_count', 0)"/></span>
+                                        </div>
+                                        <div class="called-list d-flex flex-column gap-2">
+                                            <t t-if="cat.get('called_tickets')">
+                                                <t t-foreach="cat['called_tickets']" t-as="t">
+                                                    <div class="ticket-item">
+                                                        <span class="ticket-badge-number" t-attf-style="color: #{cat.get('color') or '#38bdf8'};" t-esc="t['number']"/>
+                                                        <div class="text-end">
+                                                            <div class="ticket-station-name text-white" t-esc="t['station']"/>
+                                                            <small class="text-secondary" t-esc="t.get('customer_name') or ''"/>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <div class="col-12 text-center text-secondary py-5">Cargando turnos...</div>
+                        </t>
                     </main>
 
                     <!-- FOOTER TICKER -->
@@ -55,7 +105,7 @@
                     </footer>
                 </div>
 
-                <script src="/alpar_queue_ticket/static/src/display/queue_display.js"></script>
+                <script src="/alpar_queue_ticket/static/src/display/queue_display.js?v=19.0.1.0.3"></script>
             </body>
         </html>
     </template>

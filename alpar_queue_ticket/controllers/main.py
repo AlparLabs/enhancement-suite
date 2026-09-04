@@ -9,20 +9,24 @@ class QueueDisplayController(http.Controller):
     @http.route("/turnos/pantalla", type="http", auth="public", website=False, sitemap=False)
     def queue_display_page(self, **kwargs):
         """Página pública para proyectar en Smart TV o monitores de sala de espera."""
-        company = request.env.company
-        data = request.env["queue.ticket"].sudo().with_company(company).get_display_data()
+        company = self._resolve_company(**kwargs)
+        data = request.env["queue.ticket"].sudo().with_company(company).get_display_data(company_id=company.id)
         values = {
             "initial_data_json": json.dumps(data),
             "company_name": company.name,
+            "company_id": company.id,
+            "categories": data.get("categories", []),
+            "last_called": data.get("last_called"),
             "channel_name": data.get("channel", "alpar_queue_channel"),
         }
         return request.render("alpar_queue_ticket.queue_display_page", values)
 
     @http.route("/turnos/api/display_data", type="json", auth="public", methods=["POST", "GET"])
     def queue_display_data_api(self, **kwargs):
-        """Endpoint JSON-RPC para polling o refresco de datos de la pantalla."""
-        company = request.env.company
-        return request.env["queue.ticket"].sudo().with_company(company).get_display_data()
+        """Endpoint JSON para polling o refresco de datos de la pantalla."""
+        data_params = kwargs.get("params", kwargs)
+        company = self._resolve_company(**data_params)
+        return request.env["queue.ticket"].sudo().with_company(company).get_display_data(company_id=company.id)
 
     def _resolve_company(self, **kwargs):
         company_id = kwargs.get("company_id")
@@ -33,6 +37,8 @@ class QueueDisplayController(http.Controller):
                     return comp
             except Exception:
                 pass
+        if not request.env.user._is_public() and request.env.user.company_id:
+            return request.env.user.company_id
         return request.env.company
 
     @http.route(["/turnos/api/queue_types", "/turnos/api/categories"], type="json", auth="public", methods=["POST"])
@@ -56,12 +62,14 @@ class QueueDisplayController(http.Controller):
             "|", ("company_id", "=", False), ("company_id", "=", company.id),
         ], order="sequence, id")
 
-        # Fallback multi-compania: Si no hay tipos para la compania por defecto de la sesion
-        # y no se forzo un company_id explicito, traer todas las activas en el sistema
-        if not types and allow_fallback:
-            types = request.env["queue.ticket.type"].sudo().search([
+        # Fallback multi-compañía: Si no hay tipos suficientes para la compañía por defecto de la sesión
+        # y existen más tipos activos en el sistema, traerlos todos
+        if len(types) <= 2 and allow_fallback:
+            all_types = request.env["queue.ticket.type"].sudo().search([
                 ("active", "=", True),
             ], order="sequence, id")
+            if len(all_types) > len(types):
+                types = all_types
 
         return [
             {

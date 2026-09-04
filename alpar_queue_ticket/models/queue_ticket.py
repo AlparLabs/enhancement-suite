@@ -307,27 +307,41 @@ class QueueTicket(models.Model):
         }
 
     @api.model
-    def get_queue_status(self):
+    def get_queue_status(self, company_id=None):
         """Devuelve conteos de turnos en espera agrupados por tipos configurados."""
-        company = self.env.company
+        if company_id:
+            company = self.env["res.company"].browse(int(company_id)).exists() or self.env.company
+        else:
+            company = self.env.company
+
         today_start = datetime.combine(fields.Date.context_today(self), time.min)
 
-        types = self.env["queue.ticket.type"].search([
-            ("active", "=", True),
-            "|", ("company_id", "=", False), ("company_id", "=", company.id)
-        ], order="sequence, id")
+        domain = [("active", "=", True)]
+        if company:
+            domain.append("|")
+            domain.append(("company_id", "=", False))
+            domain.append(("company_id", "=", company.id))
+
+        types = self.env["queue.ticket.type"].search(domain, order="sequence, id")
+        all_active = self.env["queue.ticket.type"].search([("active", "=", True)], order="sequence, id")
+        if len(all_active) > len(types):
+            types = all_active
 
         status = {}
         by_type = {}
         total_waiting = 0
 
         for t in types:
-            cnt = self.search_count([
+            ticket_domain = [
                 ("queue_type_id", "=", t.id),
                 ("state", "=", "waiting"),
-                ("company_id", "=", company.id),
                 ("create_date", ">=", today_start),
-            ])
+            ]
+            target_company_id = t.company_id.id if t.company_id else (company.id if company else False)
+            if target_company_id:
+                ticket_domain.append(("company_id", "=", target_company_id))
+
+            cnt = self.search_count(ticket_domain)
             by_type[t.id] = {
                 "id": t.id,
                 "name": t.name,
@@ -346,15 +360,28 @@ class QueueTicket(models.Model):
         return status
 
     @api.model
-    def get_display_data(self, last_ticket=None):
+    def get_display_data(self, last_ticket=None, company_id=None):
         """Datos estructurados para la pantalla de TV con categorías dinámicas."""
-        company = self.env.company
+        if company_id:
+            company = self.env["res.company"].browse(int(company_id)).exists() or self.env.company
+        else:
+            company = self.env.company
+
         today_start = datetime.combine(fields.Date.context_today(self), time.min)
 
-        types = self.env["queue.ticket.type"].search([
-            ("active", "=", True),
-            "|", ("company_id", "=", False), ("company_id", "=", company.id)
-        ], order="sequence, id")
+        # Buscar tipos activos de la compañía o compartidos
+        domain = [("active", "=", True)]
+        if company:
+            domain.append("|")
+            domain.append(("company_id", "=", False))
+            domain.append(("company_id", "=", company.id))
+
+        types = self.env["queue.ticket.type"].search(domain, order="sequence, id")
+
+        # Si solo encontró las predeterminadas (<= 2) pero hay más tipos activos en el sistema:
+        all_active_types = self.env["queue.ticket.type"].search([("active", "=", True)], order="sequence, id")
+        if len(all_active_types) > len(types):
+            types = all_active_types
 
         def _format_ticket(t):
             return {
@@ -373,19 +400,23 @@ class QueueTicket(models.Model):
         called_ventas_list = []
 
         for t in types:
-            called_records = self.search([
+            ticket_domain = [
                 ("queue_type_id", "=", t.id),
-                ("state", "=", "called"),
-                ("company_id", "=", company.id),
                 ("create_date", ">=", today_start),
-            ], order="call_date desc, id desc", limit=4)
+            ]
+            target_company_id = t.company_id.id if t.company_id else (company.id if company else False)
+            if target_company_id:
+                ticket_domain.append(("company_id", "=", target_company_id))
 
-            waiting_cnt = self.search_count([
-                ("queue_type_id", "=", t.id),
-                ("state", "=", "waiting"),
-                ("company_id", "=", company.id),
-                ("create_date", ">=", today_start),
-            ])
+            called_records = self.search(
+                ticket_domain + [("state", "=", "called")],
+                order="call_date desc, id desc",
+                limit=4,
+            )
+
+            waiting_cnt = self.search_count(
+                ticket_domain + [("state", "=", "waiting")]
+            )
 
             formatted_called = [_format_ticket(rec) for rec in called_records]
             if t.code == "caja":
@@ -408,19 +439,28 @@ class QueueTicket(models.Model):
         if last_ticket:
             last_called_data = _format_ticket(last_ticket)
         else:
-            recent = self.search([
+            recent_domain = [
                 ("state", "=", "called"),
-                ("company_id", "=", company.id),
                 ("create_date", ">=", today_start),
-            ], order="call_date desc, id desc", limit=1)
+            ]
+            if company:
+                recent_domain.append(("company_id", "=", company.id))
+            recent = self.search(recent_domain, order="call_date desc, id desc", limit=1)
+            if not recent:
+                # Fallback sin restricción de compañía si no hay en la actual
+                recent = self.search([
+                    ("state", "=", "called"),
+                    ("create_date", ">=", today_start),
+                ], order="call_date desc, id desc", limit=1)
             if recent:
                 last_called_data = _format_ticket(recent)
 
-        status = self.get_queue_status()
+        status = self.get_queue_status(company_id=company.id if company else None)
 
         return {
-            "company_name": company.name,
-            "channel": f"{CHANNEL_NAME}_{company.id}",
+            "company_name": company.name if company else "",
+            "company_id": company.id if company else False,
+            "channel": f"{CHANNEL_NAME}_{company.id}" if company else CHANNEL_NAME,
             "last_called": last_called_data,
             "categories": categories_data,
             "called_caja": called_caja_list,

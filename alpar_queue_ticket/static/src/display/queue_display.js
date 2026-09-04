@@ -2,6 +2,7 @@
 (function () {
     let lastKnownTicketId = null;
     let audioCtx = null;
+    let currentCompanyId = null;
 
     // Inicializar Web Audio API para Ding-Dong sintetizado
     function initAudio() {
@@ -147,7 +148,12 @@
             const resp = await fetch('/turnos/api/display_data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ jsonrpc: "2.0", params: {} })
+                body: JSON.stringify({
+                    jsonrpc: "2.0",
+                    params: {
+                        company_id: currentCompanyId
+                    }
+                })
             });
             const result = await resp.json();
             if (result && result.result) {
@@ -182,15 +188,27 @@
 
         // Cargar datos iniciales inyectados en HTML
         const initialEl = document.getElementById('initial-data');
-        if (initialEl && initialEl.dataset.json) {
-            try {
-                const initialData = JSON.parse(initialEl.dataset.json);
-                renderDisplay(initialData);
-                if (initialData.last_called) {
-                    lastKnownTicketId = initialData.last_called.id;
+        if (initialEl) {
+            if (initialEl.dataset.companyId) {
+                currentCompanyId = parseInt(initialEl.dataset.companyId) || null;
+            } else {
+                const urlParams = new URLSearchParams(window.location.search);
+                const qCompany = urlParams.get('company_id');
+                if (qCompany) {
+                    currentCompanyId = parseInt(qCompany) || null;
                 }
-            } catch (e) {
-                console.error("Error parseando datos iniciales:", e);
+            }
+
+            if (initialEl.dataset.json) {
+                try {
+                    const initialData = JSON.parse(initialEl.dataset.json);
+                    renderDisplay(initialData);
+                    if (initialData.last_called) {
+                        lastKnownTicketId = initialData.last_called.id;
+                    }
+                } catch (e) {
+                    console.error("Error parseando datos iniciales:", e);
+                }
             }
         }
 
