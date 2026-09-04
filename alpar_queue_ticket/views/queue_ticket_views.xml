@@ -139,27 +139,28 @@
         <field name="name">queue.ticket.search</field>
         <field name="model">queue.ticket</field>
         <field name="arch" type="xml">
-            <search string="Buscar Turnos">
-                <field name="number" string="Número"/>
-                <field name="queue_type_id" string="Tipo de Turno"/>
-                <field name="customer_name" string="Cliente"/>
-                <field name="customer_vat" string="DNI / CUIT"/>
-                <field name="station" string="Puesto / Caja"/>
-                <field name="user_id" string="Operador"/>
+            <search>
+                <field name="number"/>
+                <field name="queue_type_id"/>
+                <field name="customer_name"/>
+                <field name="customer_vat"/>
+                <field name="station"/>
+                <field name="user_id"/>
 
                 <filter string="Hoy" name="filter_today"
-                        domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+                        domain="[('create_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0, 0, 0))),
+                                 ('create_date', '&lt;=', datetime.datetime.combine(context_today(), datetime.time(23, 59, 59)))]"/>
                 <separator/>
                 <filter string="En Espera" name="filter_waiting" domain="[('state', '=', 'waiting')]"/>
                 <filter string="Llamando" name="filter_called" domain="[('state', '=', 'called')]"/>
                 <filter string="Atendidos" name="filter_done" domain="[('state', '=', 'done')]"/>
 
-                <group expand="0" string="Agrupar Por">
+                <group>
                     <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Tipo de Turno" name="group_queue_type" context="{'group_by': 'queue_type_id'}"/>
                     <filter string="Puesto / Caja" name="group_station" context="{'group_by': 'station'}"/>
                     <filter string="Operador" name="group_user" context="{'group_by': 'user_id'}"/>
-                    <filter string="Fecha" name="group_date" context="{'group_by': 'create_date:day'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'create_date'}"/>
                 </group>
             </search>
         </field>
