@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="queue_type_caja" model="queue.ticket.type">
+            <field name="name">Caja / Cobros</field>
+            <field name="code">caja</field>
+            <field name="prefix">C</field>
+            <field name="sequence">10</field>
+            <field name="icon">fa-shopping-cart</field>
+            <field name="color">#e67e22</field>
+            <field name="description">Cobros en efectivo, tarjetas y pagos de cuenta</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="queue_type_ventas" model="queue.ticket.type">
+            <field name="name">Ventas y Asesoría</field>
+            <field name="code">ventas</field>
+            <field name="prefix">V</field>
+            <field name="sequence">20</field>
+            <field name="icon">fa-briefcase</field>
+            <field name="color">#2980b9</field>
+            <field name="description">Atención personalizada, presupuestos y compras</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

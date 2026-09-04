@@ -1,4 +1,4 @@
-// Pantalla TV de Turnos - AlparLabs
+// Pantalla TV de Turnos Dinámica - AlparLabs
 (function () {
     let lastKnownTicketId = null;
     let audioCtx = null;
@@ -76,7 +76,7 @@
     function renderDisplay(data) {
         if (!data) return;
 
-        // Actualizar ?ltimo llamado
+        // Actualizar último llamado
         const heroNumber = document.getElementById('hero-number');
         const heroStation = document.getElementById('hero-station');
         const heroCustomer = document.getElementById('hero-customer');
@@ -98,48 +98,47 @@
             lastKnownTicketId = data.last_called.id;
         }
 
-        // Renderizar lista de Caja
-        const listCaja = document.getElementById('list-called-caja');
-        if (listCaja) {
-            if (data.called_caja && data.called_caja.length > 0) {
-                listCaja.innerHTML = data.called_caja.map(t => `
-                    <div class="ticket-item">
-                        <span class="ticket-badge-number text-warning">${t.number}</span>
-                        <div class="text-end">
-                            <div class="ticket-station-name text-white">${t.station}</div>
-                            <small class="text-secondary">${t.customer_name || ''}</small>
+        // Renderizar grilla de categorías dinámicas
+        const container = document.getElementById('categories-container');
+        if (container && data.categories && data.categories.length > 0) {
+            let colClass = "col-md-6";
+            if (data.categories.length === 1) colClass = "col-12";
+            else if (data.categories.length === 3) colClass = "col-md-4";
+            else if (data.categories.length === 4) colClass = "col-md-6 col-lg-3";
+            else if (data.categories.length > 4) colClass = "col-md-4";
+
+            container.innerHTML = data.categories.map(cat => {
+                const color = cat.color || "#38bdf8";
+                const iconHtml = cat.icon ? `<i class="fa ${cat.icon} me-2"></i>` : '';
+                const ticketsHtml = (cat.called_tickets && cat.called_tickets.length > 0)
+                    ? cat.called_tickets.map(t => `
+                        <div class="ticket-item">
+                            <span class="ticket-badge-number" style="color: ${color};">${t.number}</span>
+                            <div class="text-end">
+                                <div class="ticket-station-name text-white">${t.station}</div>
+                                <small class="text-secondary">${t.customer_name || ''}</small>
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>';
+
+                return `
+                    <div class="${colClass}">
+                        <div class="card h-100 queue-column-card border-0 rounded-4 shadow-lg p-3" style="border-top: 4px solid ${color} !important;">
+                            <div class="column-header d-flex justify-content-between align-items-center border-bottom border-dark-subtle pb-2 mb-3">
+                                <h2 class="fs-3 fw-bold mb-0" style="color: ${color};">
+                                    ${iconHtml}${cat.name.toUpperCase()}
+                                </h2>
+                                <span class="badge bg-secondary fs-6">Espera: ${cat.waiting_count || 0}</span>
+                            </div>
+                            <div class="called-list d-flex flex-column gap-2">
+                                ${ticketsHtml}
+                            </div>
                         </div>
                     </div>
-                `).join('');
-            } else {
-                listCaja.innerHTML = '<div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>';
-            }
+                `;
+            }).join('');
         }
-
-        // Renderizar lista de Ventas
-        const listVentas = document.getElementById('list-called-ventas');
-        if (listVentas) {
-            if (data.called_ventas && data.called_ventas.length > 0) {
-                listVentas.innerHTML = data.called_ventas.map(t => `
-                    <div class="ticket-item">
-                        <span class="ticket-badge-number text-info">${t.number}</span>
-                        <div class="text-end">
-                            <div class="ticket-station-name text-white">${t.station}</div>
-                            <small class="text-secondary">${t.customer_name || ''}</small>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                listVentas.innerHTML = '<div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>';
-            }
-        }
-
-        // Badges de espera
-        const badgeCaja = document.getElementById('badge-waiting-caja');
-        if (badgeCaja) badgeCaja.textContent = `Espera: ${data.waiting_caja || 0}`;
-
-        const badgeVentas = document.getElementById('badge-waiting-ventas');
-        if (badgeVentas) badgeVentas.textContent = `Espera: ${data.waiting_ventas || 0}`;
     }
 
     // Polling de respaldo
@@ -175,9 +174,9 @@
         }
     }
 
-    // Inicio al cargar p?gina
+    // Inicio al cargar página
     document.addEventListener('DOMContentLoaded', () => {
-        // Habilitar audio con cualquier interacci?n del usuario (requerido por navegadores)
+        // Habilitar audio con cualquier interacción del usuario (requerido por navegadores)
         window.addEventListener('click', initAudio, { once: true });
         window.addEventListener('keydown', initAudio, { once: true });
 

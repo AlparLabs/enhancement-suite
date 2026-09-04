@@ -2,28 +2,14 @@
 <odoo>
 
     <!-- ACTIONS -->
-    <record id="action_queue_ticket_ventas" model="ir.actions.act_window">
-        <field name="name">Turnos de Ventas</field>
+    <record id="action_queue_ticket_waiting" model="ir.actions.act_window">
+        <field name="name">Turnos en Espera y Llamados</field>
         <field name="res_model">queue.ticket</field>
         <field name="view_mode">kanban,list,form</field>
-        <field name="domain">[('queue_type', '=', 'ventas')]</field>
-        <field name="context">{'search_default_filter_today': 1, 'search_default_filter_waiting': 1, 'default_queue_type': 'ventas'}</field>
+        <field name="context">{'search_default_filter_today': 1, 'search_default_filter_waiting': 1, 'search_default_filter_called': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                No hay turnos de ventas en espera hoy.
-            </p>
-        </field>
-    </record>
-
-    <record id="action_queue_ticket_caja" model="ir.actions.act_window">
-        <field name="name">Turnos de Caja / POS</field>
-        <field name="res_model">queue.ticket</field>
-        <field name="view_mode">kanban,list,form</field>
-        <field name="domain">[('queue_type', '=', 'caja')]</field>
-        <field name="context">{'search_default_filter_today': 1, 'search_default_filter_waiting': 1, 'default_queue_type': 'caja'}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                No hay turnos de caja en espera hoy.
+                No hay turnos pendientes en espera.
             </p>
         </field>
     </record>
@@ -47,41 +33,48 @@
               sequence="30"
               web_icon="alpar_queue_ticket,static/description/icon.png"/>
 
-    <menuitem id="menu_alpar_queue_ventas"
-              name="Turnos Ventas"
+    <menuitem id="menu_alpar_queue_waiting"
+              name="Turnos del Día"
               parent="menu_alpar_queue_root"
-              action="action_queue_ticket_ventas"
+              action="action_queue_ticket_waiting"
               sequence="10"/>
-
-    <menuitem id="menu_alpar_queue_caja"
-              name="Turnos Caja / POS"
-              parent="menu_alpar_queue_root"
-              action="action_queue_ticket_caja"
-              sequence="20"/>
 
     <menuitem id="menu_alpar_queue_all"
               name="Historial Completo"
               parent="menu_alpar_queue_root"
               action="action_queue_ticket_all"
-              sequence="30"/>
+              sequence="20"/>
 
     <menuitem id="menu_alpar_queue_display"
               name="Pantalla TV (Sala)"
               parent="menu_alpar_queue_root"
               action="action_queue_display_url"
-              sequence="40"/>
+              sequence="30"/>
+
+    <!-- CONFIGURATION MENUS -->
+    <menuitem id="menu_alpar_queue_config_root"
+              name="Configuración"
+              parent="menu_alpar_queue_root"
+              sequence="50"
+              groups="group_queue_manager"/>
+
+    <menuitem id="menu_alpar_queue_types"
+              name="Tipos de Turnos"
+              parent="menu_alpar_queue_config_root"
+              action="action_queue_ticket_type"
+              sequence="10"/>
 
     <!-- SHORTCUTS INSIDE STANDARD MENUS -->
     <menuitem id="menu_sale_queue_tickets"
-              name="Turnos de Atenci?n"
+              name="Turnos de Atención"
               parent="sale.sale_menu_root"
-              action="action_queue_ticket_ventas"
+              action="action_queue_ticket_waiting"
               sequence="3"/>
 
     <menuitem id="menu_pos_queue_tickets"
               name="Cola de Turnos"
               parent="point_of_sale.menu_point_root"
-              action="action_queue_ticket_caja"
+              action="action_queue_ticket_waiting"
               sequence="4"/>
 
 </odoo>

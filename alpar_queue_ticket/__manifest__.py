@@ -17,7 +17,10 @@
     'data': [
         'security/queue_security.xml',
         'security/ir.model.access.csv',
+        'data/queue_ticket_type_data.xml',
+        'views/queue_ticket_type_views.xml',
         'views/queue_ticket_views.xml',
+        'views/pos_config_views.xml',
         'views/queue_ticket_menus.xml',
         'views/queue_display_templates.xml',
     ],
