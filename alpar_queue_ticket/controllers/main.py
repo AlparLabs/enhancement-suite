@@ -15,8 +15,12 @@ class QueueDisplayController(http.Controller):
             "initial_data_json": json.dumps(data),
             "company_name": company.name,
             "company_id": company.id,
-            "categories": data.get("categories", []),
             "last_called": data.get("last_called"),
+            "recent_called": data.get("recent_called", []),
+            "waiting_tickets": data.get("waiting_tickets", []),
+            "waiting_summary": data.get("waiting_summary", []),
+            "total_waiting": data.get("total_waiting", 0),
+            "categories": data.get("categories", []),
             "channel_name": data.get("channel", "alpar_queue_channel"),
         }
         return request.render("alpar_queue_ticket.queue_display_page", values)

@@ -384,6 +384,13 @@ class QueueTicket(models.Model):
             types = all_active_types
 
         def _format_ticket(t):
+            call_time_str = ""
+            if t.call_date:
+                try:
+                    call_time_str = fields.Datetime.context_timestamp(self, t.call_date).strftime("%H:%M")
+                except Exception:
+                    call_time_str = fields.Datetime.to_string(t.call_date)[11:16] if t.call_date else ""
+
             return {
                 "id": t.id,
                 "number": t.number,
@@ -392,12 +399,15 @@ class QueueTicket(models.Model):
                 "queue_type_id": t.queue_type_id.id if t.queue_type_id else False,
                 "queue_type": t.queue_type_id.code if t.queue_type_id else "",
                 "queue_type_name": t.queue_type_id.name if t.queue_type_id else "",
-                "call_time": fields.Datetime.to_string(t.call_date) if t.call_date else "",
+                "queue_color": t.queue_type_id.color if (t.queue_type_id and t.queue_type_id.color) else "#2563eb",
+                "queue_icon": t.queue_type_id.icon if (t.queue_type_id and t.queue_type_id.icon) else "fa-ticket",
+                "call_time": call_time_str,
             }
 
         categories_data = []
         called_caja_list = []
         called_ventas_list = []
+        waiting_summary = []
 
         for t in types:
             ticket_domain = [
@@ -409,7 +419,7 @@ class QueueTicket(models.Model):
                 ticket_domain.append(("company_id", "=", target_company_id))
 
             called_records = self.search(
-                ticket_domain + [("state", "=", "called")],
+                ticket_domain + [("state", "in", ("called", "done"))],
                 order="call_date desc, id desc",
                 limit=4,
             )
@@ -424,36 +434,79 @@ class QueueTicket(models.Model):
             elif t.code == "ventas":
                 called_ventas_list = formatted_called
 
+            type_color = t.color or "#2563eb"
+            type_icon = t.icon or "fa-ticket"
+
             categories_data.append({
                 "id": t.id,
                 "code": t.code,
                 "name": t.name,
                 "prefix": t.prefix,
-                "color": t.color or "#3498db",
-                "icon": t.icon or "fa-ticket",
+                "color": type_color,
+                "icon": type_icon,
                 "waiting_count": waiting_cnt,
                 "called_tickets": formatted_called,
             })
 
+            waiting_summary.append({
+                "id": t.id,
+                "code": t.code,
+                "name": t.name,
+                "prefix": t.prefix,
+                "color": type_color,
+                "icon": type_icon,
+                "waiting_count": waiting_cnt,
+            })
+
+        # Últimos llamados unificados (hasta 8 tickets llamados hoy)
+        recent_domain = [
+            ("state", "in", ("called", "done")),
+            ("create_date", ">=", today_start),
+        ]
+        if company:
+            recent_domain.append(("company_id", "=", company.id))
+        recent_called_records = self.search(recent_domain, order="call_date desc, id desc", limit=8)
+        if not recent_called_records and company:
+            # Fallback sin filtro de compañía
+            recent_called_records = self.search([
+                ("state", "in", ("called", "done")),
+                ("create_date", ">=", today_start),
+            ], order="call_date desc, id desc", limit=8)
+        recent_called = [_format_ticket(rec) for rec in recent_called_records]
+
+        # Último llamado principal
         last_called_data = False
         if last_ticket:
             last_called_data = _format_ticket(last_ticket)
-        else:
-            recent_domain = [
-                ("state", "=", "called"),
+        elif recent_called:
+            last_called_data = recent_called[0]
+
+        # Turnos en espera unificados (orden FIFO por id asc)
+        waiting_domain = [
+            ("state", "=", "waiting"),
+            ("create_date", ">=", today_start),
+        ]
+        if company:
+            waiting_domain.append(("company_id", "=", company.id))
+        waiting_records = self.search(waiting_domain, order="id asc", limit=20)
+        if not waiting_records and company:
+            waiting_records = self.search([
+                ("state", "=", "waiting"),
                 ("create_date", ">=", today_start),
-            ]
-            if company:
-                recent_domain.append(("company_id", "=", company.id))
-            recent = self.search(recent_domain, order="call_date desc, id desc", limit=1)
-            if not recent:
-                # Fallback sin restricción de compañía si no hay en la actual
-                recent = self.search([
-                    ("state", "=", "called"),
-                    ("create_date", ">=", today_start),
-                ], order="call_date desc, id desc", limit=1)
-            if recent:
-                last_called_data = _format_ticket(recent)
+            ], order="id asc", limit=20)
+
+        waiting_tickets = [
+            {
+                "id": w.id,
+                "number": w.number,
+                "customer_name": w.customer_name or (w.partner_id.name if w.partner_id else ""),
+                "queue_type_id": w.queue_type_id.id if w.queue_type_id else False,
+                "queue_type_name": w.queue_type_id.name if w.queue_type_id else "",
+                "queue_color": w.queue_type_id.color if (w.queue_type_id and w.queue_type_id.color) else "#2563eb",
+                "queue_icon": w.queue_type_id.icon if (w.queue_type_id and w.queue_type_id.icon) else "fa-ticket",
+            }
+            for w in waiting_records
+        ]
 
         status = self.get_queue_status(company_id=company.id if company else None)
 
@@ -462,6 +515,9 @@ class QueueTicket(models.Model):
             "company_id": company.id if company else False,
             "channel": f"{CHANNEL_NAME}_{company.id}" if company else CHANNEL_NAME,
             "last_called": last_called_data,
+            "recent_called": recent_called,
+            "waiting_tickets": waiting_tickets,
+            "waiting_summary": waiting_summary,
             "categories": categories_data,
             "called_caja": called_caja_list,
             "called_ventas": called_ventas_list,

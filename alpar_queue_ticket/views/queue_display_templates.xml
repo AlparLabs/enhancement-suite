@@ -8,7 +8,7 @@
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
                 <title>Llamador de Turnos - <t t-esc="company_name"/></title>
                 <link rel="stylesheet" href="/web/static/lib/bootstrap/css/bootstrap.min.css"/>
-                <link rel="stylesheet" href="/alpar_queue_ticket/static/src/display/queue_display.css?v=19.0.1.0.3"/>
+                <link rel="stylesheet" href="/alpar_queue_ticket/static/src/display/queue_display.css?v=19.0.2.0.0"/>
             </head>
             <body class="queue-body">
                 <div id="initial-data" class="d-none"
@@ -18,86 +18,152 @@
 
                 <div class="display-container">
                     <!-- HEADER -->
-                    <header class="display-header d-flex justify-content-between align-items-center px-4 py-3">
-                        <div class="header-brand d-flex align-items-center">
-                            <span class="fs-2 fw-bold text-gradient me-3">ALPARLABS</span>
-                            <span class="fs-4 text-light fw-medium"><t t-esc="company_name"/></span>
+                    <header class="display-header d-flex justify-content-between align-items-center">
+                        <div class="header-brand d-flex align-items-center gap-3">
+                            <span class="brand-badge">ALPARLABS</span>
+                            <span class="company-title"><t t-esc="company_name"/></span>
                         </div>
-                        <div class="header-clock d-flex align-items-center gap-3">
-                            <span id="display-date" class="fs-5 text-secondary">--/--/----</span>
-                            <span id="display-clock" class="fs-2 fw-bold text-warning font-monospace">--:--:--</span>
+                        <div class="header-clock d-flex align-items-center gap-4">
+                            <span id="display-date" class="clock-date">--/--/----</span>
+                            <span id="display-clock" class="clock-time">--:--:--</span>
                         </div>
                     </header>
 
-                    <!-- HERO: ÚLTIMO LLAMADO -->
-                    <section class="hero-call-section mx-4 my-3 p-4 rounded-4 text-center">
-                        <div class="hero-label text-uppercase tracking-wider fs-5 mb-1 text-secondary">ÚLTIMO TURNO LLAMADO</div>
-                        <div class="hero-content d-flex justify-content-center align-items-center gap-5 my-2">
-                            <div id="hero-number" class="hero-ticket-number display-1 fw-black text-warning">
-                                <t t-if="last_called" t-esc="last_called.get('number', '---')"/>
-                                <t t-else="">---</t>
+                    <!-- MAIN CONTENT: SPLIT VIEW -->
+                    <main class="display-main-content row g-3">
+                        <!-- LEFT PANEL: HERO CALL & STATUS -->
+                        <div class="col-lg-5 col-xl-5 h-100">
+                            <div class="left-panel">
+                                <!-- HERO: ÚLTIMO LLAMADO -->
+                                <section class="hero-call-card">
+                                    <div class="hero-badge-tag">
+                                        <span class="hero-pulse-dot"></span>
+                                        LLAMANDO AHORA
+                                    </div>
+                                    <div id="hero-number" class="hero-ticket-number">
+                                        <t t-if="last_called" t-esc="last_called.get('number', '---')"/>
+                                        <t t-else="">---</t>
+                                    </div>
+                                    <div class="hero-destination-box">
+                                        <div class="hero-dest-label">DIRIGIRSE A</div>
+                                        <div id="hero-station" class="hero-dest-station">
+                                            <t t-if="last_called" t-esc="last_called.get('station', '---')"/>
+                                            <t t-else="">---</t>
+                                        </div>
+                                        <div id="hero-sector" class="hero-sector-pill"
+                                             t-attf-style="background-color: #{last_called and (last_called.get('queue_color') or '#2563eb')}18; color: #{last_called and (last_called.get('queue_color') or '#2563eb')}; border: 1px solid #{last_called and (last_called.get('queue_color') or '#2563eb')}33;">
+                                            <t t-if="last_called and last_called.get('queue_type_name')">
+                                                Sector: <t t-esc="last_called.get('queue_type_name')"/>
+                                            </t>
+                                            <t t-else="">
+                                                Sector: General
+                                            </t>
+                                        </div>
+                                        <div id="hero-customer" class="hero-customer-name">
+                                            <t t-if="last_called and last_called.get('customer_name')" t-esc="last_called.get('customer_name')"/>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- ESTADO DE COLAS / RESUMEN -->
+                                <section class="queue-summary-card">
+                                    <div class="summary-title">
+                                        <span>Estado de Espera</span>
+                                        <span class="badge bg-primary rounded-pill px-3 py-1" id="total-waiting-badge">
+                                            Total en espera: <t t-esc="total_waiting"/>
+                                        </span>
+                                    </div>
+                                    <div id="summary-grid" class="summary-grid">
+                                        <t t-if="waiting_summary">
+                                            <t t-foreach="waiting_summary" t-as="ws">
+                                                <div class="summary-item">
+                                                    <div class="summary-item-name" t-attf-style="color: #{ws.get('color') or '#2563eb'};">
+                                                        <t t-esc="ws['name']"/>
+                                                    </div>
+                                                    <div class="summary-item-count" t-attf-style="color: #{ws.get('color') or '#2563eb'};">
+                                                        <t t-esc="ws.get('waiting_count', 0)"/>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </t>
+                                    </div>
+                                </section>
                             </div>
-                            <div class="hero-destination text-start border-start border-secondary ps-4">
-                                <div class="text-secondary text-uppercase fs-6">DIRIGIRSE A</div>
-                                <div id="hero-station" class="display-5 fw-bold text-white">
-                                    <t t-if="last_called" t-esc="last_called.get('station', '---')"/>
-                                    <t t-else="">---</t>
+                        </div>
+
+                        <!-- RIGHT PANEL: LISTA UNIFICADA DE LLAMADOS -->
+                        <div class="col-lg-7 col-xl-7 h-100">
+                            <section class="recent-calls-card">
+                                <div class="panel-header">
+                                    <h2 class="panel-title">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #2563eb;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        ÚLTIMOS LLAMADOS
+                                    </h2>
+                                    <span class="badge bg-light text-secondary border px-2 py-1">Historial de llamados</span>
                                 </div>
-                                <div id="hero-customer" class="fs-5 text-info mt-1">
-                                    <t t-if="last_called" t-esc="last_called.get('customer_name', '')"/>
+
+                                <div class="table-header-row">
+                                    <div>Turno</div>
+                                    <div>Destino</div>
+                                    <div>Sector / Cola</div>
+                                    <div class="text-end">Hora</div>
                                 </div>
-                            </div>
+
+                                <div id="recent-calls-list" class="recent-calls-list">
+                                    <t t-if="recent_called">
+                                        <t t-foreach="recent_called" t-as="rc">
+                                            <div class="called-row-item">
+                                                <div class="col-ticket-num" t-attf-style="color: #{rc.get('queue_color') or '#0f172a'};">
+                                                    <t t-esc="rc['number']"/>
+                                                </div>
+                                                <div class="col-station-info">
+                                                    <t t-esc="rc['station']"/>
+                                                </div>
+                                                <div>
+                                                    <span class="col-sector-badge" t-attf-style="background-color: #{rc.get('queue_color') or '#2563eb'}18; color: #{rc.get('queue_color') or '#2563eb'}; border: 1px solid #{rc.get('queue_color') or '#2563eb'}33;">
+                                                        <t t-esc="rc.get('queue_type_name', 'General')"/>
+                                                    </span>
+                                                </div>
+                                                <div class="col-call-time">
+                                                    <t t-esc="rc.get('call_time', '')"/>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="empty-calls-state">
+                                            <span>No hay llamados registrados hoy</span>
+                                        </div>
+                                    </t>
+                                </div>
+                            </section>
+                        </div>
+                    </main>
+
+                    <!-- BOTTOM TICKER: TURNOS EN COLA -->
+                    <section class="queue-ticker-section">
+                        <div class="ticker-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #2563eb;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            TURNOS EN COLA
+                        </div>
+                        <div id="waiting-tickets-container" class="waiting-tickets-scroll">
+                            <t t-if="waiting_tickets">
+                                <t t-foreach="waiting_tickets" t-as="wt">
+                                    <div class="waiting-ticket-pill">
+                                        <span class="waiting-pill-num" t-attf-style="color: #{wt.get('queue_color') or '#2563eb'};" t-esc="wt['number']"/>
+                                        <span class="waiting-pill-sector" t-attf-style="background-color: #{wt.get('queue_color') or '#2563eb'}18; color: #{wt.get('queue_color') or '#2563eb'};" t-esc="wt.get('queue_type_name', '')"/>
+                                    </div>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <span class="empty-waiting-notice">No hay turnos pendientes en espera en este momento</span>
+                            </t>
                         </div>
                     </section>
 
-                    <!-- DYNAMIC CATEGORIES GRID -->
-                    <main id="categories-container" class="columns-grid mx-4 mb-3 row g-4 flex-grow-1 align-items-stretch">
-                        <t t-if="categories">
-                            <t t-set="col_class" t-value="'col-md-6'"/>
-                            <t t-if="len(categories) == 1" t-set="col_class" t-value="'col-12'"/>
-                            <t t-elif="len(categories) == 3" t-set="col_class" t-value="'col-md-4'"/>
-                            <t t-elif="len(categories) == 4" t-set="col_class" t-value="'col-md-6 col-lg-3'"/>
-                            <t t-elif="len(categories) > 4" t-set="col_class" t-value="'col-md-4'"/>
-
-                            <t t-foreach="categories" t-as="cat">
-                                <div t-att-class="col_class">
-                                    <div class="card h-100 queue-column-card border-0 rounded-4 shadow-lg p-3"
-                                         t-attf-style="border-top: 4px solid #{cat.get('color') or '#38bdf8'} !important;">
-                                        <div class="column-header d-flex justify-content-between align-items-center border-bottom border-dark-subtle pb-2 mb-3">
-                                            <h2 class="fs-3 fw-bold mb-0" t-attf-style="color: #{cat.get('color') or '#38bdf8'};">
-                                                <i t-if="cat.get('icon')" t-attf-class="fa #{cat['icon']} me-2"/>
-                                                <t t-esc="cat['name'].upper()"/>
-                                            </h2>
-                                            <span class="badge bg-secondary fs-6">Espera: <t t-esc="cat.get('waiting_count', 0)"/></span>
-                                        </div>
-                                        <div class="called-list d-flex flex-column gap-2">
-                                            <t t-if="cat.get('called_tickets')">
-                                                <t t-foreach="cat['called_tickets']" t-as="t">
-                                                    <div class="ticket-item">
-                                                        <span class="ticket-badge-number" t-attf-style="color: #{cat.get('color') or '#38bdf8'};" t-esc="t['number']"/>
-                                                        <div class="text-end">
-                                                            <div class="ticket-station-name text-white" t-esc="t['station']"/>
-                                                            <small class="text-secondary" t-esc="t.get('customer_name') or ''"/>
-                                                        </div>
-                                                    </div>
-                                                </t>
-                                            </t>
-                                            <t t-else="">
-                                                <div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>
-                                            </t>
-                                        </div>
-                                    </div>
-                                </div>
-                            </t>
-                        </t>
-                        <t t-else="">
-                            <div class="col-12 text-center text-secondary py-5">Cargando turnos...</div>
-                        </t>
-                    </main>
-
-                    <!-- FOOTER TICKER -->
-                    <footer class="display-footer px-4 py-2 d-flex justify-content-between align-items-center text-secondary border-top border-dark">
-                        <div><small>Por favor permanezca atento a su número en pantalla</small></div>
+                    <!-- FOOTER -->
+                    <footer class="display-footer">
+                        <div>Por favor permanezca atento al llamado en pantalla y acérquese al puesto indicado.</div>
                         <div id="connection-status" class="d-flex align-items-center gap-2">
                             <span class="status-dot online"></span>
                             <small id="status-text">Conectado en tiempo real</small>
@@ -105,7 +171,7 @@
                     </footer>
                 </div>
 
-                <script src="/alpar_queue_ticket/static/src/display/queue_display.js?v=19.0.1.0.3"></script>
+                <script src="/alpar_queue_ticket/static/src/display/queue_display.js?v=19.0.2.0.0"></script>
             </body>
         </html>
     </template>

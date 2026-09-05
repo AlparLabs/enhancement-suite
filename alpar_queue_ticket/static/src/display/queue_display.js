@@ -73,72 +73,124 @@
         }
     }
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // Renderizar datos en pantalla
     function renderDisplay(data) {
         if (!data) return;
 
-        // Actualizar último llamado
+        // Actualizar último llamado (Hero)
         const heroNumber = document.getElementById('hero-number');
         const heroStation = document.getElementById('hero-station');
         const heroCustomer = document.getElementById('hero-customer');
-        const heroSection = document.querySelector('.hero-call-section');
+        const heroSector = document.getElementById('hero-sector');
+        const heroCard = document.querySelector('.hero-call-card');
 
         if (data.last_called) {
-            heroNumber.textContent = data.last_called.number || '---';
-            heroStation.textContent = data.last_called.station || '---';
-            heroCustomer.textContent = data.last_called.customer_name || '';
+            if (heroNumber) heroNumber.textContent = data.last_called.number || '---';
+            if (heroStation) heroStation.textContent = data.last_called.station || '---';
+            if (heroCustomer) heroCustomer.textContent = data.last_called.customer_name || '';
 
-            // Si es un ticket nuevo, hacer sonar el Ding-Dong y parpadear
+            const queueColor = data.last_called.queue_color || '#2563eb';
+            const sectorName = data.last_called.queue_type_name || 'General';
+            if (heroSector) {
+                heroSector.textContent = 'Sector: ' + sectorName;
+                heroSector.style.backgroundColor = queueColor + '18';
+                heroSector.style.color = queueColor;
+                heroSector.style.borderColor = queueColor + '33';
+            }
+
+            // Si es un ticket nuevo, hacer sonar el Ding-Dong y activar animación
             if (lastKnownTicketId !== null && data.last_called.id !== lastKnownTicketId) {
                 playChime();
-                if (heroSection) {
-                    heroSection.classList.add('flash-call');
-                    setTimeout(() => heroSection.classList.remove('flash-call'), 7000);
+                if (heroCard) {
+                    heroCard.classList.add('flash-call');
+                    setTimeout(() => heroCard.classList.remove('flash-call'), 6000);
                 }
             }
             lastKnownTicketId = data.last_called.id;
+        } else {
+            if (heroNumber) heroNumber.textContent = '---';
+            if (heroStation) heroStation.textContent = '---';
+            if (heroCustomer) heroCustomer.textContent = '';
+            if (heroSector) {
+                heroSector.textContent = 'Sector: General';
+                heroSector.style.backgroundColor = '#2563eb18';
+                heroSector.style.color = '#2563eb';
+                heroSector.style.borderColor = '#2563eb33';
+            }
         }
 
-        // Renderizar grilla de categorías dinámicas
-        const container = document.getElementById('categories-container');
-        if (container && data.categories && data.categories.length > 0) {
-            let colClass = "col-md-6";
-            if (data.categories.length === 1) colClass = "col-12";
-            else if (data.categories.length === 3) colClass = "col-md-4";
-            else if (data.categories.length === 4) colClass = "col-md-6 col-lg-3";
-            else if (data.categories.length > 4) colClass = "col-md-4";
+        // Actualizar Resumen de Espera
+        const totalBadge = document.getElementById('total-waiting-badge');
+        if (totalBadge) {
+            totalBadge.textContent = 'Total en espera: ' + (data.total_waiting || 0);
+        }
 
-            container.innerHTML = data.categories.map(cat => {
-                const color = cat.color || "#38bdf8";
-                const iconHtml = cat.icon ? `<i class="fa ${cat.icon} me-2"></i>` : '';
-                const ticketsHtml = (cat.called_tickets && cat.called_tickets.length > 0)
-                    ? cat.called_tickets.map(t => `
-                        <div class="ticket-item">
-                            <span class="ticket-badge-number" style="color: ${color};">${t.number}</span>
-                            <div class="text-end">
-                                <div class="ticket-station-name text-white">${t.station}</div>
-                                <small class="text-secondary">${t.customer_name || ''}</small>
-                            </div>
-                        </div>
-                    `).join('')
-                    : '<div class="empty-state text-center text-secondary py-4">No hay llamados activos</div>';
-
+        const summaryGrid = document.getElementById('summary-grid');
+        if (summaryGrid && data.waiting_summary) {
+            summaryGrid.innerHTML = data.waiting_summary.map(ws => {
+                const color = ws.color || '#2563eb';
                 return `
-                    <div class="${colClass}">
-                        <div class="card h-100 queue-column-card border-0 rounded-4 shadow-lg p-3" style="border-top: 4px solid ${color} !important;">
-                            <div class="column-header d-flex justify-content-between align-items-center border-bottom border-dark-subtle pb-2 mb-3">
-                                <h2 class="fs-3 fw-bold mb-0" style="color: ${color};">
-                                    ${iconHtml}${cat.name.toUpperCase()}
-                                </h2>
-                                <span class="badge bg-secondary fs-6">Espera: ${cat.waiting_count || 0}</span>
-                            </div>
-                            <div class="called-list d-flex flex-column gap-2">
-                                ${ticketsHtml}
-                            </div>
-                        </div>
+                    <div class="summary-item">
+                        <div class="summary-item-name" style="color: ${color};">${escapeHtml(ws.name)}</div>
+                        <div class="summary-item-count" style="color: ${color};">${ws.waiting_count || 0}</div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // Actualizar Lista Unificada de Últimos Llamados
+        const recentList = document.getElementById('recent-calls-list');
+        if (recentList) {
+            if (data.recent_called && data.recent_called.length > 0) {
+                recentList.innerHTML = data.recent_called.map(rc => {
+                    const color = rc.queue_color || '#0f172a';
+                    const sectorColor = rc.queue_color || '#2563eb';
+                    const sectorName = rc.queue_type_name || 'General';
+                    return `
+                        <div class="called-row-item">
+                            <div class="col-ticket-num" style="color: ${color};">${escapeHtml(rc.number)}</div>
+                            <div class="col-station-info">${escapeHtml(rc.station)}</div>
+                            <div>
+                                <span class="col-sector-badge" style="background-color: ${sectorColor}18; color: ${sectorColor}; border: 1px solid ${sectorColor}33;">
+                                    ${escapeHtml(sectorName)}
+                                </span>
+                            </div>
+                            <div class="col-call-time">${escapeHtml(rc.call_time || '')}</div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                recentList.innerHTML = '<div class="empty-calls-state"><span>No hay llamados registrados hoy</span></div>';
+            }
+        }
+
+        // Actualizar Turnos en Cola (Próximos en espera)
+        const waitingContainer = document.getElementById('waiting-tickets-container');
+        if (waitingContainer) {
+            if (data.waiting_tickets && data.waiting_tickets.length > 0) {
+                waitingContainer.innerHTML = data.waiting_tickets.map(wt => {
+                    const color = wt.queue_color || '#2563eb';
+                    const sectorName = wt.queue_type_name || '';
+                    return `
+                        <div class="waiting-ticket-pill">
+                            <span class="waiting-pill-num" style="color: ${color};">${escapeHtml(wt.number)}</span>
+                            <span class="waiting-pill-sector" style="background-color: ${color}18; color: ${color};">${escapeHtml(sectorName)}</span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                waitingContainer.innerHTML = '<span class="empty-waiting-notice">No hay turnos pendientes en espera en este momento</span>';
+            }
         }
     }
 

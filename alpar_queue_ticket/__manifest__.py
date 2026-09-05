@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'AlparLabs Queue Ticket - Turnera Inteligente POS & Ventas',
-    'version': '19.0.1.0.1',
+    'version': '19.0.2.0.0',
     'category': 'Point of Sale',
     'summary': 'Sistema de gestión de turnos y filas integrado con Kiosco Android, Odoo POS, Ventas y Pantalla TV',
     'author': 'AlparLabs',
