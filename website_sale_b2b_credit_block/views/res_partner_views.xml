@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_inherit_b2b_channel" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.b2b.channel</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='sale']" position="inside">
+                <field name="b2b_website_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                <field name="b2b_grace_period_override"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

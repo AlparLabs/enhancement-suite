@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_website_form_inherit_b2b_credit" model="ir.ui.view">
+        <field name="name">website.form.inherit.b2b.credit</field>
+        <field name="model">website</field>
+        <field name="inherit_id" ref="website.view_website_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='domain']" position="after">
+                <group string="Política de Crédito B2B" name="b2b_credit">
+                    <field name="b2b_credit_block_active"/>
+                    <field name="b2b_grace_period_days" invisible="not b2b_credit_block_active"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

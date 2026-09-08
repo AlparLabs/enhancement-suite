@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Product Template List View: Show website_id column -->
+    <record id="product_template_view_tree_inherit_channel_ux" model="ir.ui.view">
+        <field name="name">product.template.view.list.inherit.channel.ux</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="website_sale.product_template_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='website_id']" position="attributes">
+                <attribute name="optional">show</attribute>
+                <attribute name="string">Canal Web</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Template Search View: Filters and Group by Website -->
+    <record id="product_template_search_view_inherit_channel_ux" model="ir.ui.view">
+        <field name="name">product.template.search.inherit.channel.ux</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="website_sale.product_template_search_view_website"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='categ_id']" position="after">
+                <field name="website_id" string="Canal Web"/>
+            </xpath>
+            <xpath expr="//filter[@name='published']" position="after">
+                <separator/>
+                <filter string="Ambos Canales (Sin restricción)" name="filter_website_shared" domain="[('website_id', '=', False)]"/>
+                <filter string="Canal Específico" name="filter_website_specific" domain="[('website_id', '!=', False)]"/>
+            </xpath>
+            <xpath expr="//filter[@name='groupby_public_category']" position="after">
+                <filter string="Canal Web" name="groupby_website_id" context="{'group_by': 'website_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Template Form View: Informative helper on website_id -->
+    <record id="product_template_form_view_inherit_channel_ux" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.channel.ux</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="website_sale.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='website_id']" position="attributes">
+                <attribute name="placeholder">Todos los canales (Ambos)</attribute>
+                <attribute name="string">Canal Web</attribute>
+            </xpath>
+            <xpath expr="//field[@name='website_id']" position="after">
+                <div class="alert alert-info py-1 px-2 my-1" role="status" style="font-size: 0.85rem;" groups="website.group_multi_website">
+                    <i class="fa fa-info-circle me-1"/>
+                    Dejar vacío para que esté disponible tanto en <strong>Franquicias</strong> como en <strong>Distribución</strong> (precios según la lista asignada).
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
