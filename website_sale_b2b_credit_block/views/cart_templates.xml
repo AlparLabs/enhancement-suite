@@ -4,34 +4,35 @@
     <!-- Banner informativo de situación financiera en el carrito -->
     <template id="cart_b2b_financial_warning" inherit_id="website_sale.cart" name="B2B Financial Warning in Cart">
         <xpath expr="//div[@id='shop_cart']//div[hasclass('d-flex')][1]" position="after">
-            <t t-if="b2b_financial_status and b2b_financial_status.get('is_blocked')">
+            <t t-set="order_financial_status" t-value="b2b_financial_status or (website_sale_order and website_sale_order._get_b2b_financial_status(website))"/>
+            <t t-if="order_financial_status and order_financial_status.get('is_blocked')">
                 <div class="alert alert-warning my-3 border-warning shadow-sm" role="alert">
                     <div class="d-flex align-items-start">
                         <i class="fa fa-exclamation-triangle fa-2x me-3 text-warning mt-1"/>
                         <div class="flex-grow-1">
                             <h5 class="alert-heading fw-bold mb-2">Atención sobre tu Cuenta Corriente</h5>
                             
-                            <t t-if="b2b_financial_status.get('has_overdue')">
+                            <t t-if="order_financial_status.get('has_overdue')">
                                 <p class="mb-1">
                                     Tu cuenta presenta <strong>comprobantes vencidos pendientes de pago</strong> por un total de 
                                     <strong class="text-danger">
-                                        <span t-out="b2b_financial_status.get('overdue_amount')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                                        <span t-out="order_financial_status.get('overdue_amount')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
                                     </strong>.
                                 </p>
                             </t>
 
-                            <t t-if="b2b_financial_status.get('exceeds_limit')">
+                            <t t-if="order_financial_status.get('exceeds_limit')">
                                 <p class="mb-1">
                                     Tu saldo adeudado actual es de 
                                     <strong>
-                                        <span t-out="b2b_financial_status.get('invoiced_debt')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                                        <span t-out="order_financial_status.get('invoiced_debt')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
                                     </strong>. 
                                     Para confirmar este pedido de 
                                     <strong>
-                                        <span t-out="b2b_financial_status.get('order_amount')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                                        <span t-out="order_financial_status.get('order_amount')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
                                     </strong>, el monto excede tu margen disponible en 
                                     <strong class="text-danger">
-                                        <span t-out="b2b_financial_status.get('excess_amount')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                                        <span t-out="order_financial_status.get('excess_amount')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
                                     </strong>.
                                 </p>
                             </t>
@@ -50,7 +51,8 @@
     <!-- Inhabilitar botón de continuar compra si está bloqueado por deuda -->
     <template id="navigation_buttons_b2b_credit_block" inherit_id="website_sale.navigation_buttons" name="B2B Credit Block Navigation Buttons">
         <xpath expr="//a[@name='website_sale_main_button']" position="replace">
-            <t t-if="b2b_financial_status and b2b_financial_status.get('is_blocked')">
+            <t t-set="order_financial_status" t-value="b2b_financial_status or (website_sale_order and website_sale_order._get_b2b_financial_status(website))"/>
+            <t t-if="order_financial_status and order_financial_status.get('is_blocked')">
                 <button type="button" class="btn btn-secondary w-100 disabled" disabled="disabled" title="Cuenta con saldo pendiente de regularización">
                     <i class="fa fa-lock me-2"/>Cuenta Corriente Inhabilitada
                 </button>
