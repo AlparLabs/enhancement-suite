@@ -10,7 +10,7 @@ class ReportProductTemplateLabel3x8(models.AbstractModel):
         """Calcula la información requerida por normativa argentina (Res. 4/2025 y Ley 27.743):
         - Precio final de contado con impuestos.
         - Precio sin impuestos nacionales (neto sin IVA).
-        - Precio por Unidad de Medida (P.U.M.) $/Kg o $/L.
+        - Precio por Unidad de Medida (P.U.M.) $/Kg o $/L compatible con Odoo 19 (relative_uom_id / _has_common_reference).
         - País de origen y fecha de emisión.
         """
         # 1. Precio Final y Moneda
@@ -41,24 +41,39 @@ class ReportProductTemplateLabel3x8(models.AbstractModel):
         pum_price = None
         pum_unit = ""
         uom = product.uom_id
-        categ_name = (uom and uom.category_id and uom.category_id.name or '').lower()
 
         if uom:
             uom_kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
             uom_l = self.env.ref('uom.product_uom_litre', raise_if_not_found=False)
 
-            if 'peso' in categ_name or 'weight' in categ_name or (uom_kg and uom.category_id == uom_kg.category_id):
-                if uom_kg:
+            is_weight = False
+            if uom_kg:
+                if hasattr(uom, '_has_common_reference'):
+                    is_weight = (uom == uom_kg or uom._has_common_reference(uom_kg))
+                elif getattr(uom, 'category_id', False) and getattr(uom_kg, 'category_id', False):
+                    is_weight = (uom.category_id == uom_kg.category_id)
+
+            is_volume = False
+            if uom_l:
+                if hasattr(uom, '_has_common_reference'):
+                    is_volume = (uom == uom_l or uom._has_common_reference(uom_l))
+                elif getattr(uom, 'category_id', False) and getattr(uom_l, 'category_id', False):
+                    is_volume = (uom.category_id == uom_l.category_id)
+
+            if is_weight:
+                if hasattr(uom, '_compute_price'):
+                    pum_price = uom._compute_price(price_final, uom_kg)
+                else:
                     qty_in_kg = uom._compute_quantity(1.0, uom_kg)
-                    if qty_in_kg > 0:
-                        pum_price = price_final / qty_in_kg
-                        pum_unit = "Kg"
-            elif 'volum' in categ_name or (uom_l and uom.category_id == uom_l.category_id):
-                if uom_l:
+                    pum_price = price_final / qty_in_kg if qty_in_kg else price_final
+                pum_unit = "Kg"
+            elif is_volume:
+                if hasattr(uom, '_compute_price'):
+                    pum_price = uom._compute_price(price_final, uom_l)
+                else:
                     qty_in_l = uom._compute_quantity(1.0, uom_l)
-                    if qty_in_l > 0:
-                        pum_price = price_final / qty_in_l
-                        pum_unit = "L"
+                    pum_price = price_final / qty_in_l if qty_in_l else price_final
+                pum_unit = "L"
             elif getattr(product, 'weight', 0.0) > 0:
                 pum_price = price_final / product.weight
                 pum_unit = "Kg"
