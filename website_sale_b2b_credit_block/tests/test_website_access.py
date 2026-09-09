@@ -41,12 +41,11 @@ class TestB2BWebsiteAccess(TransactionCase):
         self.assertEqual(self.partner_franq.get_base_url(), 'https://franquicias.entrededos.com.ar')
 
     def test_04_statement_download_resolution(self):
-        """Verifica que el partner comercial resuelva el método o reporte de estado de cuenta."""
+        """Verifica que el partner comercial resuelva el reporte de estado de cuenta."""
         partner = self.partner_franq.commercial_partner_id
-        report = self.env.ref('account_followup.action_report_followup', raise_if_not_found=False)
-        if hasattr(partner, '_get_followup_report_pdf'):
-            filename, pdf = partner._get_followup_report_pdf(options={})
-            self.assertTrue(filename.endswith('.pdf'))
-            self.assertTrue(pdf)
-        elif report:
-            self.assertEqual(report.report_name, 'account_followup.report_followup_print_all')
+        report = self.env.ref('account_reports.customer_statement_report', raise_if_not_found=False) or \
+                 self.env.ref('account_reports.followup_report', raise_if_not_found=False)
+        if report:
+            self.assertTrue(report.id)
+            options = report.get_options({'partner_ids': [partner.id]})
+            self.assertIn(partner.id, options.get('partner_ids', []))

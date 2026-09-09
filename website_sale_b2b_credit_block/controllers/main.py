@@ -81,47 +81,54 @@ class B2BCustomerPortal(CustomerPortal):
     @route(['/my/account_statement/pdf'], type='http', auth='user', website=True)
     def download_statement_pdf(self, **kwargs):
         """
-        Descarga el estado de cuenta oficial (Follow-up Report) de Odoo Enterprise
-        para el contacto logueado (commercial_partner_id).
+        Descarga el Estado de Cuenta del Cliente en PDF (Customer Statement)
+        utilizando el motor de reportes de Odoo Enterprise (account_reports.customer_statement_report).
         """
-        partner = request.env.user.partner_id.commercial_partner_id
+        user_partner = request.env.user.partner_id
+        partner = user_partner.commercial_partner_id or user_partner
         if not partner:
             return request.redirect('/my')
 
-        # 1. Método oficial de account_followup (Odoo Enterprise)
-        if hasattr(partner, '_get_followup_report_pdf'):
-            try:
-                filename, pdf_content = partner.sudo()._get_followup_report_pdf(options={})
-                return request.make_response(
-                    pdf_content,
-                    headers=[
-                        ('Content-Type', 'application/pdf'),
-                        ('Content-Length', len(pdf_content)),
-                        ('Content-Disposition', content_disposition(filename)),
-                    ]
-                )
-            except Exception as e:
-                _logger.warning("Error generando informe de seguimiento para partner %s: %s", partner.id, e)
+        # 1. Reporte oficial de "Estado de cuenta del cliente" (Customer Statement)
+        report = request.env.ref('account_reports.customer_statement_report', raise_if_not_found=False)
+        if not report:
+            # Fallback a reporte de seguimiento si el específico de estado de cuenta no estuviera disponible
+            report = request.env.ref('account_reports.followup_report', raise_if_not_found=False)
 
-        # 2. Fallback: reporte directo account_followup.action_report_followup
-        report = request.env.ref('account_followup.action_report_followup', raise_if_not_found=False)
         if report:
             try:
-                pdf_content, _ = report.sudo()._render_qweb_pdf(
-                    'account_followup.report_followup_print_all',
-                    [partner.id],
-                    data={'options': {}}
-                )
-                filename = f"Estado_de_Cuenta_{partner.name}.pdf"
+                report_sudo = report.sudo()
+                if partner.lang:
+                    report_sudo = report_sudo.with_context(lang=partner.lang)
+
+                partner_ids = list(set((user_partner | partner).ids))
+                company = request.env.company
+                options = report_sudo.get_options({
+                    'forced_companies': company.search([('id', 'child_of', company.id)]).ids,
+                    'partner_ids': partner_ids,
+                    'unfold_all': True,
+                    'unreconciled': True,
+                    'all_entries': False,
+                    'export_mode': 'print',
+                })
+                # Asegurar opciones de partner y despliegue para la exportación a PDF
+                options['partner_ids'] = partner_ids
+                options['unfold_all'] = True
+                options['export_mode'] = 'print'
+
+                result = report_sudo.export_to_pdf(options)
+                file_content = result['file_content']
+                filename = result.get('file_name') or f"Estado_de_Cuenta_{partner.name}.pdf"
+
                 return request.make_response(
-                    pdf_content,
+                    file_content,
                     headers=[
                         ('Content-Type', 'application/pdf'),
-                        ('Content-Length', len(pdf_content)),
+                        ('Content-Length', len(file_content)),
                         ('Content-Disposition', content_disposition(filename)),
                     ]
                 )
-            except Exception as e:
-                _logger.warning("Error renderizando action_report_followup para partner %s: %s", partner.id, e)
+            except Exception:
+                _logger.exception("Error exportando Estado de Cuenta a PDF para partner %s", partner.id)
 
         return request.redirect('/my/invoices')
