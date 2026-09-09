@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_website_form_inherit_b2b_order_rules" model="ir.ui.view">
+        <field name="name">website.form.inherit.b2b.order.rules</field>
+        <field name="model">website</field>
+        <field name="inherit_id" ref="website.view_website_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='domain']" position="after">
+                <group string="Ventana de Pedidos B2B (Días Habilitados)" name="b2b_order_schedule">
+                    <field name="b2b_order_schedule_active"/>
+                    <field name="b2b_allowed_days_display" readonly="1" invisible="not b2b_order_schedule_active"/>
+                    <group colspan="2" invisible="not b2b_order_schedule_active">
+                        <group>
+                            <field name="b2b_order_mon"/>
+                            <field name="b2b_order_tue"/>
+                            <field name="b2b_order_wed"/>
+                            <field name="b2b_order_thu"/>
+                        </group>
+                        <group>
+                            <field name="b2b_order_fri"/>
+                            <field name="b2b_order_sat"/>
+                            <field name="b2b_order_sun"/>
+                        </group>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

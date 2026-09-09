@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Ficha de Producto: Aviso de día cerrado y tope máximo por canal -->
+    <template id="cta_wrapper_b2b_order_rules" inherit_id="website_sale.cta_wrapper" name="CTA Wrapper B2B Order Rules">
+        <xpath expr="//div[@id='add_to_cart_wrap']" position="before">
+            <t t-set="is_b2b_day_open" t-value="website.is_b2b_order_day_allowed() if website else True"/>
+            <t t-if="website.b2b_order_schedule_active and not is_b2b_day_open">
+                <div class="alert alert-warning w-100 d-flex align-items-center mb-3 shadow-sm border-warning" role="alert">
+                    <i class="fa fa-calendar-times-o fa-2x me-3 text-warning"/>
+                    <div>
+                        <strong class="d-block">Toma de pedidos cerrada hoy</strong>
+                        <span class="small">
+                            Para el canal <strong><t t-out="website.name"/></strong>, la recepción de pedidos está habilitada los días: 
+                            <strong><t t-out="website.b2b_allowed_days_display"/></strong>.
+                        </span>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+        <xpath expr="//div[@id='add_to_cart_wrap']" position="attributes">
+            <attribute name="t-attf-class" add="{{'d-none' if (website.b2b_order_schedule_active and not (website.is_b2b_order_day_allowed() if website else True)) else ''}}" separator=" "/>
+        </xpath>
+        <xpath expr="//div[@id='add_to_cart_wrap']" position="after">
+            <t t-set="is_b2b_day_open" t-value="website.is_b2b_order_day_allowed() if website else True"/>
+            <t t-if="not website.b2b_order_schedule_active or is_b2b_day_open">
+                <t t-set="b2b_limit" t-value="product.product_tmpl_id._get_b2b_order_limit_for_website(website) if (website and product) else False"/>
+                <t t-if="b2b_limit and b2b_limit.max_qty &gt; 0">
+                    <div class="text-muted small w-100 mt-1">
+                        <i class="fa fa-info-circle text-primary me-1"/>
+                        Cantidad máxima permitida: 
+                        <strong>
+                            <t t-out="int(b2b_limit.max_qty) if b2b_limit.max_qty.is_integer() else b2b_limit.max_qty"/>
+                            <t t-out="product.uom_id.name"/>
+                        </strong> por pedido.
+                    </div>
+                </t>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Carrito: Aviso si el día actual está cerrado para pedidos -->
+    <template id="cart_b2b_order_rules_warning" inherit_id="website_sale.cart" name="B2B Order Day Closed in Cart">
+        <xpath expr="//div[@id='shop_cart']//div[hasclass('d-flex')][1]" position="after">
+            <t t-set="is_b2b_day_open" t-value="b2b_order_day_allowed if b2b_order_day_allowed is not None else (website.is_b2b_order_day_allowed() if website else True)"/>
+            <t t-if="website.b2b_order_schedule_active and not is_b2b_day_open">
+                <div class="alert alert-warning my-3 border-warning shadow-sm" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-calendar-times-o fa-2x me-3 text-warning"/>
+                        <div>
+                            <h5 class="alert-heading fw-bold mb-1">Toma de pedidos cerrada hoy</h5>
+                            <p class="mb-0 small">
+                                Para el canal <strong><t t-out="website.name"/></strong>, los pedidos se reciben únicamente los días 
+                                <strong><t t-out="website.b2b_allowed_days_display"/></strong>. Podrás confirmar este pedido en el próximo ciclo de recepción.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Botones de Checkout: Inhabilitar si la toma de pedidos está cerrada hoy -->
+    <template id="navigation_buttons_b2b_order_rules" inherit_id="website_sale_b2b_credit_block.navigation_buttons_b2b_credit_block" name="B2B Order Rules Navigation Buttons">
+        <xpath expr="//a[@name='website_sale_main_button']" position="replace">
+            <t t-set="is_b2b_day_open" t-value="b2b_order_day_allowed if b2b_order_day_allowed is not None else (website.is_b2b_order_day_allowed() if website else True)"/>
+            <t t-if="website.b2b_order_schedule_active and not is_b2b_day_open">
+                <button type="button" class="btn btn-secondary w-100 disabled" disabled="disabled" title="Toma de pedidos cerrada hoy">
+                    <i class="fa fa-calendar-times-o me-2"/>Toma de Pedidos Cerrada
+                </button>
+            </t>
+            <t t-else="">
+                <a role="button" name="website_sale_main_button"
+                   t-attf-class="btn btn-primary w-100 #{'disabled' if not website_sale_order or not website_sale_order.order_line else ''}"
+                   href="/shop/checkout?express=1">
+                    <i class="fa fa-chevron-right me-2"/>Procesar Pedido
+                </a>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>
