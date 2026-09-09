@@ -39,3 +39,14 @@ class TestB2BWebsiteAccess(TransactionCase):
         """La URL base de un contacto con canal asignado apunta a su website."""
         self.website_1.domain = 'https://franquicias.entrededos.com.ar'
         self.assertEqual(self.partner_franq.get_base_url(), 'https://franquicias.entrededos.com.ar')
+
+    def test_04_statement_download_resolution(self):
+        """Verifica que el partner comercial resuelva el método o reporte de estado de cuenta."""
+        partner = self.partner_franq.commercial_partner_id
+        report = self.env.ref('account_followup.action_report_followup', raise_if_not_found=False)
+        if hasattr(partner, '_get_followup_report_pdf'):
+            filename, pdf = partner._get_followup_report_pdf(options={})
+            self.assertTrue(filename.endswith('.pdf'))
+            self.assertTrue(pdf)
+        elif report:
+            self.assertEqual(report.report_name, 'account_followup.report_followup_print_all')

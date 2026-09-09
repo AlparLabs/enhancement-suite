@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Botón de descarga de Estado de Cuenta en la lista de facturas del portal (/my/invoices) -->
+    <template id="portal_my_invoices_inherit_statement" inherit_id="account.portal_my_invoices" name="My Invoices Statement PDF Button">
+        <xpath expr="//t[@t-call='portal.portal_searchbar']" position="after">
+            <div class="d-flex justify-content-end align-items-center mb-3">
+                <a href="/my/account_statement/pdf" class="btn btn-outline-primary btn-sm" target="_blank">
+                    <i class="fa fa-download me-1"/> Descargar Estado de Cuenta (PDF)
+                </a>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Tarjeta de Estado de Cuenta en el Portal Home (/my) -->
+    <template id="portal_my_home_statement" inherit_id="account.portal_my_home_invoice" name="Portal Home Statement">
+        <xpath expr="//div[@id='portal_client_category']" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/account/static/src/img/bill.svg'"/>
+                <t t-set="title">Estado de Cuenta</t>
+                <t t-set="url" t-value="'/my/account_statement/pdf'"/>
+                <t t-set="text">Descargar reporte de cuenta corriente en PDF</t>
+                <t t-set="config_card" t-value="True"/>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

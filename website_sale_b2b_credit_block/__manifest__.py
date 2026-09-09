@@ -23,6 +23,7 @@
         'views/website_views.xml',
         'views/res_partner_views.xml',
         'views/cart_templates.xml',
+        'views/portal_templates.xml',
     ],
     'installable': True,
     'application': False,
