@@ -14,7 +14,7 @@ class SaleOrder(models.Model):
         website = self.website_id
         if website and product_id and new_qty > 0:
             product = self.env['product.product'].browse(product_id)
-            rule = product.product_tmpl_id._get_b2b_order_limit_for_website(website)
+            rule = product._get_b2b_order_limit_for_website(website)
             if rule and rule.max_qty > 0 and new_qty > rule.max_qty:
                 capped_qty = rule.max_qty
                 uom = self.env['uom.uom'].browse(uom_id) if uom_id else product.uom_id

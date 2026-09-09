@@ -19,3 +19,12 @@ class ProductTemplate(models.Model):
         if not website:
             return self.env['b2b.product.order.limit']
         return self.b2b_order_limit_ids.filtered(lambda l: l.website_id == website)[:1]
+
+
+class ProductProduct(models.Model):
+    _inherit = 'product.product'
+
+    def _get_b2b_order_limit_for_website(self, website):
+        self.ensure_one()
+        return self.product_tmpl_id._get_b2b_order_limit_for_website(website)
+

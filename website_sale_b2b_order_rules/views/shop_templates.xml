@@ -24,7 +24,7 @@
         <xpath expr="//div[@id='add_to_cart_wrap']" position="after">
             <t t-set="is_b2b_day_open" t-value="website.is_b2b_order_day_allowed() if website else True"/>
             <t t-if="not website.b2b_order_schedule_active or is_b2b_day_open">
-                <t t-set="b2b_limit" t-value="product.product_tmpl_id._get_b2b_order_limit_for_website(website) if (website and product) else False"/>
+                <t t-set="b2b_limit" t-value="product._get_b2b_order_limit_for_website(website) if (website and product) else False"/>
                 <t t-if="b2b_limit and b2b_limit.max_qty &gt; 0">
                     <div class="text-muted small w-100 mt-1">
                         <i class="fa fa-info-circle text-primary me-1"/>
