@@ -30,58 +30,65 @@
         <t t-set="info" t-value="get_label_info(product, pricelist) if get_label_info else False"/>
         <td t-att-style="make_invisible and 'visibility:hidden;'">
             <div class="o_label_full" t-att-style="table_style">
-                <!-- 1. Encabezado: Nombre + [Origen] + Fecha -->
-                <div style="height: 8.5mm; overflow: hidden; padding: 1mm 1.5mm 0 1.5mm; border-bottom: 0.5px solid #ccc;">
-                    <div style="float: right; font-size: 5.5pt; color: #555; white-space: nowrap; line-height: 1.1;">
-                        [<t t-out="info and info['origin'] or 'ARG'"/>] <t t-out="info and info['print_date'] or ''"/>
-                    </div>
-                    <div style="font-size: 7.5pt; font-weight: bold; line-height: 1.1; max-height: 2.2em; overflow: hidden; text-transform: uppercase;">
-                        <strong t-field="product.display_name"/>
-                    </div>
-                </div>
-
-                <!-- 2. Cuerpo: Precio sin Impuestos + PUM a la izquierda, Precio Final destacado a la derecha -->
-                <div style="height: 13mm; padding: 0.8mm 1.5mm 0 1.5mm;">
-                    <table style="width: 100%; border: none; margin: 0; padding: 0;">
-                        <tr>
-                            <td style="vertical-align: middle; text-align: left; padding: 0; line-height: 1.2;">
-                                <div style="font-size: 5.5pt; color: #444; white-space: nowrap;">
-                                    Sin Imp. Nac: <span t-out="info and info['price_net'] or (pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id) / 1.21)"
-                                                        t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id)}"/>
-                                </div>
-                                <t t-if="info and info['pum_price']">
-                                    <div style="font-size: 6.5pt; font-weight: bold; color: #111; white-space: nowrap;">
-                                        P.U.M.: <span t-out="info['pum_price']" t-options="{'widget': 'monetary', 'display_currency': info['currency']}"/> / <t t-out="info['pum_unit']"/>
-                                    </div>
-                                </t>
-                            </td>
-                            <td style="vertical-align: middle; text-align: right; white-space: nowrap; padding: 0 0 0 1mm;">
-                                <strong style="font-size: 13.5pt; font-weight: 900; line-height: 1;"
-                                        t-out="info and info['price_final'] or pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id)"
-                                        t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id), 'label_price': True}"/>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-
-                <!-- 3. Pie: Código interno (SKU) a la izquierda, Código de barras a la derecha -->
-                <div style="height: 11.5mm; padding: 0 1.5mm 0.5mm 1.5mm;">
-                    <table style="width: 100%; border: none; margin: 0; padding: 0;">
-                        <tr>
-                            <td style="vertical-align: middle; text-align: left; width: 35%; padding: 0;">
-                                <div style="font-size: 6.5pt; font-weight: bold; color: #222; overflow: hidden; max-width: 20mm; word-break: break-all; line-height: 1.1;">
-                                    <span t-field="product.default_code"/>
-                                </div>
-                            </td>
-                            <td style="vertical-align: middle; text-align: right; width: 65%; padding: 0;">
-                                <t t-if="barcode">
-                                    <div t-out="barcode" style="padding:0; margin:0;" t-options="{'widget': 'barcode', 'symbology': 'auto', 'img_style': 'width:38mm;height:7.5mm'}"/>
-                                    <div style="font-size: 5.5pt; text-align: center; line-height: 1; letter-spacing: 0.5px;" t-out="barcode"/>
-                                </t>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
+                <table style="width:100%; height:33mm; border-collapse:collapse; border:none; margin:0; padding:0;">
+                    <tr>
+                        <!-- Columna Izquierda: Nombre (crece hacia abajo) + Código de barras al fondo -->
+                        <td style="width:53%; height:33mm; vertical-align:top; padding:1.5mm 1mm 1.5mm 2mm; box-sizing:border-box;">
+                            <table style="width:100%; height:30mm; border-collapse:collapse; border:none; margin:0; padding:0;">
+                                <tr>
+                                    <td style="vertical-align:top; padding:0;">
+                                        <div style="font-size:7.5pt; font-weight:800; line-height:1.15; max-height:16mm; overflow:hidden; text-transform:uppercase; color:#111; word-break:break-word;">
+                                            <strong t-field="product.display_name"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="vertical-align:bottom; padding:0;">
+                                        <t t-if="product.default_code">
+                                            <div style="font-size:5pt; color:#666; line-height:1; margin-bottom:0.5mm;" t-field="product.default_code"/>
+                                        </t>
+                                        <t t-if="barcode">
+                                            <div t-out="barcode" style="padding:0; margin:0; line-height:1;" t-options="{'widget': 'barcode', 'symbology': 'auto', 'img_style': 'width:31mm;height:7.5mm'}"/>
+                                            <div style="font-size:5pt; text-align:center; line-height:1; letter-spacing:0.5px; width:31mm; color:#333;" t-out="barcode"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                        <!-- Columna Derecha: [ARG] Fecha + Precio Final Gigante + Sin Imp Nac y PUM -->
+                        <td style="width:47%; height:33mm; vertical-align:top; padding:1.5mm 2mm 1.5mm 1mm; text-align:right; box-sizing:border-box;">
+                            <table style="width:100%; height:30mm; border-collapse:collapse; border:none; margin:0; padding:0;">
+                                <tr style="height:3mm;">
+                                    <td style="vertical-align:top; text-align:right; padding:0;">
+                                        <span style="font-size:4.8pt; color:#666; white-space:nowrap;">
+                                            [<t t-out="info and info['origin'] or 'ARG'"/>] <t t-out="info and info['print_date'] or ''"/>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="vertical-align:middle; text-align:right; padding:0;">
+                                        <strong style="font-size:19pt; font-weight:900; line-height:0.95; white-space:nowrap; color:#000; letter-spacing:-0.5px;"
+                                                t-out="info and info['price_final'] or pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id)"
+                                                t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id), 'label_price': True}"/>
+                                    </td>
+                                </tr>
+                                <tr style="height:8mm;">
+                                    <td style="vertical-align:bottom; text-align:right; padding:0;">
+                                        <div style="font-size:5.2pt; color:#555; white-space:nowrap; line-height:1.1;">
+                                            Sin Imp. Nac: <span t-out="info and info['price_net'] or (pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id) / 1.21)"
+                                                                t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id)}"/>
+                                        </div>
+                                        <t t-if="info and info['pum_price']">
+                                            <div style="font-size:6.8pt; font-weight:800; color:#000; white-space:nowrap; line-height:1.2;">
+                                                P.U.M.: <span t-out="info['pum_price']" t-options="{'widget': 'monetary', 'display_currency': info['currency']}"/> / <t t-out="info['pum_unit']"/>
+                                            </div>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
             </div>
         </td>
     </template>
