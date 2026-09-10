@@ -12,6 +12,7 @@ class ReportProductTemplateLabel3x8(models.AbstractModel):
         - Precio sin impuestos nacionales (neto sin IVA).
         - Precio por Unidad de Medida (P.U.M.) $/Kg o $/L compatible con Odoo 19 (relative_uom_id / _has_common_reference).
         - País de origen y fecha de emisión.
+        - Tamaño de fuente dinámico para precios con muchas cifras ($55.900,99 / $120.000,00).
         """
         # 1. Precio Final y Moneda
         if pricelist:
@@ -93,6 +94,18 @@ class ReportProductTemplateLabel3x8(models.AbstractModel):
         # 5. Fecha de Emisión (DD/MM/AA)
         print_date = fields.Date.today().strftime('%d/%m/%y')
 
+        # 6. Auto-escala de tamaño de fuente del precio para evitar desbordes
+        if price_final < 100:
+            price_font_size = "20pt"
+        elif price_final < 1000:
+            price_font_size = "18pt"
+        elif price_final < 10000:
+            price_font_size = "15.5pt"
+        elif price_final < 100000:
+            price_font_size = "13pt"
+        else:
+            price_font_size = "11pt"
+
         return {
             'price_final': price_final,
             'price_net': price_net,
@@ -101,6 +114,7 @@ class ReportProductTemplateLabel3x8(models.AbstractModel):
             'origin': origin,
             'print_date': print_date,
             'currency': currency,
+            'price_font_size': price_font_size,
         }
 
     def _get_report_values(self, docids, data):
