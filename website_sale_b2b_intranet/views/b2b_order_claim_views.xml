@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista de Lista para Reclamos B2B -->
+    <record id="view_b2b_order_claim_list" model="ir.ui.view">
+        <field name="name">b2b.order.claim.list</field>
+        <field name="model">b2b.order.claim</field>
+        <field name="arch" type="xml">
+            <list string="Reclamos de Entrega y Calidad B2B" default_order="date desc, id desc"
+                  decoration-info="state == 'draft'"
+                  decoration-warning="state == 'in_progress'"
+                  decoration-success="state == 'resolved'"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="order_id"/>
+                <field name="commercial_partner_id"/>
+                <field name="claim_type"/>
+                <field name="product_id"/>
+                <field name="affected_qty"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'in_progress'"
+                       decoration-success="state == 'resolved'"
+                       decoration-muted="state == 'rejected'"/>
+                <field name="resolution_type" optional="show"/>
+                <field name="date_resolved" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista de Formulario para Reclamo B2B -->
+    <record id="view_b2b_order_claim_form" model="ir.ui.view">
+        <field name="name">b2b.order.claim.form</field>
+        <field name="model">b2b.order.claim</field>
+        <field name="arch" type="xml">
+            <form string="Reclamo de Entrega y Calidad B2B">
+                <header>
+                    <button name="action_set_in_progress" string="Iniciar Análisis" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_resolve" string="Resolver Reclamo" type="object" class="oe_highlight" invisible="state in ('resolved', 'rejected')"/>
+                    <button name="action_reject" string="Desestimar Reclamo" type="object" class="btn-outline-danger" invisible="state in ('resolved', 'rejected')"/>
+                    <button name="action_reset_draft" string="Volver a Borrador" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,resolved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Número de Reclamo"/>
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="order_info" string="Datos del Pedido y Cliente">
+                            <field name="order_id" readonly="state != 'draft'"/>
+                            <field name="commercial_partner_id"/>
+                            <field name="partner_id"/>
+                            <field name="date"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group name="incident_info" string="Detalle del Inconveniente">
+                            <field name="claim_type" readonly="state in ('resolved', 'rejected')"/>
+                            <field name="product_id" domain="[('id', 'in', order_id and order_id.order_line.mapped('product_id').ids or [])]" readonly="state in ('resolved', 'rejected')"/>
+                            <field name="affected_qty" readonly="state in ('resolved', 'rejected')"/>
+                            <field name="lot_number" readonly="state in ('resolved', 'rejected')"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Descripción y Evidencia" name="page_description">
+                            <group>
+                                <field name="description" placeholder="Describa en detalle lo sucedido..." readonly="state in ('resolved', 'rejected')"/>
+                            </group>
+                            <separator string="Fotos y Evidencia Adjunta"/>
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Dictamen y Resolución" name="page_resolution">
+                            <group>
+                                <group name="resolution_data">
+                                    <field name="resolution_type"/>
+                                    <field name="resolved_by_id"/>
+                                    <field name="date_resolved"/>
+                                </group>
+                            </group>
+                            <separator string="Notas de Resolución / Observaciones Técnicas"/>
+                            <field name="resolution_notes" placeholder="Indicar número de nota de crédito emitida, lote de reemplazo o justificación técnica..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista de Búsqueda para Reclamos B2B -->
+    <record id="view_b2b_order_claim_search" model="ir.ui.view">
+        <field name="name">b2b.order.claim.search</field>
+        <field name="model">b2b.order.claim</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Reclamos">
+                <field name="name"/>
+                <field name="order_id"/>
+                <field name="commercial_partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_number"/>
+                <separator/>
+                <filter string="Pendientes" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="En Análisis" name="filter_in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Resueltos" name="filter_resolved" domain="[('state', '=', 'resolved')]"/>
+                <filter string="Desestimados" name="filter_rejected" domain="[('state', '=', 'rejected')]"/>
+                <separator/>
+                <filter string="Faltantes" name="type_missing" domain="[('claim_type', '=', 'missing')]"/>
+                <filter string="Dañados en Tránsito" name="type_damaged" domain="[('claim_type', '=', 'damaged')]"/>
+                <filter string="Defecto de Calidad" name="type_quality" domain="[('claim_type', '=', 'quality')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Tipo de Reclamo" name="group_claim_type" context="{'group_by': 'claim_type'}"/>
+                    <filter string="Cliente" name="group_partner" context="{'group_by': 'commercial_partner_id'}"/>
+                    <filter string="Pedido" name="group_order" context="{'group_by': 'order_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Acción de Ventana para Reclamos -->
+    <record id="action_b2b_order_claim" model="ir.actions.act_window">
+        <field name="name">Reclamos y Calidad B2B</field>
+        <field name="res_model">b2b.order.claim</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_b2b_order_claim_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay reclamos de entrega o calidad registrados.
+            </p>
+            <p>
+                Los franquiciados pueden reportar roturas, faltantes o desvíos de calidad desde el portal del pedido.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menú en Ventas > Pedidos -->
+    <menuitem id="menu_b2b_order_claim"
+              name="Reclamos y Calidad B2B"
+              parent="sale.sale_order_menu"
+              action="action_b2b_order_claim"
+              sequence="40"/>
+
+    <!-- Smart Button en Vista Formulario de Pedido de Venta (sale.order) -->
+    <record id="view_order_form_inherit_b2b_claims" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.b2b.claims</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_claims"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-exclamation-triangle"
+                        invisible="claim_count == 0">
+                    <field name="claim_count" widget="statinfo" string="Reclamos B2B"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

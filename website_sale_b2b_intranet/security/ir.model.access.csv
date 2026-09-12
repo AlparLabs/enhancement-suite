@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_b2b_marketing_material_user,b2b.marketing.material.user,model_b2b_marketing_material,base.group_user,1,1,1,1
+access_b2b_marketing_material_portal,b2b.marketing.material.portal,model_b2b_marketing_material,base.group_portal,1,0,0,0
+access_b2b_order_claim_user,b2b.order.claim.user,model_b2b_order_claim,base.group_user,1,1,1,1
+access_b2b_order_claim_portal,b2b.order.claim.portal,model_b2b_order_claim,base.group_portal,1,0,1,0

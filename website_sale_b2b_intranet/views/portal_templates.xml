@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Breadcrumbs de Navegación para Intranet B2B -->
+    <template id="portal_my_home_menu_b2b_intranet" name="B2B Intranet Breadcrumbs" inherit_id="portal.portal_breadcrumbs" priority="30">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name == 'materials'" class="breadcrumb-item active">
+                Materiales y Marketing B2B
+            </li>
+            <li t-if="page_name == 'claims'" class="breadcrumb-item active">
+                Reclamos y Calidad
+            </li>
+            <li t-if="page_name == 'order_claim'" class="breadcrumb-item">
+                <a t-attf-href="/my/orders/#{order.id}">
+                    <t t-out="order.name"/>
+                </a>
+            </li>
+            <li t-if="page_name == 'order_claim'" class="breadcrumb-item active">
+                Reportar Inconveniente
+            </li>
+        </xpath>
+    </template>
+
+    <!-- Tarjetas de Acceso en el Portal Home (/my) -->
+    <template id="portal_my_home_b2b_intranet" inherit_id="portal.portal_my_home" priority="30" name="B2B Intranet Cards in Portal Home">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
+            <t t-set="portal_client_category_enable" t-value="True"/>
+        </xpath>
+        <xpath expr="//div[@id='portal_client_category']" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Materiales y Marketing B2B</t>
+                <t t-set="text">Manuales de marca, afiches y listas de precios sugeridos</t>
+                <t t-set="url" t-value="'/my/materials'"/>
+                <t t-set="placeholder_count" t-value="'material_count'"/>
+                <t t-set="config_card" t-value="True"/>
+            </t>
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Reclamos y Calidad</t>
+                <t t-set="text">Seguimiento de incidencias en entregas y mercadería</t>
+                <t t-set="url" t-value="'/my/claims'"/>
+                <t t-set="placeholder_count" t-value="'claim_count'"/>
+                <t t-set="config_card" t-value="True"/>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Botón de Reportar Inconveniente y Resumen de Reclamos en Detalle de Pedido (/my/orders/<id>) -->
+    <template id="sale_order_portal_template_b2b_claims" inherit_id="sale.sale_order_portal_template" name="B2B Claim Button in Order Detail">
+        <xpath expr="//div[hasclass('o_download_pdf')]" position="after">
+            <div t-if="sale_order.state in ('sale', 'done')" class="mt-2 w-100">
+                <a t-attf-href="/my/orders/#{sale_order.id}/claim" class="btn btn-outline-danger w-100 text-truncate shadow-sm" role="button">
+                    <i class="fa fa-exclamation-triangle me-1"/> Reportar Inconveniente
+                </a>
+            </div>
+            <t t-if="sale_order.claim_ids">
+                <div class="alert alert-light border small mt-2 mb-0 py-2 shadow-sm" role="alert">
+                    <div class="fw-bold mb-1 text-dark">
+                        <i class="fa fa-history me-1 text-primary"/> Reclamos de este pedido:
+                    </div>
+                    <t t-foreach="sale_order.claim_ids" t-as="claim">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <a href="/my/claims" class="text-primary fw-bold text-decoration-none">
+                                <t t-out="claim.name"/>
+                            </a>
+                            <span t-attf-class="badge #{'text-bg-warning' if claim.state == 'in_progress' else 'text-bg-success' if claim.state == 'resolved' else 'text-bg-secondary' if claim.state == 'rejected' else 'text-bg-info'}">
+                                <t t-if="claim.state == 'draft'">Pendiente</t>
+                                <t t-elif="claim.state == 'in_progress'">En Análisis</t>
+                                <t t-elif="claim.state == 'resolved'">Resuelto</t>
+                                <t t-elif="claim.state == 'rejected'">Desestimado</t>
+                            </span>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

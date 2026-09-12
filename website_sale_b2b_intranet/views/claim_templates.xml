@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Formulario Guiado de Reclamo (/my/orders/<id>/claim) -->
+    <template id="portal_order_claim_form" name="B2B Order Claim Form">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <div class="row justify-content-center">
+                    <div class="col-lg-9">
+
+                        <!-- Encabezado -->
+                        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                            <div>
+                                <h3 class="fw-bold mb-1 text-danger">
+                                    <i class="fa fa-exclamation-triangle me-2"/>Reportar Inconveniente con la Entrega
+                                </h3>
+                                <p class="text-muted mb-0">
+                                    Pedido: <strong><t t-out="order.name"/></strong> • Fecha: <span t-field="order.date_order" t-options="{'widget': 'date'}"/>
+                                </p>
+                            </div>
+                            <a t-attf-href="/my/orders/#{order.id}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa fa-arrow-left me-1"/> Volver al Pedido
+                            </a>
+                        </div>
+
+                        <!-- Alerta de Error -->
+                        <t t-if="error">
+                            <div class="alert alert-danger alert-dismissible fade show mb-4 shadow-sm" role="alert">
+                                <i class="fa fa-times-circle me-2"/> <t t-out="error"/>
+                            </div>
+                        </t>
+
+                        <!-- Formulario de Reclamo -->
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-4">
+                                <form t-attf-action="/my/orders/#{order.id}/claim" method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                    <!-- 1. Tipo de Inconveniente -->
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold text-dark">
+                                            1. Motivo principal del reporte <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="row g-2">
+                                            <t t-foreach="claim_types" t-as="ctype">
+                                                <div class="col-md-6">
+                                                    <div class="form-check p-3 border rounded h-100 bg-light">
+                                                        <input class="form-check-input" type="radio" name="claim_type"
+                                                               t-att-id="'ctype_' + ctype[0]" t-att-value="ctype[0]"
+                                                               t-att-checked="ctype[0] == (submitted_values.get('claim_type') if submitted_values else 'missing')"/>
+                                                        <label class="form-check-label fw-semibold text-dark ms-1" t-att-for="'ctype_' + ctype[0]">
+                                                            <t t-out="ctype[1]"/>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </div>
+
+                                    <!-- 2. Producto y Cantidad Afectada -->
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-6">
+                                            <label for="product_id" class="form-label fw-bold text-dark">
+                                                2. Producto o Variedad afectada
+                                            </label>
+                                            <select name="product_id" id="product_id" class="form-select">
+                                                <option value="">-- Aplica a todo el pedido / bulto general --</option>
+                                                <t t-foreach="order.order_line.mapped('product_id')" t-as="prod">
+                                                    <option t-att-value="prod.id">
+                                                        <t t-out="prod.display_name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                            <div class="form-text">Si el problema es específico de un alfajor o insumo, indícalo aquí.</div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label for="affected_qty" class="form-label fw-bold text-dark">
+                                                Cantidad afectada
+                                            </label>
+                                            <input type="number" step="any" min="0" name="affected_qty" id="affected_qty"
+                                                   class="form-control" placeholder="Ej: 12"
+                                                   t-att-value="submitted_values.get('affected_qty') if submitted_values else ''"/>
+                                            <div class="form-text">Unidades o cajas con inconveniente.</div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label for="lot_number" class="form-label fw-bold text-dark">
+                                                N° de Lote / Vto.
+                                            </label>
+                                            <input type="text" name="lot_number" id="lot_number"
+                                                   class="form-control" placeholder="Ej: L260901"
+                                                   t-att-value="submitted_values.get('lot_number') if submitted_values else ''"/>
+                                            <div class="form-text">Impreso en el empaque.</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 3. Descripción Detallada -->
+                                    <div class="mb-4">
+                                        <label for="description" class="form-label fw-bold text-dark">
+                                            3. Detalle de lo sucedido <span class="text-danger">*</span>
+                                        </label>
+                                        <textarea name="description" id="description" rows="4" class="form-control" required="required"
+                                                  placeholder="Describa claramente el estado en que recibió la mercadería, discrepancia con el remito físico o cualquier observación de calidad..."><t t-out="submitted_values.get('description') if submitted_values else ''"/></textarea>
+                                    </div>
+
+                                    <!-- 4. Fotos y Evidencia Adjunta -->
+                                    <div class="mb-4">
+                                        <label for="claim_files" class="form-label fw-bold text-dark">
+                                            4. Fotos del remito, bulto y producto dañado
+                                        </label>
+                                        <input type="file" name="claim_files" id="claim_files" class="form-control" multiple="multiple" accept="image/*,.pdf"/>
+                                        <div class="form-text text-muted">
+                                            <i class="fa fa-info-circle me-1"/> Puede seleccionar múltiples imágenes o fotos tomadas desde su teléfono (máx. 10MB por archivo).
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-4"/>
+
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <a t-attf-href="/my/orders/#{order.id}" class="btn btn-outline-secondary">
+                                            Cancelar
+                                        </a>
+                                        <button type="submit" class="btn btn-danger btn-lg fw-bold shadow-sm">
+                                            <i class="fa fa-paper-plane me-2"/> Enviar Reporte a Calidad
+                                        </button>
+                                    </div>
+
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Listado y Seguimiento de Reclamos (/my/claims) -->
+    <template id="portal_my_claims" name="B2B Claims Tracking Portal">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+
+                <!-- Alerta de Reclamo Creado -->
+                <t t-if="claim_created">
+                    <div class="alert alert-success alert-dismissible fade show mb-4 shadow-sm border-success" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-check-circle fa-2x me-3 text-success"/>
+                            <div>
+                                <h5 class="alert-heading fw-bold mb-1">¡Reclamo <t t-out="claim_created"/> Registrado con Éxito!</h5>
+                                <p class="mb-0 small">
+                                    El equipo de Calidad y Logística de EntreDos ha recibido el reporte y comenzará la revisión técnica y cotejo de remitos. Podrás seguir su estado en esta pantalla.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <!-- Encabezado de la Sección -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <div>
+                        <h2 class="fw-bold mb-1 text-primary">
+                            <i class="fa fa-shield me-2"/>Gestión de Reclamos y Calidad B2B
+                        </h2>
+                        <p class="text-muted mb-0">
+                            Seguimiento en tiempo real de reportes de entrega, roturas, faltantes y resoluciones comerciales.
+                        </p>
+                    </div>
+                    <div class="mt-2 mt-md-0">
+                        <a href="/my/orders" class="btn btn-outline-primary btn-sm">
+                            <i class="fa fa-shopping-cart me-1"/> Ir a Mis Pedidos
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Filtros y Búsqueda -->
+                <div class="row g-3 mb-4 align-items-center">
+                    <div class="col-lg-8">
+                        <div class="d-flex flex-wrap gap-2">
+                            <a t-attf-href="/my/claims#{('?search=' + search_term) if search_term else ''}"
+                               t-attf-class="btn btn-sm #{'btn-primary' if not selected_state else 'btn-outline-secondary'}">
+                                Todos <span class="badge text-bg-light ms-1"><t t-out="total_claims"/></span>
+                            </a>
+                            <t t-foreach="states.items()" t-as="st">
+                                <a t-attf-href="/my/claims?state=#{st[0]}#{('&amp;search=' + search_term) if search_term else ''}"
+                                   t-attf-class="btn btn-sm #{'btn-primary' if selected_state == st[0] else 'btn-outline-secondary'}">
+                                    <t t-out="st[1]"/>
+                                    <span class="badge text-bg-light ms-1">
+                                        <t t-out="state_counts.get(st[0], 0)"/>
+                                    </span>
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <form method="get" action="/my/claims" class="d-flex">
+                            <t t-if="selected_state">
+                                <input type="hidden" name="state" t-att-value="selected_state"/>
+                            </t>
+                            <input type="text" name="search" class="form-control form-control-sm me-2" placeholder="Buscar por código o pedido..." t-att-value="search_term"/>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="fa fa-search"/>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Lista de Reclamos -->
+                <t t-if="claims">
+                    <div class="d-flex flex-column gap-3">
+                        <t t-foreach="claims" t-as="claim">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header bg-white py-3 border-bottom">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h5 class="fw-bold mb-0 text-primary">
+                                                <t t-out="claim.name"/>
+                                            </h5>
+                                            <span class="text-muted small">
+                                                • Pedido: <a t-attf-href="/my/orders/#{claim.order_id.id}" class="fw-bold text-decoration-none"><t t-out="claim.order_id.name"/></a>
+                                            </span>
+                                            <span class="text-muted small">
+                                                • Fecha: <span t-field="claim.date" t-options="{'widget': 'date'}"/>
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span t-attf-class="badge fs-7 #{'text-bg-warning' if claim.state == 'in_progress' else 'text-bg-success' if claim.state == 'resolved' else 'text-bg-secondary' if claim.state == 'rejected' else 'text-bg-info'}">
+                                                <t t-if="claim.state == 'draft'">Pendiente de Revisión</t>
+                                                <t t-elif="claim.state == 'in_progress'">En Análisis de Calidad</t>
+                                                <t t-elif="claim.state == 'resolved'">Resuelto</t>
+                                                <t t-elif="claim.state == 'rejected'">Desestimado</t>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body p-4">
+                                    <div class="row g-3">
+                                        <div class="col-md-7">
+                                            <div class="mb-2">
+                                                <span class="text-muted small d-block">Motivo del Inconveniente:</span>
+                                                <strong class="text-dark">
+                                                    <t t-if="claim.claim_type == 'missing'">Faltante de mercadería (unidades o bultos no recibidos)</t>
+                                                    <t t-elif="claim.claim_type == 'damaged'">Mercadería dañada en tránsito (roturas, abolladuras)</t>
+                                                    <t t-elif="claim.claim_type == 'quality'">Desviación de calidad o defecto de empaque</t>
+                                                    <t t-else="">Otro inconveniente</t>
+                                                </strong>
+                                            </div>
+                                            <t t-if="claim.product_id">
+                                                <div class="mb-2">
+                                                    <span class="text-muted small d-block">Producto afectado:</span>
+                                                    <span class="text-dark"><t t-out="claim.product_id.display_name"/></span>
+                                                    <span t-if="claim.affected_qty &gt; 0" class="badge text-bg-light border ms-1">
+                                                        Cant: <t t-out="claim.affected_qty"/>
+                                                    </span>
+                                                    <span t-if="claim.lot_number" class="badge text-bg-light border ms-1">
+                                                        Lote: <t t-out="claim.lot_number"/>
+                                                    </span>
+                                                </div>
+                                            </t>
+                                            <div>
+                                                <span class="text-muted small d-block">Descripción informada:</span>
+                                                <p class="text-secondary small mb-0"><t t-out="claim.description"/></p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Resolución o Adjuntos -->
+                                        <div class="col-md-5 border-start-md">
+                                            <t t-if="claim.state == 'resolved'">
+                                                <div class="p-3 bg-success bg-opacity-10 border border-success rounded">
+                                                    <div class="fw-bold text-success mb-1">
+                                                        <i class="fa fa-check-circle me-1"/> Dictamen de Calidad:
+                                                    </div>
+                                                    <div class="small mb-1">
+                                                        <strong>Resolución: </strong>
+                                                        <t t-if="claim.resolution_type == 'credit_note'">Emisión de Nota de Crédito</t>
+                                                        <t t-elif="claim.resolution_type == 'replacement'">Reposición en Próximo Pedido</t>
+                                                        <t t-else="">Sin compensación económica</t>
+                                                    </div>
+                                                    <p t-if="claim.resolution_notes" class="small text-muted mb-0">
+                                                        <t t-out="claim.resolution_notes"/>
+                                                    </p>
+                                                </div>
+                                            </t>
+                                            <t t-elif="claim.state == 'rejected'">
+                                                <div class="p-3 bg-secondary bg-opacity-10 border rounded">
+                                                    <div class="fw-bold text-danger mb-1">
+                                                        <i class="fa fa-ban me-1"/> Reclamo Desestimado:
+                                                    </div>
+                                                    <p t-if="claim.resolution_notes" class="small text-muted mb-0">
+                                                        <t t-out="claim.resolution_notes"/>
+                                                    </p>
+                                                </div>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="p-3 bg-light border rounded">
+                                                    <div class="fw-bold text-muted mb-1 small">
+                                                        <i class="fa fa-clock-o me-1"/> Estado del trámite:
+                                                    </div>
+                                                    <p class="small text-muted mb-0">
+                                                        Tu solicitud está siendo cotejada por el equipo de logística y fábrica con el remito firmado de transporte.
+                                                    </p>
+                                                </div>
+                                            </t>
+
+                                            <!-- Adjuntos -->
+                                            <t t-if="claim.attachment_ids">
+                                                <div class="mt-3">
+                                                    <span class="text-muted small d-block mb-1">Evidencia adjunta (<t t-out="len(claim.attachment_ids)"/>):</span>
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        <t t-foreach="claim.attachment_ids" t-as="att">
+                                                            <a t-attf-href="/web/content/#{att.id}?download=true" class="btn btn-outline-secondary btn-sm text-truncate" style="max-width: 180px;" t-att-title="att.name">
+                                                                <i class="fa fa-paperclip me-1"/> <t t-out="att.name"/>
+                                                            </a>
+                                                        </t>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+
+                <!-- Estado Vacío -->
+                <t t-else="">
+                    <div class="card shadow-sm border-0 text-center py-5">
+                        <div class="card-body">
+                            <i class="fa fa-check-shield fa-4x text-success mb-3"/>
+                            <h4 class="fw-bold text-dark mb-2">No hay reclamos registrados</h4>
+                            <p class="text-muted mb-3">
+                                Tus entregas se encuentran sin incidencias reportadas. Si recibes un pedido con inconvenientes, puedes reportarlo directamente desde el detalle de la entrega.
+                            </p>
+                            <a href="/my/orders" class="btn btn-primary btn-sm">
+                                <i class="fa fa-shopping-cart me-1"/> Ver Mis Pedidos
+                            </a>
+                        </div>
+                    </div>
+                </t>
+
+            </div>
+        </t>
+    </template>
+
+</odoo>
