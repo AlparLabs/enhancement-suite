@@ -24,6 +24,7 @@
         'views/res_partner_views.xml',
         'views/cart_templates.xml',
         'views/portal_templates.xml',
+        'views/b2b_intranet_alerts.xml',
     ],
     'installable': True,
     'application': False,

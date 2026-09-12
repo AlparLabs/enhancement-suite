@@ -8,57 +8,61 @@ class Website(models.Model):
     _inherit = 'website'
 
     b2b_order_schedule_active = fields.Boolean(
-        string="Restringir Días de Pedido B2B",
+        string="Restringir Días y Horarios de Pedido B2B",
         default=False,
-        help="Si está activo, solo se permitirá realizar y armar pedidos en los días de la semana seleccionados."
+        help="Si está activo, solo se permitirá realizar y armar pedidos en las franjas horarias configuradas."
     )
-    b2b_order_mon = fields.Boolean(string="Lunes", default=True)
-    b2b_order_tue = fields.Boolean(string="Martes", default=True)
-    b2b_order_wed = fields.Boolean(string="Miércoles", default=True)
-    b2b_order_thu = fields.Boolean(string="Jueves", default=True)
-    b2b_order_fri = fields.Boolean(string="Viernes", default=True)
-    b2b_order_sat = fields.Boolean(string="Sábado", default=False)
-    b2b_order_sun = fields.Boolean(string="Domingo", default=False)
-
+    b2b_schedule_ids = fields.One2many(
+        'website.b2b.order.schedule',
+        'website_id',
+        string="Franjas Horarias de Pedidos B2B"
+    )
     b2b_allowed_days_display = fields.Char(
-        string="Días Habilitados",
+        string="Horarios Habilitados",
         compute='_compute_b2b_allowed_days_display',
-        help="Texto descriptivo de los días de la semana en los que se reciben pedidos en este canal."
+        help="Texto descriptivo de las franjas horarias en las que se reciben pedidos en este canal."
     )
 
-    @api.depends(
-        'b2b_order_mon', 'b2b_order_tue', 'b2b_order_wed', 'b2b_order_thu',
-        'b2b_order_fri', 'b2b_order_sat', 'b2b_order_sun'
-    )
+    @api.depends('b2b_schedule_ids', 'b2b_schedule_ids.day_of_week',
+                 'b2b_schedule_ids.hour_from', 'b2b_schedule_ids.hour_to')
     def _compute_b2b_allowed_days_display(self):
-        day_names = [
-            ('b2b_order_mon', _("Lunes")),
-            ('b2b_order_tue', _("Martes")),
-            ('b2b_order_wed', _("Miércoles")),
-            ('b2b_order_thu', _("Jueves")),
-            ('b2b_order_fri', _("Viernes")),
-            ('b2b_order_sat', _("Sábado")),
-            ('b2b_order_sun', _("Domingo")),
-        ]
+        day_labels = {
+            '0': _("Lunes"),
+            '1': _("Martes"),
+            '2': _("Miércoles"),
+            '3': _("Jueves"),
+            '4': _("Viernes"),
+            '5': _("Sábado"),
+            '6': _("Domingo"),
+        }
         for website in self:
-            active_days = [name for field_name, name in day_names if website[field_name]]
-            if len(active_days) == 7:
-                website.b2b_allowed_days_display = _("Todos los días")
-            elif len(active_days) > 1:
-                website.b2b_allowed_days_display = f"{', '.join(active_days[:-1])} y {active_days[-1]}"
-            elif active_days:
-                website.b2b_allowed_days_display = active_days[0]
-            else:
+            if not website.b2b_schedule_ids:
                 website.b2b_allowed_days_display = _("Ninguno (Cerrado)")
+                continue
+
+            lines_desc = []
+            for s in website.b2b_schedule_ids.sorted(key=lambda r: (int(r.day_of_week), r.hour_from)):
+                day_name = day_labels.get(s.day_of_week, s.day_of_week)
+                h_from_int = int(s.hour_from)
+                m_from_int = int(round((s.hour_from - h_from_int) * 60))
+                h_to_int = int(s.hour_to)
+                m_to_int = int(round((s.hour_to - h_to_int) * 60))
+                time_str = f"{h_from_int:02d}:{m_from_int:02d} a {h_to_int:02d}:{m_to_int:02d} hs"
+                lines_desc.append(f"{day_name} ({time_str})")
+
+            website.b2b_allowed_days_display = ", ".join(lines_desc)
 
     def is_b2b_order_day_allowed(self, target_datetime=None):
         """
-        Determina si el día actual (o la fecha dada) en la zona horaria del sitio web
-        se encuentra habilitado para la recepción de pedidos.
+        Determina si el momento actual (o la fecha/hora dada) en la zona horaria del sitio web
+        se encuentra dentro de alguna franja horaria habilitada para pedidos.
         """
         self.ensure_one()
         if not self.b2b_order_schedule_active:
             return True
+
+        if not self.b2b_schedule_ids:
+            return False
 
         tz_name = self.company_id.partner_id.tz or self.env.user.tz or 'America/Argentina/Buenos_Aires'
         try:
@@ -74,14 +78,11 @@ class Website(models.Model):
         else:
             dt = datetime.now(tz)
 
-        weekday = dt.weekday()  # 0=Monday, ..., 6=Sunday
-        days_map = {
-            0: self.b2b_order_mon,
-            1: self.b2b_order_tue,
-            2: self.b2b_order_wed,
-            3: self.b2b_order_thu,
-            4: self.b2b_order_fri,
-            5: self.b2b_order_sat,
-            6: self.b2b_order_sun,
-        }
-        return bool(days_map.get(weekday, False))
+        weekday = str(dt.weekday())  # '0'..'6'
+        current_hour = dt.hour + (dt.minute / 60.0) + (dt.second / 3600.0)
+
+        # Buscar si alguna franja de hoy cubre la hora actual
+        matching_schedules = self.b2b_schedule_ids.filtered(
+            lambda s: s.day_of_week == weekday and s.hour_from <= current_hour <= s.hour_to
+        )
+        return bool(matching_schedules)

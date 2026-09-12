@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Alerta en el Portal Home (/my) ante deuda bloqueante -->
+    <template id="portal_my_home_b2b_financial_alert" inherit_id="portal.portal_my_home" name="B2B Financial Alert in Portal Home" priority="10">
+        <xpath expr="//div[hasclass('o_portal_my_home')]" position="before">
+            <t t-set="partner_fin_status" t-value="request.env.user.partner_id._get_b2b_financial_status(request.website) if not request.env.user._is_public() else False"/>
+            <t t-if="partner_fin_status and partner_fin_status.get('is_blocked')">
+                <div class="alert alert-warning mb-4 border-warning shadow-sm" role="alert">
+                    <div class="d-flex align-items-start">
+                        <i class="fa fa-exclamation-triangle fa-2x me-3 text-warning mt-1"/>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading fw-bold mb-1">Estado de Cuenta: Compras Suspendidas</h5>
+                            <p class="mb-2 small">
+                                Tu cuenta presenta 
+                                <t t-if="partner_fin_status.get('has_overdue')">
+                                    comprobantes vencidos pendientes de pago por 
+                                    <strong class="text-danger">
+                                        <span t-out="partner_fin_status.get('overdue_amount')" t-options="{'widget': 'monetary', 'display_currency': request.env.company.currency_id}"/>
+                                    </strong>
+                                </t>
+                                <t t-if="partner_fin_status.get('has_overdue') and partner_fin_status.get('exceeds_limit')"> y </t>
+                                <t t-if="partner_fin_status.get('exceeds_limit')">
+                                    exceso del límite de crédito asignado
+                                </t>.
+                                Para habilitar la toma de pedidos, por favor regulariza tu saldo pendiente.
+                            </p>
+                            <a href="/my/account_statement/pdf" class="btn btn-warning btn-sm fw-bold" target="_blank">
+                                <i class="fa fa-download me-1"/> Descargar Estado de Cuenta (PDF)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Alerta en la Tienda / Catálogo (/shop) ante deuda bloqueante -->
+    <template id="products_b2b_financial_alert" inherit_id="website_sale.products" name="B2B Financial Alert in Shop" priority="10">
+        <xpath expr="//div[hasclass('o_wsale_products_main_row')]" position="before">
+            <t t-set="partner_fin_status" t-value="request.env.user.partner_id._get_b2b_financial_status(website) if not request.env.user._is_public() else False"/>
+            <t t-if="partner_fin_status and partner_fin_status.get('is_blocked')">
+                <div class="alert alert-warning mb-4 border-warning shadow-sm w-100" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-exclamation-triangle fa-2x me-3 text-warning"/>
+                        <div>
+                            <strong class="d-block">Toma de pedidos suspendida por saldos pendientes</strong>
+                            <span class="small">
+                                Tu cuenta presenta facturas vencidas o margen de crédito superado. Puedes consultar tu 
+                                <a href="/my/account_statement/pdf" class="alert-link text-decoration-underline" target="_blank">Estado de Cuenta</a> 
+                                o comunicarte con Administración para coordinar el pago y reanudar tus compras.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Ficha de Producto: Ocultar botón de agregar y mostrar aviso si tiene deuda -->
+    <template id="cta_wrapper_b2b_debt_block" inherit_id="website_sale.cta_wrapper" name="CTA Wrapper B2B Debt Block" priority="20">
+        <xpath expr="//div[@id='add_to_cart_wrap']" position="before">
+            <t t-set="partner_fin_status" t-value="request.env.user.partner_id._get_b2b_financial_status(website) if not request.env.user._is_public() else False"/>
+            <t t-if="partner_fin_status and partner_fin_status.get('is_blocked')">
+                <div class="alert alert-danger w-100 d-flex align-items-center mb-3 shadow-sm border-danger" role="alert">
+                    <i class="fa fa-ban fa-2x me-3 text-danger"/>
+                    <div>
+                        <strong class="d-block">Compras suspendidas por saldo pendiente</strong>
+                        <span class="small">
+                            Tu cuenta corriente presenta comprobantes vencidos o límite superado. 
+                            Descarga tu <a href="/my/account_statement/pdf" class="alert-link text-decoration-underline" target="_blank">Estado de Cuenta (PDF)</a> 
+                            para regularizar tu situación.
+                        </span>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+        <xpath expr="//div[@id='add_to_cart_wrap']" position="attributes">
+            <attribute name="t-attf-class" add="{{'d-none' if (request.env.user.partner_id._get_b2b_financial_status(website).get('is_blocked') if not request.env.user._is_public() else False) else ''}}" separator=" "/>
+        </xpath>
+    </template>
+
+</odoo>

@@ -189,3 +189,32 @@ class TestB2BCreditBlock(TransactionCase):
         self.assertTrue(status['exceeds_limit'])
         self.assertEqual(status['invoiced_debt'], 800000.0)
         self.assertEqual(status['excess_amount'], 100000.0)
+
+    def test_06_cart_add_prevented_when_blocked(self):
+        """Verifica que no se permita agregar productos al carrito si el cliente tiene bloqueo financiero."""
+        today = fields.Date.context_today(self.partner_parent)
+        # Crear factura vencida fuera de días de gracia
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': self.partner_child_franq.id,
+            'invoice_date': today - timedelta(days=20),
+            'invoice_date_due': today - timedelta(days=10),
+            'invoice_line_ids': [
+                (0, 0, {
+                    'product_id': self.product.id,
+                    'quantity': 10,
+                    'price_unit': 1000.0,
+                })
+            ],
+        })
+        invoice.action_post()
+
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner_child_franq.id,
+            'website_id': self.website_franquicias.id,
+        })
+
+        # Al intentar agregar al carrito, debe levantar UserError por deuda vencida
+        with self.assertRaises(UserError):
+            order._cart_add(self.product.id, 1.0)
+

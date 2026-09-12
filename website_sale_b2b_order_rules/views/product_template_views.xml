@@ -9,14 +9,18 @@
                 <page string="Regulación B2B" name="b2b_regulation">
                     <field name="b2b_order_limit_ids">
                         <list editable="bottom">
+                            <field name="name" placeholder="ej. Permanente, Pascua, Invierno"/>
                             <field name="website_id" options="{'no_create': True}"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="week_number"/>
                             <field name="max_qty"/>
                             <field name="min_qty"/>
                         </list>
                     </field>
-                    <div class="text-muted mt-2">
+                    <div class="text-muted mt-2 small">
                         <i class="fa fa-info-circle me-1"/>
-                        Defina la cantidad máxima y/o mínima permitida por pedido para cada canal web (Franquicias, Distribución, etc.). Ingrese 0 para dejar sin límite.
+                        Defina los cupos máximos y/o mínimos por pedido para cada canal web. Puede configurar reglas permanentes (sin fechas) o reglas estacionales/especiales por rango de fechas o número de semana. Si un producto no tiene reglas cargadas, se vende libremente sin límites.
                     </div>
                 </page>
             </xpath>

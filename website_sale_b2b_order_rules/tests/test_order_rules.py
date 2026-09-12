@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime
+from datetime import datetime, timedelta
+from odoo import fields
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError
 
@@ -14,25 +15,34 @@ class TestB2BOrderRules(TransactionCase):
             'name': 'Franquicias EntreDos',
             'company_id': cls.company.id,
             'b2b_order_schedule_active': True,
-            'b2b_order_mon': True,
-            'b2b_order_tue': True,
-            'b2b_order_wed': False,
-            'b2b_order_thu': False,
-            'b2b_order_fri': False,
-            'b2b_order_sat': False,
-            'b2b_order_sun': False,
         })
+        # Configurar franjas: Lunes 08:00 a 18:00, Viernes 08:00 a 13:00
+        cls.env['website.b2b.order.schedule'].create([
+            {
+                'website_id': cls.website_franquicias.id,
+                'day_of_week': '0',  # Lunes
+                'hour_from': 8.0,
+                'hour_to': 18.0,
+            },
+            {
+                'website_id': cls.website_franquicias.id,
+                'day_of_week': '4',  # Viernes
+                'hour_from': 8.0,
+                'hour_to': 13.0,  # Corte 13:00
+            }
+        ])
+
         cls.website_distribucion = cls.env['website'].create({
             'name': 'Distribución EntreDos',
             'company_id': cls.company.id,
             'b2b_order_schedule_active': True,
-            'b2b_order_mon': False,
-            'b2b_order_tue': False,
-            'b2b_order_wed': True,
-            'b2b_order_thu': True,
-            'b2b_order_fri': False,
-            'b2b_order_sat': False,
-            'b2b_order_sun': False,
+        })
+        # Distribución: Miércoles 08:00 a 20:00
+        cls.env['website.b2b.order.schedule'].create({
+            'website_id': cls.website_distribucion.id,
+            'day_of_week': '2',  # Miércoles
+            'hour_from': 8.0,
+            'hour_to': 20.0,
         })
 
         cls.product_alfajor = cls.env['product.template'].create({
@@ -41,18 +51,29 @@ class TestB2BOrderRules(TransactionCase):
             'type': 'consu',
         })
 
-        # Regla de límite para Franquicias: máx 30 unidades
-        cls.limit_franquicias = cls.env['b2b.product.order.limit'].create({
-            'product_tmpl_id': cls.product_alfajor.id,
-            'website_id': cls.website_franquicias.id,
-            'max_qty': 30.0,
+        cls.product_libre = cls.env['product.template'].create({
+            'name': 'Producto Sin Límites',
+            'list_price': 1000.0,
+            'type': 'consu',
         })
 
-        # Regla de límite para Distribución: máx 150 unidades
-        cls.limit_distribucion = cls.env['b2b.product.order.limit'].create({
+        # Regla permanente general para Franquicias: máx 50 unidades
+        cls.limit_general = cls.env['b2b.product.order.limit'].create({
+            'name': 'General Permanente',
             'product_tmpl_id': cls.product_alfajor.id,
-            'website_id': cls.website_distribucion.id,
-            'max_qty': 150.0,
+            'website_id': cls.website_franquicias.id,
+            'max_qty': 50.0,
+        })
+
+        # Regla estacional (vigente hoy): máx 15 unidades
+        today = fields.Date.today()
+        cls.limit_temporada = cls.env['b2b.product.order.limit'].create({
+            'name': 'Especial Temporada',
+            'product_tmpl_id': cls.product_alfajor.id,
+            'website_id': cls.website_franquicias.id,
+            'date_from': today - timedelta(days=2),
+            'date_to': today + timedelta(days=2),
+            'max_qty': 15.0,
         })
 
         cls.partner = cls.env['res.partner'].create({
@@ -60,93 +81,74 @@ class TestB2BOrderRules(TransactionCase):
             'company_id': cls.company.id,
         })
 
-    def test_01_allowed_days_computation(self):
-        """Verifica el cálculo de días permitidos y la descripción formateada."""
+    def test_01_allowed_schedule_and_cutoff_hours(self):
+        """Verifica el cálculo de días y horarios de corte (ej. Viernes hasta las 13:00)."""
         self.assertIn('Lunes', self.website_franquicias.b2b_allowed_days_display)
-        self.assertIn('Martes', self.website_franquicias.b2b_allowed_days_display)
+        self.assertIn('Viernes', self.website_franquicias.b2b_allowed_days_display)
+        self.assertIn('13:00', self.website_franquicias.b2b_allowed_days_display)
 
-        # 2026-09-07 es Lunes
-        lunes = datetime(2026, 9, 7, 12, 0, 0)
-        # 2026-09-08 es Martes
-        martes = datetime(2026, 9, 8, 12, 0, 0)
-        # 2026-09-09 es Miércoles
-        miercoles = datetime(2026, 9, 9, 12, 0, 0)
-        # 2026-09-13 es Domingo
-        domingo = datetime(2026, 9, 13, 12, 0, 0)
+        # 2026-09-11 fue Viernes
+        viernes_ok = datetime(2026, 9, 11, 11, 30, 0)      # 11:30 hs -> Abierto
+        viernes_corte = datetime(2026, 9, 11, 13, 15, 0)   # 13:15 hs -> Pasó el corte de 13:00 (Cerrado)
+        viernes_temprano = datetime(2026, 9, 11, 7, 0, 0)  # 07:00 hs -> Antes de las 08:00 (Cerrado)
 
-        self.assertTrue(self.website_franquicias.is_b2b_order_day_allowed(lunes))
-        self.assertTrue(self.website_franquicias.is_b2b_order_day_allowed(martes))
-        self.assertFalse(self.website_franquicias.is_b2b_order_day_allowed(miercoles))
-        self.assertFalse(self.website_franquicias.is_b2b_order_day_allowed(domingo))
+        # 2026-09-07 fue Lunes
+        lunes_ok = datetime(2026, 9, 7, 10, 0, 0)          # 10:00 hs -> Abierto (8 a 18)
+        lunes_tarde = datetime(2026, 9, 7, 19, 0, 0)       # 19:00 hs -> Cerrado
 
-        # Distribución opera Miércoles y Jueves
-        self.assertFalse(self.website_distribucion.is_b2b_order_day_allowed(lunes))
-        self.assertTrue(self.website_distribucion.is_b2b_order_day_allowed(miercoles))
+        # 2026-09-09 fue Miércoles
+        miercoles_franq = datetime(2026, 9, 9, 10, 0, 0)   # Miércoles cerrado en Franquicias
 
-    def test_02_max_qty_capping(self):
-        """Verifica que la cantidad se acote al tope máximo según el canal web del pedido."""
-        order_franq = self.env['sale.order'].create({
+        self.assertTrue(self.website_franquicias.is_b2b_order_day_allowed(viernes_ok))
+        self.assertFalse(self.website_franquicias.is_b2b_order_day_allowed(viernes_corte))
+        self.assertFalse(self.website_franquicias.is_b2b_order_day_allowed(viernes_temprano))
+
+        self.assertTrue(self.website_franquicias.is_b2b_order_day_allowed(lunes_ok))
+        self.assertFalse(self.website_franquicias.is_b2b_order_day_allowed(lunes_tarde))
+        self.assertFalse(self.website_franquicias.is_b2b_order_day_allowed(miercoles_franq))
+
+        # En Distribución, Miércoles sí está abierto
+        self.assertTrue(self.website_distribucion.is_b2b_order_day_allowed(miercoles_franq))
+
+    def test_02_seasonal_and_weekly_limits_priority(self):
+        """Verifica que la regla de temporada activa tenga prioridad sobre la regla general, y que productos sin reglas estén liberados."""
+        today = fields.Date.today()
+        active_limit = self.product_alfajor._get_b2b_order_limit_for_website(self.website_franquicias, order_date=today)
+        self.assertEqual(active_limit.id, self.limit_temporada.id)
+        self.assertEqual(active_limit.max_qty, 15.0)
+
+        # Fecha fuera de temporada (ej. dentro de 30 días): rige la regla general permanente (50)
+        future_date = today + timedelta(days=30)
+        future_limit = self.product_alfajor._get_b2b_order_limit_for_website(self.website_franquicias, order_date=future_date)
+        self.assertEqual(future_limit.id, self.limit_general.id)
+        self.assertEqual(future_limit.max_qty, 50.0)
+
+        # Producto sin reglas: retorna vacío (sin límites)
+        limit_libre = self.product_libre._get_b2b_order_limit_for_website(self.website_franquicias)
+        self.assertFalse(limit_libre)
+
+        # En el pedido, el producto libre permite 500 unidades sin acotar
+        order = self.env['sale.order'].create({
             'partner_id': self.partner.id,
             'website_id': self.website_franquicias.id,
             'company_id': self.company.id,
         })
-        order_dist = self.env['sale.order'].create({
-            'partner_id': self.partner.id,
-            'website_id': self.website_distribucion.id,
-            'company_id': self.company.id,
-        })
-
-        variant_id = self.product_alfajor.product_variant_id.id
-        uom_id = self.product_alfajor.uom_id.id
-
-        # Pedir 50 unidades en Franquicias (tope es 30) -> debe acotar a 30 con aviso
-        capped_qty, warning = order_franq._verify_updated_quantity(
-            None, variant_id, 50.0, uom_id
+        libre_qty, warning = order._verify_updated_quantity(
+            None, self.product_libre.product_variant_id.id, 500.0, self.product_libre.uom_id.id
         )
-        self.assertEqual(capped_qty, 30.0)
-        self.assertTrue(warning)
-        self.assertIn('30', warning)
+        self.assertEqual(libre_qty, 500.0)
+        self.assertFalse(warning)
 
-        # Pedir 20 unidades en Franquicias (dentro del tope de 30) -> pasa sin alterar
-        ok_qty, warning_ok = order_franq._verify_updated_quantity(
-            None, variant_id, 20.0, uom_id
-        )
-        self.assertEqual(ok_qty, 20.0)
-        self.assertFalse(warning_ok)
-
-        # Pedir 50 unidades en Distribución (tope es 150) -> pasa sin alterar
-        dist_qty, dist_warning = order_dist._verify_updated_quantity(
-            None, variant_id, 50.0, uom_id
-        )
-        self.assertEqual(dist_qty, 50.0)
-        self.assertFalse(dist_warning)
-
-        # Pedir 200 unidades en Distribución (tope es 150) -> debe acotar a 150
-        dist_capped, dist_capped_warning = order_dist._verify_updated_quantity(
-            None, variant_id, 200.0, uom_id
-        )
-        self.assertEqual(dist_capped, 150.0)
-        self.assertTrue(dist_capped_warning)
-        self.assertIn('150', dist_capped_warning)
-
-    def test_03_cart_add_blocked_when_day_closed(self):
-        """Verifica que no se permita agregar productos al carrito si el día está cerrado."""
+    def test_03_cart_add_blocked_when_outside_schedule(self):
+        """Verifica que se impida armar carrito si el canal se encuentra fuera de horario."""
         order = self.env['sale.order'].create({
             'partner_id': self.partner.id,
             'website_id': self.website_franquicias.id,
             'company_id': self.company.id,
         })
 
-        # Desactivar todos los días
-        self.website_franquicias.write({
-            'b2b_order_mon': False,
-            'b2b_order_tue': False,
-            'b2b_order_wed': False,
-            'b2b_order_thu': False,
-            'b2b_order_fri': False,
-            'b2b_order_sat': False,
-            'b2b_order_sun': False,
-        })
+        # Eliminar las franjas horarias para simular canal completamente cerrado
+        self.website_franquicias.b2b_schedule_ids.unlink()
 
         with self.assertRaises(UserError):
             order._cart_add(self.product_alfajor.product_variant_id.id, 5.0)

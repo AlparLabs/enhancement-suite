@@ -2,3 +2,6 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_b2b_product_order_limit_user,b2b.product.order.limit user,model_b2b_product_order_limit,sales_team.group_sale_salesman,1,1,1,1
 access_b2b_product_order_limit_public,b2b.product.order.limit public,model_b2b_product_order_limit,base.group_public,1,0,0,0
 access_b2b_product_order_limit_portal,b2b.product.order.limit portal,model_b2b_product_order_limit,base.group_portal,1,0,0,0
+access_website_b2b_order_schedule_user,website.b2b.order.schedule user,model_website_b2b_order_schedule,sales_team.group_sale_salesman,1,1,1,1
+access_website_b2b_order_schedule_public,website.b2b.order.schedule public,model_website_b2b_order_schedule,base.group_public,1,0,0,0
+access_website_b2b_order_schedule_portal,website.b2b.order.schedule portal,model_website_b2b_order_schedule,base.group_portal,1,0,0,0
