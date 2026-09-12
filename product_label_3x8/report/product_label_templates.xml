@@ -32,12 +32,17 @@
             <div class="o_label_full" t-att-style="table_style">
                 <table style="width:100%; height:33mm; border-collapse:collapse; border:none; margin:0; padding:0;">
                     <tr>
-                        <!-- Columna Izquierda: Nombre (crece hacia abajo hasta 4 líneas con ellipsis) + Código de barras blindado al fondo -->
+                        <!-- Columna Izquierda: Badge de Oferta (si aplica) + Nombre (crece hacia abajo) + Código de barras blindado al fondo -->
                         <td style="width:53%; height:33mm; vertical-align:top; padding:1.5mm 1mm 1.2mm 2mm; box-sizing:border-box;">
                             <table style="width:100%; height:30.3mm; border-collapse:collapse; border:none; margin:0; padding:0;">
                                 <tr style="height:19mm;">
                                     <td style="vertical-align:top; padding:0;">
-                                        <div style="font-size:7.2pt; font-weight:800; line-height:1.15; max-height:18mm; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; text-transform:uppercase; color:#111; word-break:break-word;">
+                                        <t t-if="info and info.get('is_promo_active') and info.get('discount_label')">
+                                            <div style="display:inline-block; background-color:#111; color:#fff; font-size:6pt; font-weight:900; padding:1px 4px; border-radius:2px; letter-spacing:0.5px; margin-bottom:0.8mm; line-height:1.2;">
+                                                OFERTA <t t-out="info['discount_label']"/>
+                                            </div>
+                                        </t>
+                                        <div t-attf-style="font-size:7.2pt; font-weight:800; line-height:1.15; max-height:#{info and info.get('is_promo_active') and '14.5mm' or '18mm'}; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:#{info and info.get('is_promo_active') and '3' or '4'}; -webkit-box-orient:vertical; text-transform:uppercase; color:#111; word-break:break-word;">
                                             <strong t-field="product.display_name"/>
                                         </div>
                                     </td>
@@ -55,15 +60,25 @@
                                 </tr>
                             </table>
                         </td>
-                        <!-- Columna Derecha: Precio Final (arriba alineado con nombre) + Sin Imp Nac y PUM + [ARG] Fecha abajo a la derecha -->
+                        <!-- Columna Derecha: Precio de Venta (arriba alineado con nombre) + Antes (tachado) + Sin Imp Nac y PUM + [ARG] Fecha abajo a la derecha -->
                         <td style="width:47%; height:33mm; vertical-align:top; padding:1.5mm 2mm 1.2mm 1mm; text-align:right; box-sizing:border-box;">
                             <table style="width:100%; height:30.3mm; border-collapse:collapse; border:none; margin:0; padding:0;">
                                 <tr>
                                     <td style="vertical-align:top; text-align:right; padding:0;">
+                                        <!-- 1. Precio de Venta (en promoción es el precio de oferta) -->
                                         <strong t-attf-style="font-size: #{info and info.get('price_font_size', '16pt') or '16pt'}; font-weight: 900; line-height: 0.92; white-space: nowrap; color: #000; letter-spacing: -0.5px; display: block;"
                                                 t-out="info and info['price_final'] or pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id)"
                                                 t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id), 'label_price': True}"/>
-                                        <div style="margin-top: 1mm;">
+                                        <!-- 2. Precio Anterior tachado si aplica promoción -->
+                                        <t t-if="info and info.get('is_promo_active') and info.get('price_before')">
+                                            <div style="font-size:6pt; color:#666; line-height:1.1; margin-top:0.5mm;">
+                                                Antes: <span style="text-decoration:line-through; font-weight:600;"
+                                                             t-out="info['price_before']"
+                                                             t-options="{'widget': 'monetary', 'display_currency': info['currency']}"/>
+                                            </div>
+                                        </t>
+                                        <!-- 3. Bloque Fiscal y P.U.M. -->
+                                        <div style="margin-top: 0.8mm;">
                                             <div style="font-size:5.2pt; color:#555; white-space:nowrap; line-height:1.1;">
                                                 Sin Imp. Nac: <span t-out="info and info['price_net'] or (pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id) / 1.21)"
                                                                     t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id)}"/>
