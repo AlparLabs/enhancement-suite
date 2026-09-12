@@ -152,3 +152,81 @@ class TestB2BOrderRules(TransactionCase):
 
         with self.assertRaises(UserError):
             order._cart_add(self.product_alfajor.product_variant_id.id, 5.0)
+
+    def test_04_b2b_min_order_amount(self):
+        """Verifica el cálculo de cumplimiento y saldo faltante de monto mínimo por canal."""
+        self.website_franquicias.b2b_min_order_amount = 50000.0
+
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'website_id': self.website_franquicias.id,
+            'company_id': self.company.id,
+        })
+        # Inicialmente vacío: total 0 < 50000 -> is_unmet: True, missing_amount: 50000
+        status = order._get_b2b_min_amount_status()
+        self.assertTrue(status['is_unmet'])
+        self.assertEqual(status['min_amount'], 50000.0)
+        self.assertEqual(status['missing_amount'], 50000.0)
+
+        # Agregar línea de 30000 (20 x 1500)
+        self.env['sale.order.line'].create({
+            'order_id': order.id,
+            'product_id': self.product_alfajor.product_variant_id.id,
+            'product_uom_qty': 20.0,
+            'price_unit': 1500.0,
+        })
+        status = order._get_b2b_min_amount_status()
+        self.assertTrue(status['is_unmet'])
+        self.assertEqual(status['current_amount'], 30000.0)
+        self.assertEqual(status['missing_amount'], 20000.0)
+
+        # Agregar otra línea superando los 50000 (30 x 1000 = 30000 adicionales -> total 60000)
+        self.env['sale.order.line'].create({
+            'order_id': order.id,
+            'product_id': self.product_libre.product_variant_id.id,
+            'product_uom_qty': 30.0,
+            'price_unit': 1000.0,
+        })
+        status = order._get_b2b_min_amount_status()
+        self.assertFalse(status['is_unmet'])
+        self.assertEqual(status['missing_amount'], 0.0)
+
+    def test_05_reorder_workflow(self):
+        """Verifica la lógica de repetición de pedidos respetando topes de canal."""
+        # Crear pedido histórico
+        past_order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'website_id': self.website_franquicias.id,
+            'company_id': self.company.id,
+            'state': 'sale',
+        })
+        self.env['sale.order.line'].create([
+            {
+                'order_id': past_order.id,
+                'product_id': self.product_alfajor.product_variant_id.id,
+                'product_uom_qty': 10.0,
+                'price_unit': 1500.0,
+            },
+            {
+                'order_id': past_order.id,
+                'product_id': self.product_libre.product_variant_id.id,
+                'product_uom_qty': 25.0,
+                'price_unit': 1000.0,
+            }
+        ])
+
+        # Crear nuevo carrito en ventana habilitada
+        new_cart = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'website_id': self.website_franquicias.id,
+            'company_id': self.company.id,
+        })
+        # Simular adición de líneas del pedido previo
+        for line in past_order.order_line:
+            new_cart._cart_add(line.product_id.id, line.product_uom_qty)
+
+        self.assertEqual(len(new_cart.order_line), 2)
+        alfajor_line = new_cart.order_line.filtered(lambda l: l.product_id == self.product_alfajor.product_variant_id)
+        libre_line = new_cart.order_line.filtered(lambda l: l.product_id == self.product_libre.product_variant_id)
+        self.assertEqual(alfajor_line.product_uom_qty, 10.0)
+        self.assertEqual(libre_line.product_uom_qty, 25.0)

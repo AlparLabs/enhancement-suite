@@ -23,6 +23,9 @@
                         </div>
                     </div>
                 </group>
+                <group string="Monto Mínimo de Pedido B2B" name="b2b_min_amount">
+                    <field name="b2b_min_order_amount" widget="monetary"/>
+                </group>
             </xpath>
         </field>
     </record>

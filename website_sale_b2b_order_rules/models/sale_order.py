@@ -57,3 +57,25 @@ class SaleOrder(models.Model):
                 days=website.b2b_allowed_days_display
             ))
         return super()._cart_update_line_quantity(line_id, quantity, **kwargs)
+
+    def _get_b2b_min_amount_status(self):
+        """
+        Evalúa si la orden actual alcanza el monto mínimo configurado para el canal web.
+        """
+        self.ensure_one()
+        website = self.website_id
+        min_amount = website.b2b_min_order_amount if website else 0.0
+        if min_amount > 0 and self.amount_total < min_amount:
+            return {
+                'is_unmet': True,
+                'min_amount': min_amount,
+                'current_amount': self.amount_total,
+                'missing_amount': min_amount - self.amount_total,
+            }
+        return {
+            'is_unmet': False,
+            'min_amount': min_amount,
+            'current_amount': self.amount_total,
+            'missing_amount': 0.0,
+        }
+

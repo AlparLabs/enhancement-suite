@@ -22,6 +22,13 @@ class Website(models.Model):
         compute='_compute_b2b_allowed_days_display',
         help="Texto descriptivo de las franjas horarias en las que se reciben pedidos en este canal."
     )
+    b2b_min_order_amount = fields.Monetary(
+        string="Monto Mínimo de Pedido B2B",
+        currency_field='currency_id',
+        default=0.0,
+        help="Monto total mínimo requerido para procesar pedidos en este canal. Ingrese 0 para no exigir monto mínimo."
+    )
+
 
     @api.depends('b2b_schedule_ids', 'b2b_schedule_ids.day_of_week',
                  'b2b_schedule_ids.hour_from', 'b2b_schedule_ids.hour_to')

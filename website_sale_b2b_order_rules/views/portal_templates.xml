@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Botón de Repetir Pedido en el listado de pedidos del portal (/my/orders) -->
+    <template id="portal_my_orders_b2b_reorder" inherit_id="sale.portal_my_orders" name="B2B Reorder Button in Orders List">
+        <xpath expr="//thead/tr/th[last()]" position="after">
+            <th class="text-end">Acción</th>
+        </xpath>
+        <xpath expr="//t[contains(@t-foreach, 'orders')]//tr/td[last()] | //tr[contains(@t-foreach, 'orders')]/td[last()]" position="after">
+            <td class="text-end">
+                <a t-attf-href="/my/orders/#{order.id}/reorder" class="btn btn-outline-primary btn-sm" title="Repetir este pedido">
+                    <i class="fa fa-repeat me-1"/> Repetir
+                </a>
+            </td>
+        </xpath>
+    </template>
+
+    <!-- Botón de Repetir Pedido en la vista individual del pedido (/my/orders/<id>) -->
+    <template id="sale_order_portal_template_b2b_reorder" inherit_id="sale.sale_order_portal_template" name="B2B Reorder Button in Order Detail">
+        <xpath expr="//div[hasclass('o_download_pdf')]" position="after">
+            <t t-if="request.params.get('error') == 'schedule_closed'">
+                <div class="alert alert-warning small mt-2 mb-0" role="alert">
+                    <i class="fa fa-calendar-times-o me-1"/> Toma de pedidos cerrada en este horario para este canal.
+                </div>
+            </t>
+            <t t-if="request.params.get('error') == 'credit_blocked'">
+                <div class="alert alert-danger small mt-2 mb-0" role="alert">
+                    <i class="fa fa-ban me-1"/> No es posible repetir el pedido por saldos pendientes en tu cuenta corriente.
+                </div>
+            </t>
+            <div class="mt-2 w-100">
+                <a t-attf-href="/my/orders/#{sale_order.id}/reorder" class="btn btn-primary w-100" role="button">
+                    <i class="fa fa-repeat me-2"/> Repetir este Pedido
+                </a>
+            </div>
+        </xpath>
+    </template>
+
+</odoo>
