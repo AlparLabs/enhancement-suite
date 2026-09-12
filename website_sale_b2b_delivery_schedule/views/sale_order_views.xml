@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_b2b_delivery_schedule" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.b2b.delivery.schedule</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='sale_shipping']" position="inside">
+                <field name="b2b_requested_delivery_date"/>
+                <field name="b2b_delivery_shift"/>
+                <field name="b2b_delivery_notes"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

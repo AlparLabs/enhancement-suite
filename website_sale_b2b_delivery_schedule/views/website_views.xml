@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_website_form_inherit_b2b_delivery_schedule" model="ir.ui.view">
+        <field name="name">website.form.inherit.b2b.delivery.schedule</field>
+        <field name="model">website</field>
+        <field name="inherit_id" ref="website.view_website_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='domain']" position="after">
+                <group string="Programación de Entregas y Despacho B2B" name="b2b_delivery_schedule">
+                    <field name="b2b_delivery_schedule_active"/>
+                    <field name="b2b_delivery_lead_days" invisible="not b2b_delivery_schedule_active"/>
+                    <field name="b2b_delivery_cutoff_hour" widget="float_time" invisible="not b2b_delivery_schedule_active"/>
+                    <field name="b2b_allow_saturday_delivery" invisible="not b2b_delivery_schedule_active"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

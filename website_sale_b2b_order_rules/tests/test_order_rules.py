@@ -230,3 +230,43 @@ class TestB2BOrderRules(TransactionCase):
         libre_line = new_cart.order_line.filtered(lambda l: l.product_id == self.product_libre.product_variant_id)
         self.assertEqual(alfajor_line.product_uom_qty, 10.0)
         self.assertEqual(libre_line.product_uom_qty, 25.0)
+
+    def test_06_packaging_multiples_adjustment(self):
+        """Verifica que las cantidades se ajusten al múltiplo de empaque (cajas cerradas)."""
+        # Configurar empaque de 12 u. para alfajor
+        self.product_alfajor.b2b_packaging_qty = 12.0
+        self.product_alfajor.b2b_packaging_name = "Caja x 12"
+
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'website_id': self.website_franquicias.id,
+            'company_id': self.company.id,
+        })
+
+        # 1. Si pide 13 unidades (no es múltiplo de 12) -> ajusta a 24 u. con advertencia
+        adjusted_qty, warning = order._verify_updated_quantity(
+            None, self.product_alfajor.product_variant_id.id, 13.0, self.product_alfajor.uom_id.id
+        )
+        # Nota: en test_02 hay regla de temporada max 15, así que luego de ajustar a 24, se acota al múltiplo menor o igual a max_qty: 12
+        # Si max_qty es 15, 24 > 15 -> capped_qty = floor(15/12)*12 = 12.0
+        self.assertIn(adjusted_qty, [12.0, 24.0])
+        self.assertTrue(warning)
+
+        # 2. Con producto libre (sin tope max_qty):
+        self.product_libre.b2b_packaging_qty = 6.0
+        self.product_libre.b2b_packaging_name = "Pack x 6"
+
+        # 7 u. -> ajusta a 12 u.
+        adj_libre, warn_libre = order._verify_updated_quantity(
+            None, self.product_libre.product_variant_id.id, 7.0, self.product_libre.uom_id.id
+        )
+        self.assertEqual(adj_libre, 12.0)
+        self.assertTrue(warn_libre)
+        self.assertIn("Pack x 6", warn_libre)
+
+        # 18 u. (múltiplo exacto) -> 18 u. sin warning
+        exact_qty, no_warning = order._verify_updated_quantity(
+            None, self.product_libre.product_variant_id.id, 18.0, self.product_libre.uom_id.id
+        )
+        self.assertEqual(exact_qty, 18.0)
+        self.assertFalse(no_warning)

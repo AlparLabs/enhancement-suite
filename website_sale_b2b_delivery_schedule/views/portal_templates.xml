@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Banner y datos de Programación de Entrega en la vista del pedido en el portal (/my/orders/<id>) -->
+    <template id="sale_order_portal_content_inherit_b2b_schedule" inherit_id="sale.sale_order_portal_content" name="B2B Schedule in Portal Content">
+        <xpath expr="//div[@id='informations']" position="before">
+            <t t-if="sale_order.b2b_requested_delivery_date">
+                <div class="alert alert-info d-flex align-items-center mb-4 shadow-sm border-info" role="alert">
+                    <i class="fa fa-truck fa-2x me-3 text-info"/>
+                    <div>
+                        <strong class="d-block">Entrega y Despacho Programado</strong>
+                        <span>
+                            Fecha pactada: <strong><span t-field="sale_order.b2b_requested_delivery_date" t-options="{'widget': 'date'}"/></strong> 
+                            | Turno: <strong><span t-field="sale_order.b2b_delivery_shift"/></strong>.
+                            <t t-if="sale_order.b2b_delivery_notes">
+                                <br/><span class="small text-muted">Instrucciones: <t t-out="sale_order.b2b_delivery_notes"/></span>
+                            </t>
+                        </span>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+        <xpath expr="//tbody[@id='sale_info_table']" position="inside">
+            <tr t-if="sale_order.b2b_delivery_shift">
+                <th class="ps-0 pb-0">Turno de Entrega:</th>
+                <td class="w-100 pb-0 text-wrap">
+                    <span t-field="sale_order.b2b_delivery_shift"/>
+                </td>
+            </tr>
+            <tr t-if="sale_order.b2b_delivery_notes">
+                <th class="ps-0 pb-0">Notas de Entrega:</th>
+                <td class="w-100 pb-0 text-wrap">
+                    <span t-field="sale_order.b2b_delivery_notes"/>
+                </td>
+            </tr>
+        </xpath>
+    </template>
+
+</odoo>

@@ -7,6 +7,13 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="Regulación B2B" name="b2b_regulation">
+                    <group string="Múltiplo de Embalaje por Defecto (Cajas Cerradas / Bultos)">
+                        <group>
+                            <field name="b2b_packaging_qty"/>
+                            <field name="b2b_packaging_name"/>
+                        </group>
+                    </group>
+                    <separator string="Límites, Empaques y Cupos por Canal Web"/>
                     <field name="b2b_order_limit_ids">
                         <list editable="bottom">
                             <field name="name" placeholder="ej. Permanente, Pascua, Invierno"/>
@@ -14,13 +21,18 @@
                             <field name="date_from"/>
                             <field name="date_to"/>
                             <field name="week_number"/>
+                            <field name="packaging_qty"/>
+                            <field name="packaging_name"/>
                             <field name="max_qty"/>
                             <field name="min_qty"/>
                         </list>
                     </field>
                     <div class="text-muted mt-2 small">
                         <i class="fa fa-info-circle me-1"/>
-                        Defina los cupos máximos y/o mínimos por pedido para cada canal web. Puede configurar reglas permanentes (sin fechas) o reglas estacionales/especiales por rango de fechas o número de semana. Si un producto no tiene reglas cargadas, se vende libremente sin límites.
+                        Defina los múltiplos de empaque y los cupos máximos y/o mínimos por pedido para cada canal web. 
+                        Puede configurar reglas permanentes (sin fechas) o reglas estacionales/especiales por rango de fechas o número de semana. 
+                        Si el múltiplo de empaque es mayor a 1, los pedidos se redondearán automáticamente al múltiplo superior. 
+                        Si un producto no tiene reglas de cupo cargadas, se vende libremente sin límites.
                     </div>
                 </page>
             </xpath>

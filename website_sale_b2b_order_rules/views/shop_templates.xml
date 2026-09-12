@@ -24,6 +24,14 @@
         <xpath expr="//div[@id='add_to_cart_wrap']" position="after">
             <t t-set="is_b2b_day_open" t-value="website.is_b2b_order_day_allowed() if website else True"/>
             <t t-if="not website.b2b_order_schedule_active or is_b2b_day_open">
+                <t t-set="pkg_info" t-value="product._get_b2b_packaging_info(website) if (website and product) else (1.0, '')"/>
+                <t t-if="pkg_info and pkg_info[0] &gt; 1.0">
+                    <div class="text-muted small w-100 mt-1">
+                        <i class="fa fa-cubes text-info me-1"/>
+                        Presentación: <strong><t t-out="pkg_info[1]"/></strong> 
+                        (venta en múltiplos de <t t-out="int(pkg_info[0]) if pkg_info[0].is_integer() else pkg_info[0]"/> <t t-out="product.uom_id.name"/>).
+                    </div>
+                </t>
                 <t t-set="b2b_limit" t-value="product._get_b2b_order_limit_for_website(website) if (website and product) else False"/>
                 <t t-if="b2b_limit and b2b_limit.max_qty &gt; 0">
                     <div class="text-muted small w-100 mt-1">

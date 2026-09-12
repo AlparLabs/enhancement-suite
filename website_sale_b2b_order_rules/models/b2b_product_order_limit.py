@@ -52,6 +52,17 @@ class B2BProductOrderLimit(models.Model):
         digits='Product Unit of Measure',
         help="Cantidad mínima requerida si se encarga este producto. Ingrese 0 para no exigir mínimo."
     )
+    packaging_qty = fields.Float(
+        string="Múltiplo de Empaque / Bulto",
+        default=0.0,
+        digits='Product Unit of Measure',
+        help="Cantidad de unidades por caja/display/bulto. Si se define mayor a 1, solo se permite comprar en múltiplos de esta cantidad para este canal. Dejar en 0 para usar el empaque por defecto del producto."
+    )
+    packaging_name = fields.Char(
+        string="Presentación del Empaque",
+        placeholder="ej. Display x 12, Bulto x 72",
+        help="Nombre comercial de la presentación para este canal (opcional)."
+    )
 
     @api.constrains('date_from', 'date_to')
     def _check_dates(self):

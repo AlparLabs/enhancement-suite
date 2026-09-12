@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Card interactiva de Programación de Entrega y Turno en el Checkout (/shop/checkout) -->
+    <template id="checkout_b2b_delivery_schedule" inherit_id="website_sale.checkout" name="B2B Delivery Schedule in Checkout">
+        <xpath expr="//div[@id='shop_checkout']" position="inside">
+            <t t-if="website.b2b_delivery_schedule_active and order._has_deliverable_products()">
+                <div class="card shadow-sm border-0 mb-4 mt-3 b2b-delivery-schedule-card">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                        <h5 class="card-title fw-bold text-primary mb-0">
+                            <i class="fa fa-truck me-2"/>Programación de Entrega y Turno de Recepción
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Selecciona la fecha programada y la franja horaria preferida para que el chofer descargue el pedido en tu local.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="b2b_requested_delivery_date" class="form-label fw-semibold small">
+                                    Fecha de Entrega Solicitada <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="b2b_requested_delivery_date"
+                                       t-att-min="b2b_earliest_delivery_date or (website._get_b2b_earliest_delivery_date() and website._get_b2b_earliest_delivery_date().strftime('%Y-%m-%d'))"
+                                       t-att-value="order.b2b_requested_delivery_date and order.b2b_requested_delivery_date.strftime('%Y-%m-%d') or (b2b_earliest_delivery_date or (website._get_b2b_earliest_delivery_date() and website._get_b2b_earliest_delivery_date().strftime('%Y-%m-%d')))"/>
+                                <div class="form-text small">
+                                    Mínimo <t t-out="website.b2b_delivery_lead_days"/> días hábiles de preparación.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="b2b_delivery_shift" class="form-label fw-semibold small">
+                                    Turno de Recepción <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="b2b_delivery_shift">
+                                    <option value="morning" t-att-selected="order.b2b_delivery_shift == 'morning'">Mañana (08:00 a 13:00)</option>
+                                    <option value="afternoon" t-att-selected="order.b2b_delivery_shift == 'afternoon'">Tarde (13:00 a 18:00)</option>
+                                    <option value="any" t-att-selected="order.b2b_delivery_shift == 'any'">Horario Habitual / Todo el día</option>
+                                </select>
+                                <div class="form-text small">
+                                    Horario de recepción en tu sucursal o depósito.
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label for="b2b_delivery_notes" class="form-label small text-muted">
+                                    Observaciones o Aclaraciones de Descarga (Opcional)
+                                </label>
+                                <input type="text" class="form-control form-control-sm" id="b2b_delivery_notes"
+                                       placeholder="ej. Descarga por portón trasero, timbre 2B, consultar por encargado"
+                                       t-att-value="order.b2b_delivery_notes or ''"/>
+                            </div>
+                        </div>
+                        <div id="b2b_schedule_status" class="small mt-2 text-success d-none">
+                            <i class="fa fa-check me-1"/> Programación registrada correctamente.
+                        </div>
+                    </div>
+                </div>
+
+                <script type="text/javascript">
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const dateInput = document.getElementById('b2b_requested_delivery_date');
+                        const shiftSelect = document.getElementById('b2b_delivery_shift');
+                        const notesInput = document.getElementById('b2b_delivery_notes');
+                        const statusEl = document.getElementById('b2b_schedule_status');
+
+                        function saveDeliverySchedule() {
+                            if (!dateInput) return;
+                            const payload = {
+                                jsonrpc: "2.0",
+                                method: "call",
+                                params: {
+                                    delivery_date: dateInput.value,
+                                    delivery_shift: shiftSelect ? shiftSelect.value : 'morning',
+                                    delivery_notes: notesInput ? notesInput.value : ''
+                                }
+                            };
+                            fetch('/shop/b2b/set_delivery_schedule', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(payload)
+                            }).then(function(res) {
+                                return res.json();
+                            }).then(function(data) {
+                                if (data.result &amp;&amp; data.result.success &amp;&amp; statusEl) {
+                                    statusEl.classList.remove('d-none');
+                                    setTimeout(function() {
+                                        statusEl.classList.add('d-none');
+                                    }, 2500);
+                                }
+                            }).catch(function(err) {
+                                console.error("Error saving B2B delivery schedule:", err);
+                            });
+                        }
+
+                        if (dateInput) dateInput.addEventListener('change', saveDeliverySchedule);
+                        if (shiftSelect) shiftSelect.addEventListener('change', saveDeliverySchedule);
+                        if (notesInput) notesInput.addEventListener('blur', saveDeliverySchedule);
+                    });
+                </script>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

@@ -74,6 +74,12 @@
                                                     <div class="fw-semibold text-dark"><t t-out="p.name"/></div>
                                                     <div class="small text-muted">
                                                         Unidad: <t t-out="p.uom_id.name"/>
+                                                        <t t-set="p_pkg" t-value="p._get_b2b_packaging_info(website)"/>
+                                                        <t t-if="p_pkg and p_pkg[0] &gt; 1.0">
+                                                            <span class="badge text-bg-light border ms-1" title="Empaque requerido">
+                                                                <i class="fa fa-cubes text-info me-1"/><t t-out="p_pkg[1]"/>
+                                                            </span>
+                                                        </t>
                                                         <t t-if="p_limit and p_limit.max_qty &gt; 0">
                                                             <span class="badge text-bg-warning ms-1" title="Tope máximo por pedido">
                                                                 Tope: <t t-out="int(p_limit.max_qty) if p_limit.max_qty.is_integer() else p_limit.max_qty"/>
@@ -93,11 +99,13 @@
                                                         <input type="text" class="form-control form-control-sm text-center disabled" disabled="disabled" value="0"/>
                                                     </t>
                                                     <t t-else="">
+                                                        <t t-set="p_step" t-value="int(p_pkg[0]) if (p_pkg and p_pkg[0] &gt; 1.0) else 1"/>
                                                         <input type="number"
                                                                t-attf-name="qty_#{p.product_variant_id.id}"
                                                                class="form-control form-control-sm text-center mx-auto"
                                                                style="max-width: 100px;"
                                                                min="0"
+                                                               t-att-step="p_step"
                                                                t-att-max="p_limit.max_qty if (p_limit and p_limit.max_qty &gt; 0) else None"
                                                                value="0"/>
                                                     </t>
