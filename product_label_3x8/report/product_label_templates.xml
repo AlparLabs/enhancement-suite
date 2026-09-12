@@ -33,8 +33,8 @@
                 <table style="width:100%; height:33mm; border-collapse:collapse; border:none; margin:0; padding:0;">
                     <tr>
                         <!-- Columna Izquierda: Nombre (crece hacia abajo hasta 4 líneas con ellipsis) + Código de barras blindado al fondo -->
-                        <td style="width:53%; height:33mm; vertical-align:top; padding:1.5mm 1mm 1.5mm 2mm; box-sizing:border-box;">
-                            <table style="width:100%; height:30mm; border-collapse:collapse; border:none; margin:0; padding:0;">
+                        <td style="width:53%; height:33mm; vertical-align:top; padding:1.5mm 1mm 1.2mm 2mm; box-sizing:border-box;">
+                            <table style="width:100%; height:30.3mm; border-collapse:collapse; border:none; margin:0; padding:0;">
                                 <tr style="height:19mm;">
                                     <td style="vertical-align:top; padding:0;">
                                         <div style="font-size:7.2pt; font-weight:800; line-height:1.15; max-height:18mm; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; text-transform:uppercase; color:#111; word-break:break-word;">
@@ -55,34 +55,32 @@
                                 </tr>
                             </table>
                         </td>
-                        <!-- Columna Derecha: [ARG] Fecha + Precio Final Auto-escalado + Sin Imp Nac y PUM -->
-                        <td style="width:47%; height:33mm; vertical-align:top; padding:1.5mm 2mm 1.5mm 1mm; text-align:right; box-sizing:border-box;">
-                            <table style="width:100%; height:30mm; border-collapse:collapse; border:none; margin:0; padding:0;">
-                                <tr style="height:3mm;">
-                                    <td style="vertical-align:top; text-align:right; padding:0;">
-                                        <span style="font-size:4.8pt; color:#666; white-space:nowrap;">
-                                            [<t t-out="info and info['origin'] or 'ARG'"/>] <t t-out="info and info['print_date'] or ''"/>
-                                        </span>
-                                    </td>
-                                </tr>
+                        <!-- Columna Derecha: Precio Final (arriba alineado con nombre) + Sin Imp Nac y PUM + [ARG] Fecha abajo a la derecha -->
+                        <td style="width:47%; height:33mm; vertical-align:top; padding:1.5mm 2mm 1.2mm 1mm; text-align:right; box-sizing:border-box;">
+                            <table style="width:100%; height:30.3mm; border-collapse:collapse; border:none; margin:0; padding:0;">
                                 <tr>
-                                    <td style="vertical-align:middle; text-align:right; padding:0;">
-                                        <strong t-attf-style="font-size: #{info and info.get('price_font_size', '16pt') or '16pt'}; font-weight: 900; line-height: 0.95; white-space: nowrap; color: #000; letter-spacing: -0.5px;"
+                                    <td style="vertical-align:top; text-align:right; padding:0;">
+                                        <strong t-attf-style="font-size: #{info and info.get('price_font_size', '16pt') or '16pt'}; font-weight: 900; line-height: 0.92; white-space: nowrap; color: #000; letter-spacing: -0.5px; display: block;"
                                                 t-out="info and info['price_final'] or pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id)"
                                                 t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id), 'label_price': True}"/>
+                                        <div style="margin-top: 1mm;">
+                                            <div style="font-size:5.2pt; color:#555; white-space:nowrap; line-height:1.1;">
+                                                Sin Imp. Nac: <span t-out="info and info['price_net'] or (pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id) / 1.21)"
+                                                                    t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id)}"/>
+                                            </div>
+                                            <t t-if="info and info['pum_price']">
+                                                <div style="font-size:6.8pt; font-weight:800; color:#000; white-space:nowrap; line-height:1.2;">
+                                                    P.U.M.: <span t-out="info['pum_price']" t-options="{'widget': 'monetary', 'display_currency': info['currency']}"/> / <t t-out="info['pum_unit']"/>
+                                                </div>
+                                            </t>
+                                        </div>
                                     </td>
                                 </tr>
-                                <tr style="height:8mm;">
+                                <tr style="height:3.5mm;">
                                     <td style="vertical-align:bottom; text-align:right; padding:0;">
-                                        <div style="font-size:5.2pt; color:#555; white-space:nowrap; line-height:1.1;">
-                                            Sin Imp. Nac: <span t-out="info and info['price_net'] or (pricelist._get_product_price(product, 1, currency=pricelist.currency_id or product.currency_id) / 1.21)"
-                                                                t-options="{'widget': 'monetary', 'display_currency': info and info['currency'] or (pricelist.currency_id or product.currency_id)}"/>
-                                        </div>
-                                        <t t-if="info and info['pum_price']">
-                                            <div style="font-size:6.8pt; font-weight:800; color:#000; white-space:nowrap; line-height:1.2;">
-                                                P.U.M.: <span t-out="info['pum_price']" t-options="{'widget': 'monetary', 'display_currency': info['currency']}"/> / <t t-out="info['pum_unit']"/>
-                                            </div>
-                                        </t>
+                                        <span style="font-size:4.8pt; color:#666; white-space:nowrap; line-height:1;">
+                                            [<t t-out="info and info['origin'] or 'ARG'"/>] <t t-out="info and info['print_date'] or ''"/>
+                                        </span>
                                     </td>
                                 </tr>
                             </table>
