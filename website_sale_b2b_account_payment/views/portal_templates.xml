@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Enlaces de Pago Online e Informar Transferencia en el Banner de Alerta del Portal Home (/my) -->
+    <template id="portal_my_home_b2b_payment_buttons" inherit_id="website_sale_b2b_credit_block.portal_my_home_b2b_financial_alert" name="B2B Payment Buttons in Portal Home">
+        <xpath expr="//a[@href='/my/account_statement/pdf']" position="after">
+            <a href="/my/account/pay" class="btn btn-primary btn-sm fw-bold ms-2 shadow-sm">
+                <i class="fa fa-credit-card me-1"/> Pagar Online / A Cuenta
+            </a>
+            <a href="/my/invoices/upload_receipt" class="btn btn-outline-dark btn-sm ms-2">
+                <i class="fa fa-upload me-1"/> Informar Transferencia
+            </a>
+        </xpath>
+    </template>
+
+    <!-- Botones de Acción en la cabecera de la lista de Facturas (/my/invoices) -->
+    <template id="portal_my_invoices_b2b_payment_header" inherit_id="website_sale_b2b_credit_block.portal_my_invoices_inherit_statement" name="B2B Invoices Payment Header Buttons">
+        <xpath expr="//a[@href='/my/account_statement/pdf']" position="after">
+            <a href="/my/account/pay" class="btn btn-primary btn-sm ms-2 shadow-sm">
+                <i class="fa fa-credit-card me-1"/> Pagar a Cuenta Online
+            </a>
+            <a href="/my/invoices/upload_receipt" class="btn btn-outline-secondary btn-sm ms-2 shadow-sm">
+                <i class="fa fa-upload me-1"/> Informar Transferencia
+            </a>
+        </xpath>
+    </template>
+
+    <!-- Alertas de éxito y error en /my/invoices -->
+    <template id="portal_my_invoices_b2b_feedback" inherit_id="account.portal_my_invoices" name="B2B Payment Feedback Alerts">
+        <xpath expr="//t[@t-call='portal.portal_searchbar']" position="before">
+            <t t-if="request.params.get('payment_success')">
+                <div class="alert alert-success alert-dismissible fade show mb-3 shadow-sm border-success" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-check-circle fa-2x me-3 text-success"/>
+                        <div>
+                            <h5 class="alert-heading fw-bold mb-1">¡Pago registrado exitosamente!</h5>
+                            <p class="mb-0 small">
+                                Tu pago ha sido acreditado en tu cuenta corriente. Tu saldo disponible se ha actualizado en tiempo real.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </t>
+            <t t-if="request.params.get('receipt_uploaded')">
+                <div class="alert alert-info alert-dismissible fade show mb-3 shadow-sm border-info" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-info-circle fa-2x me-3 text-info"/>
+                        <div>
+                            <h5 class="alert-heading fw-bold mb-1">Comprobante de Transferencia Recibido</h5>
+                            <p class="mb-0 small">
+                                El comprobante fue enviado al equipo de Administración para su verificación y conciliación bancaria.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Pantalla de Pago Online a Cuenta (/my/account/pay) -->
+    <template id="portal_account_pay_page" name="B2B Account Payment Page">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-white border-bottom pt-3 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="card-title fw-bold text-primary mb-0">
+                                        <i class="fa fa-credit-card me-2"/>Pago Online a Cuenta Corriente
+                                    </h4>
+                                    <a href="/my/invoices" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa fa-arrow-left me-1"/> Volver a Facturas
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="row g-3 mb-4 text-bg-light p-3 rounded mx-0 border">
+                                    <div class="col-sm-6">
+                                        <span class="text-muted small d-block">Titular de la Cuenta:</span>
+                                        <strong><t t-out="partner.name"/></strong>
+                                    </div>
+                                    <div class="col-sm-6 text-sm-end">
+                                        <span class="text-muted small d-block">Monto a Abonar:</span>
+                                        <h3 class="fw-bold text-success mb-0">
+                                            <span t-out="amount" t-options="{'widget': 'monetary', 'display_currency': currency}"/>
+                                        </h3>
+                                    </div>
+                                    <t t-if="invoices">
+                                        <div class="col-12 mt-2 pt-2 border-top">
+                                            <span class="text-muted small d-block mb-1">Comprobantes incluidos en este pago:</span>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <t t-foreach="invoices" t-as="inv">
+                                                    <span class="badge text-bg-secondary">
+                                                        <t t-out="inv.name"/> (<span t-out="inv.amount_residual" t-options="{'widget': 'monetary', 'display_currency': currency}"/>)
+                                                    </span>
+                                                </t>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+
+                                <h5 class="fw-bold mb-3">Selecciona tu medio de pago:</h5>
+                                <div class="payment-form-container">
+                                    <t t-call="payment.form"/>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-light p-3 small text-muted">
+                                <i class="fa fa-shield me-1 text-success"/>
+                                Pagos procesados de forma segura a través de Mercado Pago y pasarelas homologadas. El saldo de tu cuenta corriente se actualiza automáticamente al confirmarse la transacción.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

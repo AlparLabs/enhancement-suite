@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_b2b_payment_receipt_user,b2b.payment.receipt.user,model_b2b_payment_receipt,base.group_user,1,1,1,0
+access_b2b_payment_receipt_accountant,b2b.payment.receipt.accountant,model_b2b_payment_receipt,account.group_account_invoice,1,1,1,1
+access_b2b_payment_receipt_portal,b2b.payment.receipt.portal,model_b2b_payment_receipt,base.group_portal,1,0,1,0

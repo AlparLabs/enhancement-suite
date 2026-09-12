@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Página del Portal para Informar Transferencia Bancaria (/my/invoices/upload_receipt) -->
+    <template id="upload_receipt_page" name="B2B Upload Transfer Receipt">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <div class="row justify-content-center">
+                    <div class="col-lg-9">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-white border-bottom pt-3 pb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="card-title fw-bold text-primary mb-0">
+                                        <i class="fa fa-upload me-2"/>Informar Transferencia Bancaria
+                                    </h4>
+                                    <a href="/my/invoices" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa fa-arrow-left me-1"/> Volver a Facturas
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body p-4">
+                                <p class="text-muted small mb-4">
+                                    Si realizaste una transferencia bancaria (Interbanking, CBU/CVU o depósito), completa los datos del comprobante y adjunta el archivo (PDF o imagen) para que Administración lo concilie y actualice tu cuenta corriente.
+                                </p>
+
+                                <form action="/my/invoices/upload_receipt" method="POST" enctype="multipart/form-data">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-6">
+                                            <label for="amount" class="form-label fw-semibold">
+                                                Monto Transferido ($) <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" step="0.01" class="form-control" id="amount" name="amount" required="required" placeholder="0.00"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="date" class="form-label fw-semibold">
+                                                Fecha de la Transferencia <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="date" class="form-control" id="date" name="date" required="required" t-att-value="today"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="operation_number" class="form-label fw-semibold">
+                                                N° de Transacción / Comprobante <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="text" class="form-control" id="operation_number" name="operation_number" required="required" placeholder="ej. 00045678239"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="bank_origin" class="form-label fw-semibold">
+                                                Banco de Origen / Billetera
+                                            </label>
+                                            <input type="text" class="form-control" id="bank_origin" name="bank_origin" placeholder="ej. Santander, BBVA, Mercado Pago"/>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="receipt_file" class="form-label fw-semibold">
+                                                Adjuntar Comprobante (PDF, JPG, PNG) <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="file" class="form-control" id="receipt_file" name="receipt_file" required="required" accept=".pdf,.png,.jpg,.jpeg"/>
+                                            <div class="form-text small">Tamaño máximo recomendado: 10MB.</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="notes" class="form-label text-muted small">
+                                                Observaciones o Notas Adicionales
+                                            </label>
+                                            <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="ej. Pago a cuenta de pedido semanal, titular de la cuenta bancaria, etc."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <!-- Selector opcional de facturas a cancelar -->
+                                    <t t-if="unpaid_invoices">
+                                        <div class="border rounded p-3 mb-4 bg-light">
+                                            <h6 class="fw-bold mb-2 text-dark">
+                                                <i class="fa fa-list-check me-1"/> Indicar qué facturas cubre este pago (Opcional):
+                                            </h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-hover align-middle mb-0 bg-white border">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th style="width: 40px;"></th>
+                                                            <th>Comprobante</th>
+                                                            <th>Fecha Vto.</th>
+                                                            <th class="text-end">Saldo Pendiente</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <t t-foreach="unpaid_invoices" t-as="inv">
+                                                            <tr>
+                                                                <td class="text-center">
+                                                                    <input type="checkbox" t-attf-name="inv_#{inv.id}" value="1" class="form-check-input"/>
+                                                                </td>
+                                                                <td>
+                                                                    <strong><t t-out="inv.name"/></strong>
+                                                                </td>
+                                                                <td>
+                                                                    <span t-field="inv.invoice_date_due" t-options="{'widget': 'date'}"/>
+                                                                </td>
+                                                                <td class="text-end fw-semibold">
+                                                                    <span t-field="inv.amount_residual" t-options="{'widget': 'monetary', 'display_currency': inv.currency_id}"/>
+                                                                </td>
+                                                            </tr>
+                                                        </t>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </t>
+
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="/my/invoices" class="btn btn-secondary">Cancelar</a>
+                                        <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                            <i class="fa fa-paper-plane me-1"/> Enviar Comprobante a Administración
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Historial de Comprobantes de Transferencia Informados en /my/invoices -->
+    <template id="portal_my_invoices_inherit_b2b_receipts" inherit_id="account.portal_my_invoices" name="B2B Reported Receipts in Invoices List">
+        <xpath expr="//t[@t-if='invoices']" position="after">
+            <t t-set="user_partner" t-value="request.env.user.partner_id.commercial_partner_id if not request.env.user._is_public() else False"/>
+            <t t-set="reported_receipts" t-value="request.env['b2b.payment.receipt'].search([('partner_id', '=', user_partner.id)], order='id desc', limit=5) if user_partner else False"/>
+            <t t-if="reported_receipts">
+                <div class="card shadow-sm border-0 mt-5 mb-4">
+                    <div class="card-header bg-white border-bottom pt-3 pb-2">
+                        <h6 class="fw-bold mb-0 text-primary">
+                            <i class="fa fa-history me-1"/> Comprobantes de Transferencia Informados Recientemente
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Referencia</th>
+                                        <th>N° Transacción</th>
+                                        <th>Banco / Origen</th>
+                                        <th class="text-end">Monto</th>
+                                        <th class="text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="reported_receipts" t-as="rec">
+                                        <tr>
+                                            <td><span t-field="rec.date" t-options="{'widget': 'date'}"/></td>
+                                            <td><strong><t t-out="rec.name"/></strong></td>
+                                            <td><t t-out="rec.operation_number"/></td>
+                                            <td><t t-out="rec.bank_origin or '-'"/></td>
+                                            <td class="text-end fw-semibold">
+                                                <span t-field="rec.amount" t-options="{'widget': 'monetary', 'display_currency': rec.currency_id}"/>
+                                            </td>
+                                            <td class="text-center">
+                                                <t t-if="rec.state == 'draft'">
+                                                    <span class="badge text-bg-warning">Pendiente de Verificación</span>
+                                                </t>
+                                                <t t-elif="rec.state == 'verified'">
+                                                    <span class="badge text-bg-success">Acreditado y Conciliado</span>
+                                                </t>
+                                                <t t-elif="rec.state == 'rejected'">
+                                                    <span class="badge text-bg-danger" t-att-title="rec.rejection_reason or 'Rechazado'">Rechazado</span>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

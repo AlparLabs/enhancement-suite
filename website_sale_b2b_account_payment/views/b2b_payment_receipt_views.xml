@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista de Lista / Árbol para Comprobantes B2B -->
+    <record id="view_b2b_payment_receipt_tree" model="ir.ui.view">
+        <field name="name">b2b.payment.receipt.list</field>
+        <field name="model">b2b.payment.receipt</field>
+        <field name="arch" type="xml">
+            <list string="Comprobantes de Transferencia B2B" decoration-info="state == 'draft'" decoration-success="state == 'verified'" decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="amount" widget="monetary"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="operation_number"/>
+                <field name="bank_origin"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'verified'" decoration-danger="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista de Formulario para Comprobante B2B -->
+    <record id="view_b2b_payment_receipt_form" model="ir.ui.view">
+        <field name="name">b2b.payment.receipt.form</field>
+        <field name="model">b2b.payment.receipt</field>
+        <field name="arch" type="xml">
+            <form string="Comprobante de Transferencia B2B">
+                <header>
+                    <button name="action_verify" string="Verificar y Acreditar" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_reject" string="Rechazar" type="object" class="btn-danger" invisible="state != 'draft'"/>
+                    <button name="action_set_to_draft" string="Volver a Borrador" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,verified,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Comprobante"/>
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="info_left" string="Información del Pago">
+                            <field name="partner_id"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="date"/>
+                            <field name="operation_number"/>
+                            <field name="bank_origin"/>
+                        </group>
+                        <group name="info_right" string="Auditoría y Compañía">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="verified_by" invisible="not verified_by"/>
+                            <field name="verified_date" invisible="not verified_date"/>
+                            <field name="rejection_reason" invisible="state != 'rejected'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Archivos Adjuntos" name="attachments">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Facturas Declaradas" name="invoices">
+                            <field name="invoice_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="invoice_date"/>
+                                    <field name="invoice_date_due"/>
+                                    <field name="amount_total" widget="monetary"/>
+                                    <field name="amount_residual" widget="monetary"/>
+                                    <field name="payment_state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Observaciones del Cliente" name="notes">
+                            <field name="notes" placeholder="Observaciones informadas por el cliente en el portal..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción de Ventana -->
+    <record id="action_b2b_payment_receipt" model="ir.actions.act_window">
+        <field name="name">Comprobantes de Transferencia B2B</field>
+        <field name="res_model">b2b.payment.receipt</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay comprobantes de transferencia pendientes de revisión.
+            </p>
+            <p>
+                Los franquiciados y distribuidores pueden cargar sus comprobantes de pago bancario desde la intranet para acelerar la conciliación.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menú en Contabilidad > Clientes -->
+    <menuitem id="menu_b2b_payment_receipt"
+              name="Comprobantes de Pago B2B"
+              parent="account.menu_finance_receivables"
+              action="action_b2b_payment_receipt"
+              sequence="25"/>
+
+</odoo>
