@@ -1,78 +1,181 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Breadcrumbs de Navegación para Intranet B2B -->
-    <template id="portal_my_home_menu_b2b_intranet" name="B2B Intranet Breadcrumbs" inherit_id="portal.portal_breadcrumbs" priority="30">
+    <!-- Breadcrumb de Navegación para Reporte de Inconveniente -->
+    <template id="portal_my_home_menu_b2b_ticket" name="B2B Order Ticket Breadcrumbs" inherit_id="portal.portal_breadcrumbs" priority="30">
         <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
-            <li t-if="page_name == 'materials'" class="breadcrumb-item active">
-                Materiales y Marketing B2B
-            </li>
-            <li t-if="page_name == 'claims'" class="breadcrumb-item active">
-                Reclamos y Calidad
-            </li>
-            <li t-if="page_name == 'order_claim'" class="breadcrumb-item">
+            <li t-if="page_name == 'order_ticket'" class="breadcrumb-item">
                 <a t-attf-href="/my/orders/#{order.id}">
                     <t t-out="order.name"/>
                 </a>
             </li>
-            <li t-if="page_name == 'order_claim'" class="breadcrumb-item active">
+            <li t-if="page_name == 'order_ticket'" class="breadcrumb-item active">
                 Reportar Inconveniente
             </li>
         </xpath>
     </template>
 
-    <!-- Tarjetas de Acceso en el Portal Home (/my) -->
-    <template id="portal_my_home_b2b_intranet" inherit_id="portal.portal_my_home" priority="30" name="B2B Intranet Cards in Portal Home">
-        <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
-            <t t-set="portal_client_category_enable" t-value="True"/>
-        </xpath>
-        <xpath expr="//div[@id='portal_client_category']" position="inside">
-            <t t-call="portal.portal_docs_entry">
-                <t t-set="title">Materiales y Marketing B2B</t>
-                <t t-set="text">Manuales de marca, afiches y listas de precios sugeridos</t>
-                <t t-set="url" t-value="'/my/materials'"/>
-                <t t-set="placeholder_count" t-value="'material_count'"/>
-                <t t-set="config_card" t-value="True"/>
-            </t>
-            <t t-call="portal.portal_docs_entry">
-                <t t-set="title">Reclamos y Calidad</t>
-                <t t-set="text">Seguimiento de incidencias en entregas y mercadería</t>
-                <t t-set="url" t-value="'/my/claims'"/>
-                <t t-set="placeholder_count" t-value="'claim_count'"/>
-                <t t-set="config_card" t-value="True"/>
-            </t>
-        </xpath>
-    </template>
-
-    <!-- Botón de Reportar Inconveniente y Resumen de Reclamos en Detalle de Pedido (/my/orders/<id>) -->
-    <template id="sale_order_portal_template_b2b_claims" inherit_id="sale.sale_order_portal_template" name="B2B Claim Button in Order Detail">
+    <!-- Botón de Reportar Inconveniente y Resumen de Tickets en Detalle de Pedido (/my/orders/<id>) -->
+    <template id="sale_order_portal_template_b2b_helpdesk" inherit_id="sale.sale_order_portal_template" name="B2B Helpdesk Ticket Button in Order Detail">
         <xpath expr="//div[hasclass('o_download_pdf')]" position="after">
             <div t-if="sale_order.state in ('sale', 'done')" class="mt-2 w-100">
-                <a t-attf-href="/my/orders/#{sale_order.id}/claim" class="btn btn-outline-danger w-100 text-truncate shadow-sm" role="button">
+                <a t-attf-href="/my/orders/#{sale_order.id}/ticket" class="btn btn-outline-danger w-100 text-truncate shadow-sm" role="button">
                     <i class="fa fa-exclamation-triangle me-1"/> Reportar Inconveniente
                 </a>
             </div>
-            <t t-if="sale_order.claim_ids">
+            <t t-if="sale_order_tickets">
                 <div class="alert alert-light border small mt-2 mb-0 py-2 shadow-sm" role="alert">
                     <div class="fw-bold mb-1 text-dark">
-                        <i class="fa fa-history me-1 text-primary"/> Reclamos de este pedido:
+                        <i class="fa fa-life-ring me-1 text-primary"/> Tickets de este pedido:
                     </div>
-                    <t t-foreach="sale_order.claim_ids" t-as="claim">
+                    <t t-foreach="sale_order_tickets" t-as="tk">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <a href="/my/claims" class="text-primary fw-bold text-decoration-none">
-                                <t t-out="claim.name"/>
+                            <a t-attf-href="/my/ticket/#{tk.id}" class="text-primary fw-bold text-decoration-none">
+                                <t t-out="tk.name"/>
                             </a>
-                            <span t-attf-class="badge #{'text-bg-warning' if claim.state == 'in_progress' else 'text-bg-success' if claim.state == 'resolved' else 'text-bg-secondary' if claim.state == 'rejected' else 'text-bg-info'}">
-                                <t t-if="claim.state == 'draft'">Pendiente</t>
-                                <t t-elif="claim.state == 'in_progress'">En Análisis</t>
-                                <t t-elif="claim.state == 'resolved'">Resuelto</t>
-                                <t t-elif="claim.state == 'rejected'">Desestimado</t>
+                            <span class="badge text-bg-secondary">
+                                <t t-out="tk.stage_id.name"/>
                             </span>
                         </div>
                     </t>
                 </div>
             </t>
         </xpath>
+    </template>
+
+    <!-- Formulario Guiado de Ticket para el Pedido (/my/orders/<id>/ticket) -->
+    <template id="portal_order_ticket_form" name="B2B Order Ticket Form">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+
+                        <!-- Encabezado -->
+                        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                            <div>
+                                <h3 class="fw-bold mb-1 text-danger">
+                                    <i class="fa fa-exclamation-triangle me-2"/>Reportar Inconveniente con la Entrega
+                                </h3>
+                                <p class="text-muted mb-0">
+                                    Pedido: <strong><t t-out="order.name"/></strong> • Fecha: <span t-field="order.date_order" t-options="{'widget': 'date'}"/>
+                                </p>
+                            </div>
+                            <a t-attf-href="/my/orders/#{order.id}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa fa-arrow-left me-1"/> Volver al Pedido
+                            </a>
+                        </div>
+
+                        <!-- Alerta de Error -->
+                        <t t-if="error">
+                            <div class="alert alert-danger alert-dismissible fade show mb-4 shadow-sm" role="alert">
+                                <i class="fa fa-times-circle me-2"/> <t t-out="error"/>
+                            </div>
+                        </t>
+
+                        <!-- Formulario de Ticket -->
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body p-4">
+                                <form t-attf-action="/my/orders/#{order.id}/ticket" method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                    <!-- 1. Motivo del Inconveniente -->
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold text-dark">
+                                            1. Motivo principal del inconveniente <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="row g-2">
+                                            <t t-foreach="issue_types" t-as="itype">
+                                                <div class="col-md-6">
+                                                    <div class="form-check p-3 border rounded h-100 bg-light">
+                                                        <input class="form-check-input" type="radio" name="issue_type"
+                                                               t-att-id="'itype_' + itype[0]" t-att-value="itype[0]"
+                                                               t-att-checked="itype[0] == (submitted_values.get('issue_type') if submitted_values else 'damaged')"/>
+                                                        <label class="form-check-label fw-semibold text-dark ms-1" t-att-for="'itype_' + itype[0]">
+                                                            <t t-out="itype[1]"/>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </div>
+
+                                    <!-- 2. Producto y Cantidad Afectada -->
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-6">
+                                            <label for="product_id" class="form-label fw-bold text-dark">
+                                                2. Producto o Variedad afectada
+                                            </label>
+                                            <select name="product_id" id="product_id" class="form-select">
+                                                <option value="">-- Aplica a todo el pedido / bulto general --</option>
+                                                <t t-foreach="order.order_line.mapped('product_id')" t-as="prod">
+                                                    <option t-att-value="prod.id">
+                                                        <t t-out="prod.display_name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                            <div class="form-text">Si el problema es de un alfajor o insumo específico.</div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label for="affected_qty" class="form-label fw-bold text-dark">
+                                                Cantidad afectada
+                                            </label>
+                                            <input type="number" step="any" min="0" name="affected_qty" id="affected_qty"
+                                                   class="form-control" placeholder="Ej: 12"
+                                                   t-att-value="submitted_values.get('affected_qty') if submitted_values else ''"/>
+                                            <div class="form-text">Unidades o bultos.</div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label for="lot_number" class="form-label fw-bold text-dark">
+                                                N° de Lote / Vto.
+                                            </label>
+                                            <input type="text" name="lot_number" id="lot_number"
+                                                   class="form-control" placeholder="Ej: L260901"
+                                                   t-att-value="submitted_values.get('lot_number') if submitted_values else ''"/>
+                                            <div class="form-text">Impreso en el empaque.</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 3. Descripción Detallada -->
+                                    <div class="mb-4">
+                                        <label for="description" class="form-label fw-bold text-dark">
+                                            3. Detalle de lo sucedido <span class="text-danger">*</span>
+                                        </label>
+                                        <textarea name="description" id="description" rows="4" class="form-control" required="required"
+                                                  placeholder="Describa claramente el estado en que recibió la mercadería, discrepancia con el remito de entrega o cualquier observación..."><t t-out="submitted_values.get('description') if submitted_values else ''"/></textarea>
+                                    </div>
+
+                                    <!-- 4. Fotos y Evidencia Adjunta -->
+                                    <div class="mb-4">
+                                        <label for="ticket_files" class="form-label fw-bold text-dark">
+                                            4. Fotos del remito, bulto y mercadería dañada
+                                        </label>
+                                        <input type="file" name="ticket_files" id="ticket_files" class="form-control" multiple="multiple" accept="image/*,.pdf"/>
+                                        <div class="form-text text-muted">
+                                            <i class="fa fa-info-circle me-1"/> Puede seleccionar múltiples fotos tomadas desde su teléfono (máx. 10MB por archivo).
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-4"/>
+
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <a t-attf-href="/my/orders/#{order.id}" class="btn btn-outline-secondary">
+                                            Cancelar
+                                        </a>
+                                        <button type="submit" class="btn btn-danger btn-lg fw-bold shadow-sm">
+                                            <i class="fa fa-life-ring me-2"/> Abrir Ticket de Inconveniente
+                                        </button>
+                                    </div>
+
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </t>
     </template>
 
 </odoo>
