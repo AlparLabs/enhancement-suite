@@ -21,7 +21,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
         if self.advance_payment_method not in ('percentage_progress', 'fixed_progress', 'fixed_net'):
             return super().create_invoices()
 
-        sale_orders = self.env['sale.order'].browse(self._context.get('active_ids', []))
+        sale_orders = self.sale_order_ids or self.env['sale.order'].browse(self._context.get('active_ids', []))
 
         # ── Caso 1: Certificación por % de avance ──────────────────────────────
         # Misma mecánica que el Anticipo estándar de Odoo pero con descripción

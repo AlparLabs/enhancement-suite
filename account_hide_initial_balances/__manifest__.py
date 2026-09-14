@@ -1,6 +1,6 @@
 {
     'name': 'Account Hide Initial Balances',
-    'version': '18.0.0.0.1',
+    'version': '19.0.1.0.0',
     'category': 'Accounting/Accounting',
     'summary': 'Hides Initial Balances in Accounting Reports',
     'description': """

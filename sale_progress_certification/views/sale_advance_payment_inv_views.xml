@@ -23,9 +23,6 @@
             <xpath expr="//field[@name='amount']" position="attributes">
                 <attribute name="invisible">advance_payment_method not in ('percentage', 'percentage_progress')</attribute>
                 <attribute name="required">advance_payment_method in ('percentage', 'percentage_progress')</attribute>
-            </xpath>
-            
-            <xpath expr="//field[@name='amount']" position="attributes">
                 <attribute name="string">Porcentaje (%)</attribute>
             </xpath>
 

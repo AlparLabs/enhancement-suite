@@ -1,6 +1,6 @@
 {
     'name': 'Sale Progress Certification',
-    'version': '18.0.1.0.0',
+    'version': '19.0.1.0.0',
     'category': 'Sales',
     'summary': 'Añade opción de facturar por % de Avance (Certificación) en Ventas',
     'description': """
