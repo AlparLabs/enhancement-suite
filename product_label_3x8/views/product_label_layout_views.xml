@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_label_layout_form_inherit_3x8" model="ir.ui.view">
+        <field name="name">product.label.layout.form.inherit.3x8</field>
+        <field name="model">product.label.layout</field>
+        <field name="inherit_id" ref="product.product_label_layout_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='extra_html']" position="after">
+                <field name="loyalty_program_id"
+                       invisible="print_format != '3x8xpromo'"
+                       placeholder="Seleccione programa de promoción..."/>
+                <field name="promo_discount"
+                       invisible="print_format != '3x8xpromo'"
+                       placeholder="Ej: 20 para 20%"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
