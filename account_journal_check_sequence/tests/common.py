@@ -36,9 +36,10 @@ class CheckbookTestCommon(AccountTestInvoicingCommon):
     def _setup_second_company(cls):
         """Crea una segunda compañía y la deja activa junto con la primera.
 
-        Sin ``allowed_company_ids`` las reglas multicompañía ocultan los
-        registros de la compañía 2 (chequeras, diarios, cheques). Los registros
-        de clase se vuelven a leer con el entorno nuevo.
+        Sin ``allowed_company_ids`` el entorno ya toma todas las compañías del
+        usuario; el cambio de entorno solo deja las dos activas de forma
+        explícita, para que los tests no dependan de ese fallback. Los
+        registros de clase se vuelven a leer con el entorno nuevo.
         """
         cls.company_data_2 = cls.setup_other_company()
         cls.company_2 = cls.company_data_2['company']

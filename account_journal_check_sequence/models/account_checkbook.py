@@ -65,7 +65,8 @@ class AccountCheckbook(models.Model):
     @api.constrains('company_id')
     def _check_company_journals(self):
         # sudo: los diarios de compañías no activas también tienen que coincidir.
-        self.sudo().journal_ids._check_checkbook_company()
+        # active_test=False: los diarios archivados también.
+        self.sudo().with_context(active_test=False).journal_ids._check_checkbook_company()
 
     # -------------------------------------------------------------------------
     # Helpers de parseo / formateo

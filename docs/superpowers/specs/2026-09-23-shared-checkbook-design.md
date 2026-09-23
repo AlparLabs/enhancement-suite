@@ -99,7 +99,11 @@ posteos de diarios y compañías distintos** que comparten chequera.
   otros diarios que usan la misma chequera (sin incluir el diario actual).
   Se usa para el aviso en la vista.
 - Constraint `_check_checkbook_company`: si `checkbook_id.company_id` está
-  definido y es distinto de `journal.company_id`, lanza `ValidationError`.
+  definido y no es la compañía del diario ni una de sus compañías madre
+  (`journal.company_id.parent_ids`, que incluye a la propia compañía), lanza
+  `ValidationError`. Así una sucursal puede usar la chequera de su casa
+  matriz. El dominio de `checkbook_id` acompaña con
+  `('company_id', 'parent_of', company_id)`.
   La misma validación va en `account.checkbook` sobre `company_id` y
   `journal_ids`, para que cambiarle la compañía a una chequera en uso no
   deje combinaciones inválidas.
@@ -207,9 +211,16 @@ persistido sigue funcionando igual.
 |---|---|---|---|---|---|
 | `access_account_checkbook_invoice` | `account.group_account_invoice` | 1 | 0 | 0 | 0 |
 | `access_account_checkbook_manager` | `account.group_account_manager` | 1 | 1 | 1 | 1 |
+| `access_account_checkbook_readonly` | `account.group_account_readonly` | 1 | 0 | 0 | 0 |
+
+La fila de solo lectura hace falta porque en v19 `group_account_readonly` no
+implica `group_account_invoice`: esos usuarios leen pagos y diarios, y los
+campos computados no almacenados leen `checkbook_id.active` con su usuario.
 
 `security/account_checkbook_security.xml`: record rule global
-`['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]`.
+`['|', ('company_id', '=', False), ('company_id', 'parent_of', company_ids)]`,
+igual que la regla nativa de `account.journal`: una sucursal ve las
+chequeras de sus compañías madre.
 
 El avance del contador al postear sigue haciéndose con `sudo()`, así que un
 usuario de Facturación puede postear aunque no tenga permiso de escritura

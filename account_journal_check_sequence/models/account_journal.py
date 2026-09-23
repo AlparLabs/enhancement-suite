@@ -10,7 +10,7 @@ class AccountJournal(models.Model):
         string='Chequera',
         ondelete='restrict',
         copy=False,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain="['|', ('company_id', '=', False), ('company_id', 'parent_of', company_id)]",
         help='Chequera de la que salen los cheques propios de este diario. Varios diarios '
              'pueden compartir la misma chequera y consumen un único correlativo. Sin '
              'chequera, el módulo no numera los cheques de este diario.',
@@ -52,10 +52,13 @@ class AccountJournal(models.Model):
     def _check_checkbook_company(self):
         for journal in self:
             checkbook_company = journal.checkbook_id.company_id
-            if checkbook_company and checkbook_company != journal.company_id:
+            # parent_ids incluye a la propia compañía: una sucursal puede usar
+            # la chequera de su compañía o de cualquier compañía madre.
+            if checkbook_company and checkbook_company not in journal.company_id.parent_ids:
                 raise ValidationError(_(
                     'La chequera "%(checkbook)s" es de la compañía %(checkbook_company)s y no se '
-                    'puede usar en el diario "%(journal)s" de %(journal_company)s. Para compartirla '
+                    'puede usar en el diario "%(journal)s" de %(journal_company)s. La chequera tiene '
+                    'que ser de la compañía del diario o de una compañía madre; para compartirla '
                     'entre compañías, dejá vacía la compañía de la chequera.',
                     checkbook=journal.checkbook_id.display_name,
                     checkbook_company=checkbook_company.display_name,

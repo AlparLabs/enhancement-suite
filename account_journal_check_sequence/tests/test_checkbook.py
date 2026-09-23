@@ -187,13 +187,20 @@ class TestCheckbookSharing(CheckbookTestCommon):
     def test_checkbook_company_must_match_journal(self):
         """Una chequera de otra compañía no se puede asignar al diario."""
         company_2 = self.setup_other_company()['company']
-        # sudo: la compañía 2 no está activa y la regla impediría crearla.
+        # sudo defensivo: que la regla multicompañía no dependa de las compañías activas.
         foreign_checkbook = self.env['account.checkbook'].sudo().create({
             'name': 'Chequera Compañía 2',
             'company_id': company_2.id,
         })
         with self.assertRaises(ValidationError):
             self.bank_journal.sudo().checkbook_id = foreign_checkbook
+
+    def test_branch_journal_uses_parent_checkbook(self):
+        """Un diario de una sucursal puede usar la chequera de la compañía madre."""
+        branch = self._create_company(name='Sucursal Rama', parent_id=self.company_data['company'].id)
+        self.checkbook.company_id = self.company_data['company']
+        branch_journal = self._create_bank_journal('Banco Rama', 'BRAM', company=branch, checkbook=self.checkbook)
+        self.assertEqual(branch_journal.checkbook_id, self.checkbook)
 
     def test_checkbook_company_change_checks_journals(self):
         """Cambiarle la compañía a una chequera en uso valida sus diarios."""
