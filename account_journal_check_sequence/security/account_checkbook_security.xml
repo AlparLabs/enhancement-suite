@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Una chequera sin compañía se comparte entre compañías: la ven todos
+        los usuarios que tengan acceso al modelo.
+    -->
+    <record id="account_checkbook_company_rule" model="ir.rule">
+        <field name="name">Chequera: multicompañía</field>
+        <field name="model_id" ref="model_account_checkbook"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>
