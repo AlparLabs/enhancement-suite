@@ -1,8 +1,8 @@
 {
     'name': 'Acceso por Almacén',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Inventory/Inventory',
-    'summary': 'Limita la visibilidad de transferencias y órdenes de compra al almacén asignado a cada usuario.',
+    'summary': 'Limita la visibilidad de transferencias, compras, reportes, reabastecimiento y ajustes de inventario al almacén asignado a cada usuario.',
     'author': 'AlparData',
     'depends': ['stock', 'purchase_stock'],
     'data': [

@@ -15,11 +15,7 @@ class StockPickingType(models.Model):
         """
         if not self.env.context.get('restrict_to_user_warehouses'):
             return []
-        if self.env.user.has_group(
-            'stock_warehouse_user_access.group_warehouse_access_all'
-        ):
-            return []
-        warehouses = self.env.user.warehouse_access_ids
+        warehouses = self.env.user._get_restricted_warehouses()
         if not warehouses:
             return []
         return [

@@ -1,5 +1,6 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.fields import Domain
 
 
 class ResUsers(models.Model):
@@ -33,6 +34,28 @@ class ResUsers(models.Model):
                     "sus almacenes permitidos.",
                     user=user.name,
                 ))
+
+    def _get_restricted_warehouses(self):
+        """Almacenes a los que se limita la vista del usuario.
+
+        Devuelve None si el usuario no se filtra (permiso 'Ver todos los
+        almacenes'). Un recordset vacío significa que se filtra y no ve nada.
+        """
+        self.ensure_one()
+        if self.has_group('stock_warehouse_user_access.group_warehouse_access_all'):
+            return None
+        return self.warehouse_access_ids
+
+    def _get_warehouse_view_domain(self, paths):
+        """Dominio que deja solo lo que toca a los almacenes del usuario.
+
+        `paths` son rutas a un campo stock.warehouse; alcanza con que una
+        coincida. Devuelve None si el usuario no se filtra.
+        """
+        warehouses = self._get_restricted_warehouses()
+        if warehouses is None:
+            return None
+        return Domain.OR(Domain(path, 'in', warehouses.ids) for path in paths)
 
     @api.model
     def _get_invalidation_fields(self):
