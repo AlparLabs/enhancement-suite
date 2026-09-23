@@ -8,9 +8,15 @@
             <xpath expr="//page[@name='advanced_settings']/group" position="inside">
                 <group name="check_sequence" string="Chequera / Numeración de Cheques Propios"
                        invisible="type != 'bank'">
-                    <field name="check_sequence_enabled"/>
-                    <field name="next_check_number" invisible="not check_sequence_enabled"/>
-                    <field name="check_number_padding" invisible="not check_sequence_enabled"/>
+                    <field name="checkbook_id" context="{'default_company_id': company_id}"/>
+                    <field name="next_check_number" invisible="not checkbook_id"/>
+                    <field name="check_number_padding" invisible="not checkbook_id"/>
+                    <div class="alert alert-info" role="alert" colspan="2"
+                         invisible="not checkbook_shared_journal_ids">
+                        Esta chequera también la usan:
+                        <field name="checkbook_shared_journal_ids" widget="many2many_tags" readonly="1" class="d-inline"/>
+                        Si cambiás el próximo número, el cambio aplica a todos.
+                    </div>
                 </group>
             </xpath>
         </field>

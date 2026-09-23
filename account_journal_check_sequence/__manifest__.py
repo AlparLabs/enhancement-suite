@@ -25,6 +25,7 @@
     'data': [
         'security/ir.model.access.csv',
         'security/account_checkbook_security.xml',
+        'views/account_checkbook_views.xml',
         'views/account_journal_views.xml',
         'views/account_payment_views.xml',
     ],
