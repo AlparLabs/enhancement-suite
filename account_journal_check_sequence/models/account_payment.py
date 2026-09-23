@@ -20,13 +20,13 @@ class AccountPayment(models.Model):
         self._apply_check_sequence_suggestion()
 
     def action_post(self):
-        """Actualiza el contador del diario con el número más alto emitido."""
+        """Actualiza el contador de la chequera con el número más alto emitido."""
         res = super().action_post()
         for payment in self:
-            journal = payment._check_sequence_journal()
-            if not journal:
+            checkbook = payment._check_sequence_checkbook()
+            if not checkbook:
                 continue
             used_numbers = payment._get_check_numbers_used()
             if used_numbers:
-                journal._increment_check_number(journal._get_highest_check_number(used_numbers))
+                checkbook._increment_check_number(checkbook._get_highest_check_number(used_numbers))
         return res

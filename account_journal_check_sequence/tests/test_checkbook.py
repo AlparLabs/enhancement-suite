@@ -1,6 +1,11 @@
+from psycopg2 import IntegrityError
+
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.exceptions import ValidationError
 from odoo.tests import tagged
+from odoo.tools import mute_logger
+
+from .common import CheckbookTestCommon
 
 
 @tagged('post_install', '-at_install')
@@ -120,3 +125,105 @@ class TestCheckbookCounter(AccountTestInvoicingCommon):
         """La cantidad de dígitos está acotada."""
         with self.assertRaises(ValidationError):
             self.checkbook.padding = 99
+
+
+@tagged('post_install', '-at_install')
+class TestCheckbookSharing(CheckbookTestCommon):
+    """Varios diarios, de una o varias compañías, sobre la misma chequera."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.journal_b = cls._create_bank_journal('Banco Sucursal B', 'BSUB', checkbook=cls.checkbook)
+        cls.own_checks_line_b = cls._setup_own_checks_line(cls.journal_b, cls.outstanding_account)
+
+    def test_shared_checkbook_continues_across_journals(self):
+        """Lo que publica un diario lo ve el otro: sugiere el número siguiente."""
+        payment_a = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+        ])
+        payment_a.action_post()
+        self.assertEqual(payment_a.l10n_latam_new_check_ids.name, '00001001')
+
+        payment_b = self._create_own_check_payment(
+            [{'payment_date': self.check_date, 'amount': 20}],
+            journal=self.journal_b, own_checks_line=self.own_checks_line_b,
+        )
+        self.assertEqual(payment_b.l10n_latam_new_check_ids.name, '00001002')
+
+    def test_shared_journals_computed(self):
+        """El diario informa qué otros diarios comparten su chequera."""
+        self.assertEqual(self.bank_journal.checkbook_shared_journal_ids, self.journal_b)
+        self.assertEqual(self.journal_b.checkbook_shared_journal_ids, self.bank_journal)
+
+    def test_edit_next_number_from_journal_updates_checkbook(self):
+        """Editar el número desde un diario cambia la chequera de todos."""
+        self.journal_b.next_check_number = '00002000'
+        self.assertEqual(self.checkbook.next_number, '00002000')
+        self.assertEqual(self.bank_journal.next_check_number, '00002000')
+
+    def test_enabled_follows_checkbook(self):
+        """La numeración está activa si el diario tiene una chequera activa."""
+        self.assertTrue(self.bank_journal.check_sequence_enabled)
+        self.checkbook.active = False
+        self.assertFalse(self.bank_journal.check_sequence_enabled)
+
+    def test_archived_checkbook_disables_numbering(self):
+        """Con la chequera archivada no se sugiere número ni avanza al publicar."""
+        self.checkbook.active = False
+        payment = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+        ])
+        self.assertFalse(payment.l10n_latam_new_check_ids.name)
+        payment.l10n_latam_new_check_ids.name = '00005000'
+        payment.action_post()
+        self.assertEqual(self.checkbook.next_number, '00001001')
+
+    def test_cannot_delete_checkbook_in_use(self):
+        """Una chequera asignada a un diario no se puede borrar, solo archivar."""
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'), self.env.cr.savepoint():
+            self.checkbook.unlink()
+
+    def test_checkbook_company_must_match_journal(self):
+        """Una chequera de otra compañía no se puede asignar al diario."""
+        company_2 = self.setup_other_company()['company']
+        # sudo: la compañía 2 no está activa y la regla impediría crearla.
+        foreign_checkbook = self.env['account.checkbook'].sudo().create({
+            'name': 'Chequera Compañía 2',
+            'company_id': company_2.id,
+        })
+        with self.assertRaises(ValidationError):
+            self.bank_journal.sudo().checkbook_id = foreign_checkbook
+
+    def test_checkbook_company_change_checks_journals(self):
+        """Cambiarle la compañía a una chequera en uso valida sus diarios."""
+        company_2 = self.setup_other_company()['company']
+        with self.assertRaises(ValidationError):
+            self.checkbook.company_id = company_2
+
+
+@tagged('post_install', '-at_install')
+class TestCheckbookMultiCompany(CheckbookTestCommon):
+    """Una chequera sin compañía compartida por diarios de dos compañías."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._setup_second_company()
+        cls.journal_c2 = cls.env['account.journal'].browse(cls.company_data_2['default_journal_bank'].id)
+        cls.journal_c2.checkbook_id = cls.checkbook
+        cls.own_checks_line_c2 = cls._setup_own_checks_line(cls.journal_c2, cls.outstanding_account_2)
+
+    def test_counter_advances_from_both_companies(self):
+        """Publicar desde cada compañía avanza el mismo contador."""
+        payment_1 = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+        ])
+        payment_1.action_post()
+        payment_2 = self._create_own_check_payment(
+            [{'payment_date': self.check_date, 'amount': 20}],
+            journal=self.journal_c2, own_checks_line=self.own_checks_line_c2,
+        )
+        self.assertEqual(payment_2.l10n_latam_new_check_ids.name, '00001002')
+        payment_2.action_post()
+        self.assertEqual(self.checkbook.next_number, '00001003')

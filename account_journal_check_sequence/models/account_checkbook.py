@@ -43,6 +43,13 @@ class AccountCheckbook(models.Model):
         string='Compañía',
         help='Vacío: la chequera se puede compartir entre diarios de distintas compañías.',
     )
+    journal_ids = fields.One2many(
+        'account.journal',
+        'checkbook_id',
+        string='Diarios',
+        readonly=True,
+        help='Diarios de banco que numeran sus cheques propios con esta chequera.',
+    )
     active = fields.Boolean(default=True)
 
     @api.constrains('padding')
@@ -54,6 +61,11 @@ class AccountCheckbook(models.Model):
                     checkbook=checkbook.display_name,
                     maximum=MAX_CHECK_NUMBER_PADDING,
                 ))
+
+    @api.constrains('company_id')
+    def _check_company_journals(self):
+        # sudo: los diarios de compañías no activas también tienen que coincidir.
+        self.sudo().journal_ids._check_checkbook_company()
 
     # -------------------------------------------------------------------------
     # Helpers de parseo / formateo
