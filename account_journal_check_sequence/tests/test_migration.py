@@ -70,6 +70,23 @@ class TestMigration(CheckbookTestCommon):
             'La migración es idempotente.',
         )
 
+    def test_migration_skips_without_legacy_columns(self):
+        """Sin las columnas viejas de account_journal no hace nada."""
+        self.env.cr.execute("""
+            SELECT 1
+              FROM information_schema.columns
+             WHERE table_name = 'account_journal'
+               AND column_name = 'check_sequence_enabled'
+        """)
+        if self.env.cr.fetchone():
+            self.skipTest('La base de tests tiene las columnas viejas (base actualizada).')
+        checkbook_count = self.env['account.checkbook'].with_context(active_test=False).search_count([])
+        _load_migrate()(self.env.cr, '19.0.1.2.0')
+        self.assertEqual(
+            self.env['account.checkbook'].with_context(active_test=False).search_count([]),
+            checkbook_count,
+        )
+
     def test_migration_skips_fresh_install(self):
         """Sin versión previa no hace nada."""
         checkbook_count = self.env['account.checkbook'].search_count([])

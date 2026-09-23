@@ -48,17 +48,31 @@ def migrate(cr, version):
          ORDER BY id
     """)
     rows = cr.fetchall()
+    # El contexto vacío lee el nombre traducible del diario en en_US, que en las
+    # bases argentinas queda activo ("Bank" en los diarios del plan contable, o
+    # el nombre en inglés anterior a un renombre). El nombre de la chequera no
+    # es traducible: se toma en el idioma de la compañía (o del admin).
+    admin = env.ref('base.user_admin', raise_if_not_found=False)
+    fallback_lang = admin.lang if admin else None
     for journal_id, next_number, padding in rows:
         journal = env['account.journal'].browse(journal_id)
+        lang = journal.company_id.partner_id.lang or fallback_lang
+        name = journal.with_context(lang=lang).name if lang else journal.name
         valid_padding = padding and 1 <= padding <= MAX_CHECK_NUMBER_PADDING
         journal.checkbook_id = env['account.checkbook'].create({
-            'name': journal.name,
+            'name': name,
             'next_number': (next_number or '').strip() or '00000001',
             'padding': padding if valid_padding else DEFAULT_CHECK_NUMBER_PADDING,
             'company_id': journal.company_id.id,
         })
     if rows:
         _logger.info('post-migrate: %s chequera(s) creada(s) a partir de los diarios', len(rows))
+        _logger.info(
+            'post-migrate: se creó una chequera por diario. Los diarios que comparten una '
+            'chequera física se pueden agrupar desde Contabilidad > Configuración > '
+            'Contabilidad > Chequeras, acción "Unificar chequeras"; las chequeras que '
+            'queden sin uso se pueden archivar.'
+        )
     env.flush_all()
 
     cr.execute("""
