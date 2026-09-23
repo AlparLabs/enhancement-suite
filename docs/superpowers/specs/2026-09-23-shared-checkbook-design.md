@@ -9,10 +9,13 @@
 Hoy la numeración de cheques propios vive dentro de cada diario de banco
 (`check_sequence_enabled`, `next_check_number`, `check_number_padding` en
 `account.journal`), así que cada diario tiene su propio contador (relación
-1:1). Un cliente tiene sucursales que emiten cheques de **una misma chequera
-física** desde diarios distintos, que pueden estar en la misma compañía o en
-compañías distintas. Necesitan que todos esos diarios consuman un único
-contador, sin números duplicados aunque posteen al mismo tiempo.
+1:1). El cliente que motiva este desarrollo tiene **muchas sucursales y
+empresas, con varios diarios que emiten cheques de una misma chequera
+física** y siguen la numeración correlativa entre todos. Esos diarios
+pueden estar en la misma compañía o en compañías distintas. Necesitan que
+todos consuman un único contador, sin números duplicados aunque publiquen
+al mismo tiempo, y poder pasar a ese esquema sin configurar diario por
+diario.
 
 La solución es sacar el contador del diario a un modelo propio,
 `account.checkbook`, y que los diarios lo referencien (relación N:1).
@@ -36,7 +39,10 @@ La solución es sacar el contador del diario a un modelo propio,
 - **Tener chequera asignada equivale a tener la numeración activa.** Se
   elimina el booleano como fuente de verdad.
 - **La migración no fusiona chequeras.** Crea una chequera por cada diario
-  habilitado. La unificación es manual y queda documentada.
+  habilitado, porque no hay forma de saber qué diarios comparten chequera
+  física. Para agruparlas se usa un **asistente de unificación**, que mueve
+  en un solo paso los diarios y los cheques ya emitidos a la chequera
+  destino.
 - **Las columnas viejas no se borran** en esta versión y quedan como
   respaldo.
 - **Un número ya emitido en la chequera no se puede volver a usar.** Se
@@ -238,10 +244,59 @@ porque en v19 `account.journal.name` es jsonb traducible.
 Es idempotente porque filtra `checkbook_id IS NULL`. Las columnas viejas
 quedan en la base.
 
-Para unificar dos diarios que ya venían numerando en paralelo, el
-procedimiento es manual: en el diario B se elige la chequera del diario A,
-se ajusta el próximo número si hace falta y se archiva la chequera que quedó
-sin uso.
+Después de actualizar, los diarios que ya numeraban de la misma chequera
+física quedan con chequeras separadas. Se agrupan con el asistente de
+unificación (sección siguiente).
+
+## Asistente de unificación de chequeras
+
+`wizards/account_checkbook_merge.py`: TransientModel
+`account.checkbook.merge`, "Unificar chequeras".
+
+**Por qué hace falta.** Sin el asistente, pasar muchos diarios a una sola
+chequera es un trámite diario por diario. Además, si solo se reasigna el
+diario, sus cheques ya emitidos quedan asociados a la chequera vieja y el
+control de duplicados no los ve. Por ejemplo, la sucursal B emitió el 1040
+con su chequera vieja; después de reasignar B, alguien de A tipea el 1040 y
+no salta el aviso.
+
+**Campos:**
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `checkbook_ids` | Many2many `account.checkbook` | Default: `active_ids`. Mínimo 2. |
+| `target_checkbook_id` | Many2one `account.checkbook`, required | Dominio: dentro de `checkbook_ids`. Default: la chequera con más diarios; si empatan, la de menor id. |
+| `next_number` | Char, required | Default: `_get_highest_check_number` sobre los `next_number` de las seleccionadas. Es editable, por si las series tienen prefijos distintos. |
+| `company_id` | Many2one `res.company`, computado | La compañía común de todos los diarios involucrados. Si hay diarios de más de una compañía, queda vacío y la chequera destino se vuelve compartible entre compañías. Se muestra como información. |
+| `journal_ids` | Many2many, computado | Todos los diarios que van a quedar en la chequera destino. Informativo. |
+| `duplicate_warning` | Text, computado | Números que se repiten en los cheques emitidos de las chequeras seleccionadas, con los pagos involucrados (mismo criterio que la regla de duplicados). Es solo informativo: no bloquea la unificación, porque es historia que ya ocurrió, pero conviene que el usuario la vea. |
+
+**`action_merge`**, en una sola transacción:
+1. Valida que haya al menos 2 chequeras y que la destino esté entre las
+   seleccionadas.
+2. Toma el lock de todas las chequeras seleccionadas, ordenadas por id, con
+   el mismo UPDATE que se usa al publicar. Así ningún pago concurrente
+   publica en el medio.
+3. Escribe `company_id` en la chequera destino, según el valor computado,
+   para que la constraint de compañía no rechace los diarios nuevos.
+4. Reasigna los diarios de las otras chequeras: `checkbook_id` = destino.
+5. Reasigna los cheques emitidos: `l10n_latam.check` con `checkbook_id` en
+   las otras chequeras pasa a apuntar a la destino.
+6. Escribe `next_number` en la chequera destino con el valor del asistente.
+   Acá no se aplica la regla de "no retroceder": es una decisión explícita
+   del usuario.
+7. Archiva las chequeras de origen, que quedaron sin diarios.
+8. Devuelve la acción que abre el formulario de la chequera destino.
+
+**Acceso.** Solo `account.group_account_manager`. Se abre desde la acción
+"Unificar chequeras" (`binding_model_id` = `account.checkbook`, vista de
+lista).
+
+## Seguridad del asistente
+
+Se agrega a `ir.model.access.csv` la línea
+`access_account_checkbook_merge_manager`, para
+`account.group_account_manager`, con permisos 1,1,1,1.
 
 ## Vistas y menú
 
@@ -250,7 +305,14 @@ sin uso.
     `groups="base.group_multi_company"`), `journal_ids` (`many2many_tags`).
   - Formulario: los mismos campos, `journal_ids` en solo lectura y la
     ribbon de archivado.
-  - Búsqueda: `name`, filtro de archivadas.
+  - Búsqueda: `name`, filtro "Sin diarios" (`journal_ids = False`) y
+    filtro de archivadas.
+- `wizards/account_checkbook_merge_views.xml` (nuevo): formulario del
+  asistente y la acción con `binding_model_id` = `account.checkbook`
+  (`binding_view_types="list"`). El formulario muestra la chequera destino,
+  el próximo número, la compañía resultante, los diarios que van a quedar
+  en la chequera y, si hay números repetidos en la historia, un
+  `alert-warning` con `duplicate_warning`.
   - Acción y menú: Contabilidad → Configuración → Bancos → **Chequeras**,
     visible solo para `account.group_account_manager`.
 - `views/account_journal_views.xml`, grupo "Chequera / Numeración de
@@ -303,17 +365,38 @@ sin uso.
     - Al publicar, se completa `checkbook_id` en los cheques.
     - Un pago en un diario sin chequera no aplica el control; queda solo
       el índice nativo.
+  - Unificación:
+    - Tres chequeras de diarios de dos compañías: después de unificar, todos
+      los diarios apuntan a la destino, que queda sin compañía, y las otras
+      dos quedan archivadas.
+    - Los cheques emitidos de las chequeras de origen pasan a la destino.
+      Un número que ya había emitido la sucursal B, tipeado después en un
+      pago de la sucursal A, bloquea.
+    - `next_number` por defecto es el más alto de las seleccionadas, y el
+      valor editado se respeta aunque sea más bajo.
+    - Si todos los diarios son de la misma compañía, la destino conserva
+      esa compañía.
+    - `duplicate_warning` informa los números repetidos en la historia sin
+      impedir la unificación.
+    - Con una sola chequera seleccionada, o con la destino fuera de la
+      selección, lanza `UserError`.
 
 ## Manifiesto y documentación
 
 - `version`: `19.0.1.3.0`.
 - `data`: `security/ir.model.access.csv`,
   `security/account_checkbook_security.xml`,
-  `views/account_checkbook_views.xml`, más las vistas existentes.
+  `views/account_checkbook_views.xml`,
+  `wizards/account_checkbook_merge_views.xml`, más las vistas existentes.
 - `summary` y `description`: pasan de "numeración por diario" a
   "chequeras, compartibles entre diarios y compañías".
-- README: qué es una chequera, cómo compartirla, el procedimiento de
-  unificación manual y el comportamiento de una chequera archivada.
+- README:
+  - Qué es una chequera y cómo compartirla.
+  - La puesta en marcha después de actualizar: abrir Chequeras, seleccionar
+    las de las sucursales que comparten chequera física, "Unificar
+    chequeras" y revisar el próximo número y el aviso de duplicados.
+  - El control de duplicados.
+  - El comportamiento de una chequera archivada.
 - Sin i18n: los strings del módulo ya están en castellano.
 
 ## Fuera de alcance
@@ -321,7 +404,9 @@ sin uso.
 - Varias chequeras activas por diario, o elegir la chequera en cada pago.
 - Rangos de numeración (desde/hasta) y aviso de chequera agotada.
 - Borrar las columnas viejas de `account_journal`.
-- Unificación automática de chequeras en la migración.
+- Unificación automática de chequeras en la migración. Se hace con el
+  asistente.
+- Deshacer una unificación.
 - Índice único en base por `(name, checkbook_id)`. El control queda a
   nivel aplicación, con el lock de la chequera para serializar. El índice
   nativo por diario se mantiene.
