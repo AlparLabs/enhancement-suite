@@ -34,9 +34,12 @@ class AccountPayment(models.Model):
         res = super().action_post()
         for payment in self:
             checkbook = payment._check_sequence_checkbook()
+            # Se escribe aunque no haya chequera: un pago que se republica desde
+            # un diario sin chequera no debe arrastrar la chequera anterior.
+            if payment._is_own_check_payment():
+                payment.l10n_latam_new_check_ids.write({'checkbook_id': checkbook.id})
             if not checkbook:
                 continue
-            payment.l10n_latam_new_check_ids.write({'checkbook_id': checkbook.id})
             used_numbers = payment._get_check_numbers_used()
             if used_numbers:
                 checkbook._increment_check_number(checkbook._get_highest_check_number(used_numbers))
@@ -52,8 +55,10 @@ class AccountPayment(models.Model):
         ve duplicados entre diarios que comparten chequera.
         """
         msgs = super()._get_blocking_l10n_latam_warning_msg()
-        for rec in self.filtered(lambda payment: payment.state == 'draft'):
+        drafts = self.filtered(lambda payment: payment.state == 'draft')
+        for rec in drafts:
             msgs.extend(rec._get_checkbook_duplicate_msgs())
+        msgs.extend(drafts._get_checkbook_batch_duplicate_msgs())
         return msgs
 
     def _get_checkbook_duplicate_msgs(self):
@@ -89,4 +94,36 @@ class AccountPayment(models.Model):
                 payment=check.payment_id.display_name,
                 journal=check.payment_id.journal_id.display_name,
             ))
+        return msgs
+
+    def _get_checkbook_batch_duplicate_msgs(self):
+        """Mensajes por cada número usado en más de un pago del mismo lote.
+
+        Cuando se publican varios pagos juntos, el método nativo arma los
+        mensajes para todo el lote antes de publicar ninguno: todos siguen en
+        borrador y la búsqueda de ``_get_checkbook_duplicate_msgs`` no los ve
+        entre sí. Por eso se cruzan acá los números de los pagos del lote que
+        comparten chequera. Los repetidos dentro de un mismo pago ya los marca
+        ``_get_checkbook_duplicate_msgs``; acá se cuentan pagos distintos.
+        """
+        payments_by_number = {}
+        for payment in self:
+            checkbook = payment._check_sequence_checkbook()
+            if not checkbook:
+                continue
+            for name in payment._get_check_numbers_used():
+                payments_by_number.setdefault((checkbook, name), self.browse())
+                payments_by_number[checkbook, name] |= payment
+        msgs = []
+        for (checkbook, name), payments in sorted(
+            payments_by_number.items(), key=lambda item: (item[0][0].id, item[0][1]),
+        ):
+            if len(payments) > 1:
+                msgs.append(_(
+                    'El cheque %(number)s de la chequera «%(checkbook)s» está en más de uno '
+                    'de los pagos que se están publicando: %(payments)s.',
+                    number=name,
+                    checkbook=checkbook.name,
+                    payments=', '.join(payments.mapped('display_name')),
+                ))
         return msgs

@@ -52,6 +52,15 @@ class TestCheckDuplicates(CheckbookTestCommon):
         with self.assertRaises(ValidationError):
             payment.action_post()
 
+    def test_duplicate_in_same_batch_blocks(self):
+        """El mismo número en dos pagos publicados juntos también bloquea."""
+        payment_a = self._create_own_check_payment([
+            {'name': '00001050', 'payment_date': self.check_date, 'amount': 10},
+        ])
+        payment_b = self._draft_check_in_b('00001050')
+        with self.assertRaises(ValidationError):
+            (payment_a | payment_b).action_post()
+
     def test_canceled_payment_does_not_block(self):
         """Un número de un pago cancelado queda libre."""
         payment = self._post_check('00001050')
@@ -100,3 +109,29 @@ class TestCheckDuplicates(CheckbookTestCommon):
         line_c = self._setup_own_checks_line(journal_c, self.outstanding_account)
         self._post_check('00001050')
         self._post_check('00001050', journal=journal_c, own_checks_line=line_c)
+
+
+@tagged('post_install', '-at_install')
+class TestCheckDuplicatesMultiCompany(CheckbookTestCommon):
+    """El control de duplicados alcanza a la chequera compartida entre compañías."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._setup_second_company()
+        cls.journal_c2 = cls.env['account.journal'].browse(cls.company_data_2['default_journal_bank'].id)
+        cls.journal_c2.checkbook_id = cls.checkbook
+        cls.own_checks_line_c2 = cls._setup_own_checks_line(cls.journal_c2, cls.outstanding_account_2)
+
+    def test_duplicate_across_companies_blocks(self):
+        """Un número emitido desde otra compañía de la chequera bloquea."""
+        payment_c2 = self._create_own_check_payment(
+            [{'name': '00001050', 'payment_date': self.check_date, 'amount': 10}],
+            journal=self.journal_c2, own_checks_line=self.own_checks_line_c2,
+        )
+        payment_c2.action_post()
+        payment_c1 = self._create_own_check_payment([
+            {'name': '00001050', 'payment_date': self.check_date, 'amount': 10},
+        ])
+        with self.assertRaises(ValidationError):
+            payment_c1.action_post()
