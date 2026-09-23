@@ -12,9 +12,9 @@
                     <field name="next_check_number" invisible="not checkbook_id"/>
                     <field name="check_number_padding" invisible="not checkbook_id"/>
                     <div class="alert alert-info" role="alert" colspan="2"
-                         invisible="not checkbook_shared_journal_ids">
+                         invisible="not checkbook_shared_journal_names">
                         Esta chequera también la usan:
-                        <field name="checkbook_shared_journal_ids" widget="many2many_tags" readonly="1" class="d-inline"/>
+                        <field name="checkbook_shared_journal_names" readonly="1" class="d-inline"/>
                         Si cambiás el próximo número, el cambio aplica a todos.
                     </div>
                 </group>

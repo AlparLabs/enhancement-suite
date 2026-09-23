@@ -37,6 +37,17 @@ class AccountJournal(models.Model):
         string='Otros Diarios de la Chequera',
         compute='_compute_checkbook_shared_journal_ids',
     )
+    # Many2many de arriba no alcanza para el aviso en el formulario: el cliente
+    # web resuelve el display_name de cada registro con el usuario logueado, y
+    # la regla multicompañía de account.journal oculta los diarios de otras
+    # compañías (aunque compute_sudo haga visible el propio Many2many). Por eso
+    # el aviso se arma como texto ya resuelto en sudo, que no vuelve a pasar
+    # por la regla de acceso al mostrarse.
+    checkbook_shared_journal_names = fields.Char(
+        string='Otros Diarios de la Chequera',
+        compute='_compute_checkbook_shared_journal_names',
+        compute_sudo=True,
+    )
 
     @api.depends('checkbook_id.active')
     def _compute_check_sequence_enabled(self):
@@ -47,6 +58,14 @@ class AccountJournal(models.Model):
     def _compute_checkbook_shared_journal_ids(self):
         for journal in self:
             journal.checkbook_shared_journal_ids = journal.checkbook_id.journal_ids - journal._origin
+
+    @api.depends('checkbook_id.journal_ids')
+    def _compute_checkbook_shared_journal_names(self):
+        for journal in self:
+            others = journal.checkbook_id.journal_ids - journal._origin
+            journal.checkbook_shared_journal_names = ', '.join(
+                f'{other.name} ({other.company_id.name})' for other in others
+            ) or False
 
     @api.constrains('checkbook_id', 'company_id')
     def _check_checkbook_company(self):

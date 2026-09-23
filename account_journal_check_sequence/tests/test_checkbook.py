@@ -234,3 +234,15 @@ class TestCheckbookMultiCompany(CheckbookTestCommon):
         self.assertEqual(payment_2.l10n_latam_new_check_ids.name, '00001002')
         payment_2.action_post()
         self.assertEqual(self.checkbook.next_number, '00001003')
+
+    def test_shared_journal_names_visible_cross_company(self):
+        """El aviso de chequera compartida ve diarios de compañías no activas.
+
+        Con solo la compañía 1 en ``allowed_company_ids``, la regla
+        multicompañía de account.journal ocultaría el diario de la compañía 2
+        en un Many2many normal; el Char en compute_sudo lo sigue mostrando.
+        """
+        journal = self.bank_journal.with_context(
+            allowed_company_ids=[self.company_data['company'].id],
+        )
+        self.assertIn(self.journal_c2.name, journal.checkbook_shared_journal_names)

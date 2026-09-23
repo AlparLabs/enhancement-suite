@@ -78,6 +78,6 @@
     <menuitem id="menu_account_checkbook"
               action="action_account_checkbook"
               parent="account.account_account_menu"
-              sequence="4"
+              sequence="3"
               groups="account.group_account_manager"/>
 </odoo>
