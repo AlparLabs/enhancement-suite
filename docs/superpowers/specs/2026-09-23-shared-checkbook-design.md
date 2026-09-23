@@ -39,6 +39,10 @@ La solución es sacar el contador del diario a un modelo propio,
   habilitado. La unificación es manual y queda documentada.
 - **Las columnas viejas no se borran** en esta versión y quedan como
   respaldo.
+- **Un número ya emitido en la chequera no se puede volver a usar.** Se
+  muestra un aviso en el formulario mientras se carga el pago y se bloquea
+  con un `ValidationError` al publicar, sin importar desde qué diario o
+  compañía se haya emitido el cheque anterior.
 
 ## Modelo `account.checkbook`
 
@@ -63,8 +67,9 @@ comportamiento** (se reemplaza `next_check_number` por `next_number` y
 - `_get_next_check_number_formatted`, `_calculate_next_number`
 - `_peek_check_numbers`, `_get_highest_check_number`
 - `_is_check_number_ahead`
-- `_lock_and_read_next_check_number` → `SELECT next_number FROM
-  account_checkbook WHERE id = %s FOR UPDATE` (sin `NOWAIT`, igual que hoy)
+- `_lock_and_read_next_check_number` → pasa a tomar el lock con un UPDATE
+  sobre `account_checkbook` que no cambia el valor, sin `NOWAIT`. Ver
+  "Números de cheque duplicados → Concurrencia".
 - `_increment_check_number` → escribe con `sudo()`. Antes de avanzar el
   contador valida `active`: una chequera archivada no avanza.
 
@@ -107,12 +112,86 @@ posteos de diarios y compañías distintos** que comparten chequera.
   - `_apply_check_sequence_suggestion` usa la chequera.
 - `account.check.sequence.line.mixin._get_next_check_number_for_line`:
   usa `parent._check_sequence_checkbook()`.
-- `account.payment` (posteo): `checkbook._increment_check_number(
-  checkbook._get_highest_check_number(used_numbers))`.
+- `account.payment.action_post`, en este orden:
+  1. **Antes de `super()`**: toma el lock de las chequeras involucradas
+     (`_lock_and_read_next_check_number`), ordenadas por id para evitar
+     deadlocks. Ver "Números de cheque duplicados".
+  2. `super().action_post()`: acá corre la validación de duplicados.
+  3. Escribe `checkbook_id` en `l10n_latam_new_check_ids`.
+  4. `checkbook._increment_check_number(
+     checkbook._get_highest_check_number(used_numbers))`.
 - `l10n_latam_check.py` y el wizard `account_payment_register.py`: se
   ajustan las llamadas al nuevo nombre del método. La lógica no cambia.
 - Vistas de pago y wizard: sin cambios, siguen publicando
   `check_sequence_next_number` en el contexto.
+
+## Números de cheque duplicados
+
+**Qué cubre Odoo nativo y por qué no alcanza.** `l10n_latam.check` tiene
+`UniqueIndex("(name, payment_method_line_id) WHERE outstanding_line_id IS
+NOT NULL")`. Como cada diario tiene su propia `payment_method_line_id`, la
+unicidad es **por diario**: el mismo número emitido desde dos diarios que
+comparten chequera no se detecta. Además el usuario solo lo ve al publicar,
+como error de base. El aviso amigable nativo
+(`l10n_latam_check_warning_msg`) solo busca duplicados de cheques de
+terceros.
+
+**Chequera emisora en el cheque.** Se agrega a `l10n_latam.check` el campo
+`checkbook_id` (Many2one `account.checkbook`, almacenado, `readonly=True`,
+`copy=False`, `index=True`). Se escribe al publicar el pago. No se calcula a
+partir de `journal_id.checkbook_id`, porque si un diario cambia de chequera
+sus cheques viejos pasarían a la chequera nueva y darían falsos duplicados.
+
+**Regla.** Un cheque propio de un pago en borrador choca si su `name`:
+- ya existe en otro `l10n_latam.check` con el mismo `checkbook_id`, cuyo
+  pago no esté en `draft` ni `canceled` (los anulados, `issue_state =
+  'voided'`, cuentan: ese número ya se usó físicamente); o
+- se repite en otra línea de `l10n_latam_new_check_ids` del mismo pago.
+
+La comparación es por `name` exacto, después de aplicar el padding que ya
+hace el módulo. Solo aplica si el pago tiene chequera (el resultado de
+`_check_sequence_checkbook()`).
+
+**Dónde se engancha.** Override de
+`account.payment._get_blocking_l10n_latam_warning_msg`, que agrega un
+mensaje por cada número repetido. Por ejemplo: "El cheque 00001050 de la
+chequera «Galicia – Serie B» ya fue emitido en PAGO/2026/00123 (diario
+Sucursal Centro)." Ese método nativo tiene dos usos, así que con un solo
+override se cubre todo:
+- `_compute_l10n_latam_check_warning_msg`: la alerta roja del formulario,
+  que se recalcula al editar `l10n_latam_new_check_ids.name`.
+- `action_post`: lanza `ValidationError` con los mensajes.
+
+El wizard `account.payment.register` no tiene alerta propia. Los pagos que
+genera pasan por `action_post`, así que igual quedan bloqueados con el
+mismo mensaje.
+
+**Concurrencia.** La validación corre dentro de `super().action_post()`.
+Si el lock de la chequera se tomara después, dos sucursales que publican el
+mismo número al mismo tiempo pasarían la validación las dos. Por eso
+`action_post` toma el lock de la chequera **antes** de `super()`.
+
+El lock no se toma con `SELECT ... FOR UPDATE` sino con un UPDATE que no
+cambia nada:
+
+```sql
+UPDATE account_checkbook SET next_number = next_number WHERE id = %s RETURNING next_number
+```
+
+En PostgreSQL, un UPDATE genera una nueva versión de la fila aunque el
+valor sea el mismo. Odoo trabaja en `REPEATABLE READ`, así que cualquier
+otra transacción que esté esperando esa fila falla por serialización
+cuando la primera confirma, y Odoo reintenta el request. En el reintento,
+la validación ve el cheque ya publicado y bloquea.
+
+Con `SELECT ... FOR UPDATE` esto no pasaría si la primera transacción no
+avanzó el contador (por ejemplo, porque publicó un número más bajo). En
+ese caso la segunda obtendría el lock sin error, seguiría con su snapshot
+viejo y no vería el duplicado.
+
+Este cambio reemplaza la consulta de `_lock_and_read_next_check_number`.
+El incremento posterior no cambia: el recálculo sobre el valor ya
+persistido sigue funcionando igual.
 
 ## Seguridad y multicompañía
 
@@ -147,7 +226,14 @@ porque en v19 `account.journal.name` es jsonb traducible.
    - `company_id` = `journal.company_id`
 
    Después asigna `checkbook_id`.
-4. Loguea la cantidad de chequeras creadas.
+4. Completa `l10n_latam_check.checkbook_id` de los cheques propios ya
+   emitidos (`outstanding_line_id IS NOT NULL`, código de método de pago
+   `own_checks`) con la chequera del diario del pago. Se hace por SQL,
+   joineando `account_payment`, `account_payment_method_line` y
+   `account_payment_method`, y solo donde `checkbook_id IS NULL`. Así, el
+   control de duplicados cubre también lo que se emitió antes de la
+   actualización.
+5. Loguea la cantidad de chequeras creadas y de cheques completados.
 
 Es idempotente porque filtra `checkbook_id IS NULL`. Las columnas viejas
 quedan en la base.
@@ -202,7 +288,21 @@ sin uso.
     ve desde el otro diario.
   - Migración: con columnas viejas cargadas por SQL y `checkbook_id` nulo,
     `migrate(cr, '19.0.1.2.0')` crea la chequera con los valores
-    correctos, y una segunda corrida no crea nada.
+    correctos y completa `checkbook_id` en los cheques ya emitidos. Una
+    segunda corrida no crea nada.
+  - Duplicados:
+    - Un número ya emitido desde el diario A, cargado en un pago del
+      diario B con la misma chequera, muestra la alerta
+      (`l10n_latam_check_warning_msg`) y `action_post` lanza
+      `ValidationError`.
+    - Dos líneas con el mismo número en el mismo pago también bloquean.
+    - Un número usado en un pago cancelado o en borrador no bloquea.
+    - Un número usado en una chequera distinta (incluida la chequera vieja
+      de un diario que cambió de chequera) no bloquea.
+    - Un cheque anulado (`voided`) sí bloquea.
+    - Al publicar, se completa `checkbook_id` en los cheques.
+    - Un pago en un diario sin chequera no aplica el control; queda solo
+      el índice nativo.
 
 ## Manifiesto y documentación
 
@@ -222,3 +322,8 @@ sin uso.
 - Rangos de numeración (desde/hasta) y aviso de chequera agotada.
 - Borrar las columnas viejas de `account_journal`.
 - Unificación automática de chequeras en la migración.
+- Índice único en base por `(name, checkbook_id)`. El control queda a
+  nivel aplicación, con el lock de la chequera para serializar. El índice
+  nativo por diario se mantiene.
+- Alerta propia en el wizard `account.payment.register`. El bloqueo sí
+  aplica, porque los pagos que genera pasan por `action_post`.
