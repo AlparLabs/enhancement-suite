@@ -1,7 +1,7 @@
 # account_journal_check_sequence/__manifest__.py
 {
     'name': 'Secuencia de Cheques Propios en Diarios de Banco',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
     'category': 'Accounting/Localizations',
     'summary': 'Gestión de chequeras y numeración secuencial de cheques propios por diario de banco.',
     'description': """
