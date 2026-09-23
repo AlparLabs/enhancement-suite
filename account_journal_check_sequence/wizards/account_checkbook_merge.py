@@ -29,6 +29,8 @@ class AccountCheckbookMerge(models.TransientModel):
         required=True,
         compute='_compute_target_checkbook_id',
         store=True,
+        # Requerido y almacenado: sin precompute se insertaría NULL antes de calcularlo.
+        precompute=True,
         readonly=False,
         domain="[('id', 'in', checkbook_ids)]",
     )
@@ -37,6 +39,7 @@ class AccountCheckbookMerge(models.TransientModel):
         required=True,
         compute='_compute_next_number',
         store=True,
+        precompute=True,
         readonly=False,
         help='Por defecto, el más alto de las chequeras seleccionadas. Se respeta aunque '
              'sea menor que el actual.',
@@ -45,8 +48,9 @@ class AccountCheckbookMerge(models.TransientModel):
         'res.company',
         string='Compañía resultante',
         compute='_compute_merge_scope',
-        help='Compañía que queda en la chequera destino. Vacía si los diarios son de '
-             'más de una compañía: la chequera queda compartida entre compañías.',
+        help='Compañía que queda en la chequera destino: la común de los diarios o, si '
+             'son de varias, la compañía madre más cercana que compartan. Vacía si no '
+             'comparten ninguna: la chequera queda compartible entre todas las compañías.',
     )
     journal_ids = fields.Many2many(
         'account.journal',
@@ -92,9 +96,28 @@ class AccountCheckbookMerge(models.TransientModel):
     def _compute_merge_scope(self):
         for wizard in self:
             checkbooks = wizard.checkbook_ids._origin
-            companies = self._get_all_journals(checkbooks).company_id
-            wizard.company_id = companies.id if len(companies) == 1 else False
+            wizard.company_id = self._get_common_company(checkbooks)
             wizard.journal_ids = self.env['account.journal'].search([('checkbook_id', 'in', checkbooks.ids)])
+
+    @api.model
+    def _get_common_company(self, checkbooks):
+        """Compañía más profunda que es ancestro (o igual) de todas las de los diarios.
+
+        Con diarios de una compañía y de sus sucursales devuelve la madre, que
+        sigue siendo válida para la constraint del diario. Sin ancestro común
+        devuelve una compañía vacía: la chequera queda compartible.
+        """
+        companies = self._get_all_journals(checkbooks).company_id
+        if not companies and not checkbooks.filtered(lambda checkbook: not checkbook.company_id):
+            # Sin diarios: se usa la compañía común de las propias chequeras.
+            companies = checkbooks.company_id
+        if not companies:
+            return self.env['res.company']
+        # parent_ids incluye a la propia compañía.
+        common = companies[0].parent_ids
+        for company in companies[1:]:
+            common &= company.parent_ids
+        return max(common, key=lambda company: len(company.parent_ids), default=self.env['res.company'])
 
     @api.depends('checkbook_ids')
     def _compute_duplicate_warning(self):
@@ -134,6 +157,9 @@ class AccountCheckbookMerge(models.TransientModel):
 
         # Ningún pago puede publicar contra estas chequeras mientras se mueven.
         checkbooks._lock_checkbooks()
+        # Una destino archivada dejaría a todos los diarios sin numeración automática.
+        if not target.active:
+            target.active = True
         # Primero la compañía: si no, la constraint rechaza los diarios nuevos.
         target.company_id = self.company_id
         self._get_all_journals(sources).write({'checkbook_id': target.id})

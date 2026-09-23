@@ -278,7 +278,7 @@ no salta el aviso.
 | `checkbook_ids` | Many2many `account.checkbook` | Default: `active_ids`. Mínimo 2. |
 | `target_checkbook_id` | Many2one `account.checkbook`, required | Dominio: dentro de `checkbook_ids`. Default: la chequera con más diarios; si empatan, la de menor id. |
 | `next_number` | Char, required | Default: `_get_highest_check_number` sobre los `next_number` de las seleccionadas. Es editable, por si las series tienen prefijos distintos. |
-| `company_id` | Many2one `res.company`, computado | La compañía común de todos los diarios involucrados. Si hay diarios de más de una compañía, queda vacío y la chequera destino se vuelve compartible entre compañías. Se muestra como información. |
+| `company_id` | Many2one `res.company`, computado | La compañía común de todos los diarios involucrados o, si son de varias, la compañía madre más cercana que compartan (por ejemplo, una compañía y sus sucursales). Si no comparten ninguna, queda vacío y la chequera destino se vuelve compartible entre todas las compañías. Sin diarios, se usa la compañía común de las chequeras. Se muestra como información. |
 | `journal_ids` | Many2many, computado | Todos los diarios que van a quedar en la chequera destino. Informativo. |
 | `duplicate_warning` | Text, computado | Números que se repiten en los cheques emitidos de las chequeras seleccionadas, con los pagos involucrados (mismo criterio que la regla de duplicados). Es solo informativo: no bloquea la unificación, porque es historia que ya ocurrió, pero conviene que el usuario la vea. |
 

@@ -90,6 +90,24 @@ class TestCheckbookMerge(CheckbookTestCommon):
         self.assertEqual(self.checkbook_b.company_id, self.company_data['company'])
         self.assertEqual(self.bank_journal.checkbook_id, self.checkbook_b)
 
+    def test_branch_company_keeps_parent(self):
+        """Diarios de una compañía y de su sucursal: la destino queda en la compañía madre."""
+        company = self.company_data['company']
+        branch = self._create_company(name='Sucursal Rama', parent_id=company.id)
+        checkbook_branch = self.env['account.checkbook'].create({
+            'name': 'Chequera Rama', 'next_number': '00000500', 'company_id': branch.id,
+        })
+        journal_branch = self._create_bank_journal(
+            'Banco Rama', 'BRAM', company=branch, checkbook=checkbook_branch,
+        )
+        wizard = self._merge_wizard(
+            self.checkbook_b | checkbook_branch, target_checkbook_id=self.checkbook_b.id,
+        )
+        self.assertEqual(wizard.company_id, company)
+        wizard.action_merge()
+        self.assertEqual(self.checkbook_b.company_id, company)
+        self.assertEqual(journal_branch.checkbook_id, self.checkbook_b)
+
     def test_duplicate_warning_does_not_block(self):
         """Los números ya repetidos entre las chequeras se informan pero no impiden unificar."""
         for journal, line in ((self.bank_journal, self.own_checks_line), (self.journal_b, self.own_checks_line_b)):
