@@ -28,6 +28,7 @@
         'views/account_checkbook_views.xml',
         'views/account_journal_views.xml',
         'views/account_payment_views.xml',
+        'wizards/account_checkbook_merge_views.xml',
     ],
     'installable': True,
     'application': False,
