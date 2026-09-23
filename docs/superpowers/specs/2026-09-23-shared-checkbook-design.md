@@ -324,8 +324,10 @@ Se agrega a `ir.model.access.csv` la línea
   el próximo número, la compañía resultante, los diarios que van a quedar
   en la chequera y, si hay números repetidos en la historia, un
   `alert-warning` con `duplicate_warning`.
-  - Acción y menú: Contabilidad → Configuración → Bancos → **Chequeras**,
-    visible solo para `account.group_account_manager`.
+  - Acción y menú: Contabilidad → Configuración → Contabilidad →
+    **Chequeras** (`account.account_account_menu`, al lado de Diarios; en
+    v19 no hay submenú "Bancos"), visible solo para
+    `account.group_account_manager`.
 - `views/account_journal_views.xml`, grupo "Chequera / Numeración de
   Cheques Propios" (`invisible="type != 'bank'"`):
   - `checkbook_id` con `context="{'default_company_id': company_id}"`. La
