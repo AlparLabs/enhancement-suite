@@ -174,6 +174,12 @@ class AccountCheckbook(models.Model):
         Se invalida la cache para que las lecturas posteriores de
         ``next_number`` vean el valor real y no el que quedó en memoria antes
         de esperar el lock.
+
+        Importante: quien controla números de cheque duplicados debe tomar
+        este lock ANTES de ejecutar ese control, dentro de la misma
+        transacción. Si el control se hace sin este lock, la protección por
+        reintento de serialización descripta arriba no aplica y dos pagos
+        concurrentes pueden no detectarse como duplicados entre sí.
         """
         self.ensure_one()
         self.flush_recordset(['next_number'])

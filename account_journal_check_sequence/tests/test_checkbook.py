@@ -82,11 +82,33 @@ class TestCheckbookCounter(AccountTestInvoicingCommon):
         self.assertEqual(self.checkbook.next_number, '00001010')
 
     def test_lock_checkbooks_locks_every_record(self):
-        """Bloquear varias chequeras deja a cada una con su valor en base."""
+        """Bloquear varias chequeras hace flush e invalida la cache de cada una.
+
+        Se verifica contra la base, no contra la cache del recordset: si
+        ``_lock_checkbooks`` no bloqueara alguna chequera, el flush pendiente
+        no llegaría a la base o la cache en memoria quedaría con un valor
+        viejo, y las lecturas de abajo no lo detectarían.
+        """
         other = self.checkbook.copy({'name': 'Otra', 'next_number': '00000050'})
+        self.env.flush_all()
+        other.next_number = '00000060'  # Cambio en memoria, sin flush.
+        self.env.cr.execute(
+            "UPDATE account_checkbook SET next_number = '00001020' WHERE id = %s",
+            (self.checkbook.id,),
+        )
         (self.checkbook | other)._lock_checkbooks()
-        self.assertEqual(other.next_number, '00000050')
-        self.assertEqual(self.checkbook.next_number, '00001001')
+        self.env.cr.execute(
+            'SELECT next_number FROM account_checkbook WHERE id = %s',
+            (other.id,),
+        )
+        self.assertEqual(
+            self.env.cr.fetchone()[0], '00000060',
+            'El lock debe hacer flush del valor pendiente antes de bloquear.',
+        )
+        self.assertEqual(
+            self.checkbook.next_number, '00001020',
+            'El lock debe invalidar la cache para leer el valor real en base.',
+        )
 
     def test_archived_checkbook_does_not_advance(self):
         """Una chequera archivada no avanza al postear."""
