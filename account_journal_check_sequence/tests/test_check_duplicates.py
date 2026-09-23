@@ -1,5 +1,5 @@
 from odoo.exceptions import ValidationError
-from odoo.tests import tagged
+from odoo.tests import new_test_user, tagged
 
 from .common import CheckbookTestCommon
 
@@ -109,6 +109,33 @@ class TestCheckDuplicates(CheckbookTestCommon):
         line_c = self._setup_own_checks_line(journal_c, self.outstanding_account)
         self._post_check('00001050')
         self._post_check('00001050', journal=journal_c, own_checks_line=line_c)
+
+    def test_invoice_user_can_post(self):
+        """Un usuario de Facturación puede postear cheques propios sin acceso de escritura a la chequera."""
+        invoice_user = new_test_user(
+            self.env, login='invoice_user', groups='account.group_account_invoice,base.group_user',
+            company_id=self.company_data['company'].id,
+        )
+        payment = self._create_own_check_payment([
+            {'payment_date': self.check_date, 'amount': 10},
+        ]).with_user(invoice_user)
+        payment.action_post()
+        self.assertEqual(self.checkbook.next_number, '00001002')
+        self.assertEqual(payment.l10n_latam_new_check_ids.checkbook_id, self.checkbook)
+
+    def test_invoice_user_duplicate_blocks(self):
+        """Un usuario de Facturación también queda bloqueado al repetir un número ya emitido."""
+        self._post_check('00001050')
+        invoice_user = new_test_user(
+            self.env, login='invoice_user', groups='account.group_account_invoice,base.group_user',
+            company_id=self.company_data['company'].id,
+        )
+        payment_b = self._create_own_check_payment(
+            [{'name': '00001050', 'payment_date': self.check_date, 'amount': 10}],
+            journal=self.journal_b, own_checks_line=self.own_checks_line_b,
+        ).with_user(invoice_user)
+        with self.assertRaises(ValidationError):
+            payment_b.action_post()
 
 
 @tagged('post_install', '-at_install')

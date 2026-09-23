@@ -34,8 +34,10 @@ class AccountCheckSequenceMixin(models.AbstractModel):
     def _check_sequence_checkbook(self):
         """Chequera activa del diario si el registro emite cheques propios; si no, vacío."""
         self.ensure_one()
+        if not self._is_own_check_payment():
+            return self.env['account.checkbook']
         checkbook = self.journal_id.checkbook_id
-        if checkbook.active and self._is_own_check_payment():
+        if checkbook.active:
             return checkbook
         return self.env['account.checkbook']
 

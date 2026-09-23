@@ -1,4 +1,3 @@
-# account_journal_check_sequence/tests/test_check_sequence.py
 from odoo.tests import Form, tagged
 
 from .common import CheckbookTestCommon

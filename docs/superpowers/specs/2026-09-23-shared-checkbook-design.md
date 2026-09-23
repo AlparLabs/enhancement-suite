@@ -52,7 +52,7 @@ La solución es sacar el contador del diario a un modelo propio,
 
 ## Modelo `account.checkbook`
 
-`_description = 'Chequera'`, `_order = 'name'`.
+`_description = 'Chequera'`, `_order = 'name, id'`.
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -148,7 +148,7 @@ terceros.
 
 **Chequera emisora en el cheque.** Se agrega a `l10n_latam.check` el campo
 `checkbook_id` (Many2one `account.checkbook`, almacenado, `readonly=True`,
-`copy=False`, `index=True`). Se escribe al publicar el pago. No se calcula a
+`copy=False`, `index=True`, `ondelete='restrict'`). Se escribe al publicar el pago. No se calcula a
 partir de `journal_id.checkbook_id`, porque si un diario cambia de chequera
 sus cheques viejos pasarían a la chequera nueva y darían falsos duplicados.
 

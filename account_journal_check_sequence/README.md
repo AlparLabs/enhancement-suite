@@ -11,7 +11,7 @@ Módulo para **Odoo 19** que añade gestión de numeración correlativa ("modo c
    * Un diario de banco numera sus cheques propios si tiene una chequera asignada (`checkbook_id`). **Varios diarios pueden compartir la misma chequera** y siguen un único correlativo.
    * Si la chequera no tiene compañía, la pueden usar diarios de **distintas compañías**. Si tiene compañía, la pueden usar diarios de esa compañía y de sus sucursales (compañías hijas).
    * Desde el diario se sigue viendo y editando el próximo número y los dígitos, pero el cambio se guarda en la chequera: si la comparten varios diarios, aplica a todos. El formulario del diario avisa qué otros diarios la usan, incluso de otras compañías (se listan como "Nombre (Compañía)").
-   * Una chequera **archivada** deja de sugerir números y no avanza al publicar. Una chequera en uso no se puede borrar.
+   * Una chequera **archivada** deja de sugerir números y no avanza al publicar. También deja sin efecto el control de duplicados de sus diarios: solo queda el índice nativo de Odoo, que es por diario (ver punto 5). Una chequera con diarios o cheques emitidos no se puede borrar, solo archivar.
    * Al crear una chequera nueva escribiendo el nombre directamente desde el diario, queda con la compañía de ese diario. Para compartirla entre compañías, borrar la compañía en el formulario de la chequera.
 
 2. **Propuesta Automática en Órdenes de Pago (ADHOC) y Pagos:**
@@ -37,7 +37,7 @@ Módulo para **Odoo 19** que añade gestión de numeración correlativa ("modo c
    * Si un número ya fue emitido en la misma chequera, desde cualquier diario o compañía, el pago muestra el aviso rojo de cheques mientras se carga y **no deja publicar**. Lo mismo si el número se repite dentro del mismo pago, o entre varios pagos que se confirman juntos en un lote (batch).
    * Cuentan los cheques de pagos publicados, incluidos los anulados (ese número ya se usó en papel). No cuentan los pagos en borrador ni los cancelados.
    * La búsqueda de duplicados usa `sudo()`: el aviso nombra el otro pago o diario aunque pertenezca a otra compañía y el usuario no tenga acceso a verlo. Es intencional, porque compartir la chequera entre compañías es una decisión deliberada de la configuración.
-   * Odoo trae de fábrica un índice único, pero es por diario: no detecta duplicados entre diarios que comparten chequera.
+   * Odoo trae de fábrica un índice único, pero es por línea de método de pago, es decir, en la práctica por diario: no detecta duplicados entre diarios que comparten chequera.
 
 6. **Asistente "Unificar chequeras":**
    * Desde la lista de chequeras, seleccionar varias y usar la acción **Unificar chequeras**.
@@ -45,6 +45,7 @@ Módulo para **Odoo 19** que añade gestión de numeración correlativa ("modo c
    * Propone como compañía resultante la compañía común de los diarios o, si son de distintas sucursales, la compañía padre común más cercana; queda vacía solo si los diarios no tienen ninguna compañía en común.
    * Pasa a la chequera destino todos los diarios **y los cheques ya emitidos**, y archiva las demás. Si la chequera destino estaba archivada, se reactiva.
    * Informa los números que ya estaban repetidos en la historia; no los corrige ni impide unificar.
+   * La chequera destino conserva sus propios **Dígitos del Cheque** (`padding`); el padding de las chequeras de origen no se copia.
 
 ---
 

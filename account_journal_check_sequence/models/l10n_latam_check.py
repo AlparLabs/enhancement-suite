@@ -13,6 +13,7 @@ class L10nLatamCheck(models.Model):
         readonly=True,
         copy=False,
         index=True,
+        ondelete='restrict',
         help='Chequera de la que se emitió el cheque. Se completa al publicar el pago y '
              'se usa para detectar números repetidos entre diarios que comparten chequera.',
     )
