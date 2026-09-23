@@ -84,8 +84,9 @@ class TestCheckSequence(CheckbookTestCommon):
 
         Sin `autofilled_check_number` el módulo no puede saber que ese valor lo
         puso él, así que lo trata como carga manual. Si el usuario se equivocó,
-        el índice único de l10n_latam.check se lo va a marcar al publicar: es
-        preferible eso a cambiarle en silencio un número que escribió a mano.
+        el control de duplicados de la chequera se lo marca en el formulario y
+        bloquea la publicación: es preferible eso a cambiarle en silencio un
+        número que escribió a mano.
         """
         payment = self._create_own_check_payment([
             {'name': '00001001', 'payment_date': self.check_date, 'amount': 10},
