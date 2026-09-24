@@ -1,5 +1,8 @@
 # Costo de reposición desglosado
 
+> **OBSOLETO (2026-09-24):** reemplazado por `specs/2026-09-24-adhoc-replenishment-cost-design.md`
+> (costo de reposición sobre `product_replenishment_cost` de Adhoc). Se conserva como referencia.
+
 **Fecha:** 2026-09-24
 **Módulo nuevo:** `alpardata_purchase_replacement_cost`
 **Depende de:** `alpardata_purchase_reference_cost` (refactors chicos, sin cambio de comportamiento)

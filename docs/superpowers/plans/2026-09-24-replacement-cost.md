@@ -1,5 +1,8 @@
 # Costo de Reposición Desglosado — Plan de implementación
 
+> **OBSOLETO (2026-09-24):** reemplazado por `specs/2026-09-24-adhoc-replenishment-cost-design.md`
+> (costo de reposición sobre `product_replenishment_cost` de Adhoc). Se conserva como referencia.
+
 > **Para agentes:** implementar tarea por tarea, en orden. Cada paso usa checkbox (`- [ ]`).
 > Si usás superpowers: REQUIRED SUB-SKILL `superpowers:subagent-driven-development` o
 > `superpowers:executing-plans`.
