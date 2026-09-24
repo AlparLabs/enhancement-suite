@@ -23,7 +23,7 @@ class TestPurchaseOrderCascade(ReplacementCostCommon):
         self._add_seller()
         line = self._line(self._order())
         self.assertEqual(line.price_unit, 1000.0)
-        self.assertAlmostEqual(line.discount, 17.065, places=2)
+        self.assertAlmostEqual(line.discount, 17.065, delta=0.01)
         self.assertEqual(line.discount_cascade, '10+5+3')
 
     def test_without_cascade_uses_supplierinfo_discount(self):
@@ -48,7 +48,7 @@ class TestPurchaseOrderCascade(ReplacementCostCommon):
         po = self._order()
         po._update_order_line_info(self.product.id, 1.0)
         line = po.order_line.filtered(lambda l: l.product_id == self.product)
-        self.assertAlmostEqual(line.discount, 17.065, places=2)
+        self.assertAlmostEqual(line.discount, 17.065, delta=0.01)
         self.assertEqual(line.discount_cascade, '10+5+3')
 
     def test_replenishment_path(self):
@@ -58,5 +58,36 @@ class TestPurchaseOrderCascade(ReplacementCostCommon):
         vals = self.env['purchase.order.line']._prepare_purchase_order_line(
             self.product, 1.0, self.product.uom_id, self.env.company, self.partner, po,
         )
-        self.assertAlmostEqual(vals['discount'], 17.065, places=2)
+        self.assertAlmostEqual(vals['discount'], 17.065, places=6)
         self.assertEqual(vals['discount_cascade'], '10+5+3')
+
+    def test_replenishment_uses_list_price(self):
+        """Con `price` cargado neto, la cascada se aplica sobre la lista y no
+        sobre `price` (evita el doble descuento)."""
+        self._set_partner_conditions()
+        self._add_seller(price=829.35)
+        po = self._order()
+        vals = self.env['purchase.order.line']._prepare_purchase_order_line(
+            self.product, 1.0, self.product.uom_id, self.env.company, self.partner, po,
+        )
+        self.assertAlmostEqual(vals['price_unit'], 1000.0, places=2)
+        self.assertAlmostEqual(vals['discount'], 17.065, places=6)
+
+    def test_replenishment_without_cascade_keeps_core_price(self):
+        self._set_partner_conditions(cascade='')
+        self._add_seller(price=829.35)
+        po = self._order()
+        vals = self.env['purchase.order.line']._prepare_purchase_order_line(
+            self.product, 1.0, self.product.uom_id, self.env.company, self.partner, po,
+        )
+        self.assertAlmostEqual(vals['price_unit'], 829.35, places=2)
+        self.assertNotIn('discount_cascade', vals)
+
+    def test_catalog_card_price_matches_line(self):
+        self._set_partner_conditions()
+        self._add_seller()
+        po = self._order()
+        card_price = po._get_product_price_and_data(self.product)['price']
+        line_price = po._update_order_line_info(self.product.id, 1.0)
+        self.assertAlmostEqual(card_price, 829.35, delta=0.01)
+        self.assertAlmostEqual(card_price, line_price, delta=0.1)

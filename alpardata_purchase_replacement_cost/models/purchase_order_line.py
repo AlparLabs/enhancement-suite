@@ -57,7 +57,16 @@ class PurchaseOrderLine(models.Model):
             product_id, product_qty, product_uom, company_id, partner_id, po,
         )
         seller = self._get_cascade_seller(product_id, company_id, partner_id)
-        if seller and seller.effective_discount_cascade:
-            vals['discount'] = seller.discount_equivalent_pct
-            vals['discount_cascade'] = seller.effective_discount_cascade
+        if not seller or not seller.effective_discount_cascade:
+            return vals
+        # El core pone `seller.price`, que puede estar cargado ya neto: aplicar la
+        # cascada encima daría doble descuento. Se usa la lista (reference_cost),
+        # igual que en el alta manual y el catálogo.
+        uom = self.env['uom.uom'].browse(vals.get('product_uom_id')) or product_id.uom_id
+        list_price = po._get_reference_cost_price(product_id, uom=uom)
+        if list_price <= 0:
+            return vals
+        vals['price_unit'] = list_price
+        vals['discount'] = seller.discount_equivalent_pct
+        vals['discount_cascade'] = seller.effective_discount_cascade
         return vals

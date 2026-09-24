@@ -1,6 +1,6 @@
 {
     'name': 'AlparData - Costo de Reposición',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'summary': 'Costo de reposición: lista con bonificaciones en cascada, pronto pago, flete, percepciones e impuestos internos',
     'description': """
         Extiende el Costo de Referencia con un Costo de Reposición desglosado:

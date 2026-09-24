@@ -21,7 +21,7 @@ class ProductPricelistItem(models.Model):
         currency.ensure_one()
         cost = product.replacement_cost
         if not cost:
-            _logger.warning(
+            _logger.debug(
                 'Producto "%s" sin costo de reposición. Se usa el costo estándar '
                 'para la lista de precios.', product.display_name,
             )

@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='order_line']/list/field[@name='discount']" position="before">
-                <field name="discount_cascade" optional="hide"/>
+                <field name="discount_cascade" optional="hide" force_save="1"/>
             </xpath>
         </field>
     </record>

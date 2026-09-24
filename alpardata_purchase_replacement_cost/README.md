@@ -86,7 +86,9 @@ El módulo agrega la opción **"Costo de Reposición"** en el selector de Base d
   * El precio unitario (`price_unit`) toma el costo de referencia de catálogo del proveedor.
   * El campo **Descuento (%)** de la línea recibe automáticamente el porcentaje equivalente de las bonificaciones en cascada (ej. `17,07%`).
   * En la línea se registra el texto original de la cascada en el campo `discount_cascade` (ej. `10+5+3`).
-* Si el comprador modifica manualmente el precio o el descuento, Odoo respeta la edición manual y no la sobreescribe (`technical_price_unit != price_unit`).
+* En las órdenes generadas por reabastecimiento (reglas de reorden, MTO), si el proveedor tiene bonificaciones en cascada, el precio unitario también toma la lista (`reference_cost`) y se aplica el descuento equivalente. Así se evita el doble descuento cuando el precio del proveedor (`price`) ya estaba cargado neto. Sin cascada se mantiene el precio que calcula Odoo.
+* En el catálogo de la orden, la tarjeta del producto muestra el precio ya bonificado, igual que la línea que se agrega.
+* Si el comprador modifica manualmente el precio, Odoo respeta la edición manual y no la sobreescribe (`technical_price_unit != price_unit`).
 * **Nota:** Pronto pago, flete, percepciones e impuestos internos **no** se descuentan ni se agregan en la orden de compra, ya que la orden de compra refleja la facturación directa del proveedor.
 
 ---
@@ -102,3 +104,4 @@ El semáforo de divergencia heredado de `alpardata_purchase_reference_cost` se a
 ## 8. Limitaciones conocidas
 * Los porcentajes deben encontrarse estrictamente en el rango $0 \le x < 100$ (no admite recargos negativos).
 * No incluye fletes expresados como monto fijo por bulto/kilo (se modelan en este punto como porcentaje sobre el neto).
+* El descuento de la línea de compra usa la precisión decimal **Descuento** de Odoo (2 decimales por defecto): `10+5+3` queda en 17,07 % en la orden, mientras que el costo de reposición usa el equivalente exacto (17,065 %). Sobre una lista de 1.000 la orden neta da 829,30 y el neto de reposición 829,35. Si la diferencia importa, subir la precisión **Descuento** a 3 o 4 decimales (Ajustes → Técnico → Precisión decimal); afecta a todos los descuentos de Odoo.

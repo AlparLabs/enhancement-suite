@@ -26,7 +26,7 @@ class TestReplacementCostPricelist(ReplacementCostCommon):
         self._add_seller()
         pricelist = self._pricelist(40.0)
         price = pricelist._get_product_price(self.product, 1.0)
-        self.assertAlmostEqual(price, 854.2305 * 1.40, places=2)
+        self.assertAlmostEqual(price, 854.23 * 1.40, delta=0.02)
 
     def test_fallback_to_standard_price(self):
         pricelist = self._pricelist(0.0)

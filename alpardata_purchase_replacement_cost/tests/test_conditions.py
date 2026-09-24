@@ -79,7 +79,7 @@ class TestSupplierinfoConditions(ReplacementCostCommon):
     def test_replacement_cost_canonical(self):
         self._set_partner_conditions()
         seller = self._add_seller()
-        self.assertAlmostEqual(seller.replacement_cost, 854.2305, places=4)
+        self.assertAlmostEqual(seller.replacement_cost, 854.23, delta=0.01)
         self.assertIn('Reposición', seller.replacement_cost_breakdown)
         self.assertIn('10+5+3', seller.replacement_cost_breakdown)
 

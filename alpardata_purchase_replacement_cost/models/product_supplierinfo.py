@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
 
 from ..tools import cascade_equivalent_pct, compute_replacement_cost, parse_discount_cascade
 from .res_partner import check_cascade, check_pct_range
@@ -51,8 +50,10 @@ class ProductSupplierinfo(models.Model):
     effective_perception_pct = fields.Float(
         string='Percepción (%)', compute='_compute_effective_conditions',
     )
+    # Sin `digits`: Float redondea el valor en caché a esa precisión y la
+    # reposición se calcularía con 17,07 % en lugar de 17,065 % (10+5+3).
     discount_equivalent_pct = fields.Float(
-        string='Bonificación equivalente (%)', digits=(16, 2),
+        string='Bonificación equivalente (%)',
         compute='_compute_effective_conditions',
     )
     replacement_cost = fields.Float(

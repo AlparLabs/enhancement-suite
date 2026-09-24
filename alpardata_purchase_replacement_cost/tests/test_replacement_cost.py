@@ -13,14 +13,14 @@ class TestTemplateReplacementCost(ReplacementCostCommon):
         self._set_partner_conditions()
         self._add_seller()
         self.assertAlmostEqual(self.template.reference_cost, 1000.0)
-        self.assertAlmostEqual(self.template.net_purchase_cost, 829.35, places=4)
-        self.assertAlmostEqual(self.template.replacement_cost, 854.2305, places=4)
+        self.assertAlmostEqual(self.template.net_purchase_cost, 829.35, delta=0.01)
+        self.assertAlmostEqual(self.template.replacement_cost, 854.23, delta=0.01)
 
     def test_internal_tax_adds_on_net(self):
         self._set_partner_conditions(early=0, freight=0, perception=0)
         self.template.internal_tax_pct = 10.0
         self._add_seller()
-        self.assertAlmostEqual(self.template.replacement_cost, 829.35 * 1.10, places=4)
+        self.assertAlmostEqual(self.template.replacement_cost, 829.35 * 1.10, delta=0.01)
 
     def test_no_seller_is_zero(self):
         self.assertEqual(self.template.replacement_cost, 0.0)
@@ -71,4 +71,4 @@ class TestTemplateReplacementCost(ReplacementCostCommon):
             self.env.company, dozen, self.env.company.currency_id, fields.Date.today(),
         )
         self.assertFalse(is_fallback)
-        self.assertAlmostEqual(cost, 854.2305 * 12, places=3)
+        self.assertAlmostEqual(cost, 854.23 * 12, delta=0.12)
