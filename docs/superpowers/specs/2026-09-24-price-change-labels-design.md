@@ -2,9 +2,12 @@
 
 **Fecha:** 2026-09-24
 **Módulo nuevo:** `alpardata_price_change_labels`
-**Depende de:** `alpardata_purchase_replacement_cost` (punto 1), `product_label_3x8`
+**Depende de:** `alpardata_replenishment_cost` (punto 1, sobre Adhoc), `product_label_3x8`
+**Actualizado a Adhoc:** 2026-09-24 — costo = `replenishment_cost` de Adhoc; recargo
+objetivo = `sale_margin` (margen por categoría del punto 1); el precio sugerido es el
+precio planificado de Adhoc.
 **Rama objetivo:** `19.0`
-**Roadmap:** punto 3 de 5 (ver `2026-09-24-commercial-cost-roadmap.md`)
+**Roadmap:** punto 3 (ver `2026-09-24-commercial-cost-roadmap.md`)
 
 ## Problema
 
@@ -12,8 +15,8 @@ Con inflación, lo que importa es cuánto tarda un aumento de costo en llegar a 
 
 1. Si el precio de venta es fijo (`list_price` o regla de precio fijo), un aumento de
    costo **erosiona el margen** sin que nadie se entere.
-2. Si el precio se calcula desde el costo (regla de lista con base reposición), el
-   precio cambia solo, pero **la etiqueta de la góndola queda vieja**. En Argentina el
+2. Si el precio se calcula desde el costo (precio planificado "por margen" de Adhoc), el
+   precio cambia al actualizarlo, pero **la etiqueta de la góndola queda vieja**. En Argentina el
    precio exhibido es obligatorio (Res. 4/2025, Ley 27.743, ya contemplados en
    `product_label_3x8`).
 
@@ -27,7 +30,7 @@ Con inflación, lo que importa es cuánto tarda un aumento de costo en llegar a 
 ## Definiciones
 
 - **Lista de góndola**: `res.company.shelf_pricelist_id` (Ajustes → Compras, bloque
-  "Costo de Referencia Comercial"). Si está vacía, se usa `list_price`.
+  "Góndola"). Si está vacía, se usa `list_price`.
 - **Precio de góndola** (`shelf_price`): el `price_final` que calcula
   `report.product_label_3x8.report_producttemplatelabel3x8._get_label_info(product,
   pricelist)` sin promoción. Es **la misma función que imprime la etiqueta**: lo que se
@@ -35,24 +38,18 @@ Con inflación, lo que importa es cuánto tarda un aumento de costo en llegar a 
 - **Precio de góndola sin impuestos** (`shelf_price_untaxed`): el `price_net` de esa
   misma función.
 - **Recargo actual** (`markup_pct`):
-  `(shelf_price_untaxed / replacement_cost − 1) × 100`. Si `replacement_cost = 0` → sin
+  `(shelf_price_untaxed / replenishment_cost − 1) × 100`. Si el costo es 0 → sin
   cálculo. Se usa recargo sobre costo (no margen sobre precio) porque es como se habla en
   el comercio argentino ("le pongo 40 arriba").
-- **Recargo objetivo** (`target_markup_pct`): en la categoría; en el producto como
-  computado almacenado editable, tomado de la categoría (mismo patrón que
-  `internal_tax_pct` del punto 1).
+- **Recargo objetivo**: el `sale_margin` del producto (margen del precio planificado de
+  Adhoc), que el punto 1 hereda de la categoría salvo "margen propio". Es la misma
+  definición: precio sin impuestos = costo × (1 + margen).
 
 ## Modelo de datos
 
 ### `res.company`
 - `shelf_pricelist_id` (M2O `product.pricelist`).
 - `markup_tolerance_pct` (Float, default 2): tolerancia antes de alertar.
-
-### `product.category`
-- `target_markup_pct` (Float).
-
-### `product.template`
-- `target_markup_pct` (Float, computado almacenado editable desde `categ_id`).
 
 ### `product.price.watch` (nuevo)
 
@@ -65,9 +62,9 @@ Una fila por (producto, empresa), restricción única. La escribe el proceso de 
 | `company_id` | M2O | requerido |
 | `shelf_price` | Float | precio de góndola al último refresco |
 | `shelf_price_untaxed` | Float | |
-| `replacement_cost` | Float | al último refresco |
+| `replacement_cost` | Float | `replenishment_cost` de Adhoc al último refresco |
 | `markup_pct` | Float, computado almacenado | |
-| `target_markup_pct` | related `product_tmpl_id.target_markup_pct` | |
+| `target_markup_pct` | related `product_tmpl_id.sale_margin` | |
 | `markup_alert` | Selection `ok`/`below`/`no_cost`, computado almacenado | `below` si `markup_pct < target − tolerancia` |
 | `label_printed_price` | Float | precio de la última etiqueta 3x8 regular impresa |
 | `label_printed_date` | Datetime | |
@@ -108,35 +105,23 @@ productos pendientes.
   impresión; botones "Imprimir etiquetas" (abre `product.label.layout` con
   `print_format='3x8xprice'`, la lista de góndola y los productos seleccionados) y
   "Actualizar".
-- Menú **Compras → Costos de Referencia → Margen erosionado**: filas con
+- Menú **Compras → Productos → Margen erosionado**: filas con
   `markup_alert = 'below'`, columnas reposición, precio sin impuestos, recargo actual,
   recargo objetivo.
 - Wizard de etiquetas: aviso si la lista elegida difiere de la de góndola.
 - Ajustes: lista de góndola y tolerancia.
 
-## Aplicar precio sugerido (productos con precio fijo)
+## Actualizar precio planificado
 
-Para productos cuyo precio sale del **precio de venta del producto** (sin regla en la
-lista), un aumento de costo no mueve el precio: sólo aparece la alerta de margen. Desde la
-vista **Margen erosionado**, el botón **"Aplicar precio sugerido"** (gerentes de compras)
-calcula, para las filas seleccionadas:
+El precio sugerido es el **precio planificado de Adhoc** (`product_planned_price`):
+costo de reposición × (1 + margen) + recargo, con impuestos incluidos. Desde **Margen
+erosionado**, el botón **"Actualizar precio planificado"** (gerentes de compras) lo pasa al
+precio de venta de las filas seleccionadas que tienen precio "por margen", con el método de
+Adhoc (`_update_prices_from_planned`), y refresca las filas: quedan en la cola de
+etiquetas. Los productos con precio manual se informan en un aviso.
 
-```
-sin_impuestos = reposición × (1 + recargo_objetivo / 100)
-precio        = sin_impuestos × (1 + IVA incluido en precio)      # sólo impuestos "incluidos"
-precio        = redondeo hacia arriba al múltiplo de `suggested_price_rounding`
-                + `suggested_price_surcharge`                       # p. ej. 10 y −1 → termina en 9
-```
-
-y lo escribe en `product.template.list_price`; después refresca las filas (quedan en la
-cola de etiquetas). Si el precio de góndola no cambió porque el producto tiene una regla
-en la lista de góndola, avisa cuántos productos no se movieron.
-
-`res.company` suma `suggested_price_rounding` (Float, 0 = sin redondeo) y
-`suggested_price_surcharge` (Float), en Ajustes junto a la lista de góndola.
-
-`list_price` no depende de la empresa: en multi-empresa el precio sugerido de una empresa
-pisa el de todas. Se documenta en el README.
+Adhoc escribe `list_price` por SQL: después hay que invalidar la caché antes de refrescar.
+`list_price` no depende de la empresa. Se documenta en el README.
 
 ## Redondeo comercial (sin código)
 
@@ -148,8 +133,7 @@ El core ya lo cubre en las reglas de lista (`price_round`, `price_surcharge`,
 ## Seguridad
 
 - Ver colas y alertas: usuarios de inventario/ventas/compras.
-- Editar `target_markup_pct` (categoría y producto): gerentes de compras, con el mismo
-  mixin `commercial.conditions.access.mixin` del punto 1. Lista de góndola y tolerancia:
+- El margen (categoría y producto) lo gestiona el punto 1. Lista de góndola y tolerancia:
   quien acceda a Ajustes.
 - `product.price.watch`: lectura para usuarios internos; escritura sólo por el
   proceso de refresco/impresión (`sudo`). Record rule multi-company.
@@ -158,13 +142,13 @@ El core ya lo cubre en las reglas de lista (`price_round`, `price_surcharge`,
 
 1. Refresco: `shelf_price` con impuestos incluidos, con y sin lista de góndola.
 2. Recargo actual y alerta `below`/`ok`/`no_cost` con tolerancia.
-3. `target_markup_pct` desde categoría y pisado a mano.
-4. Cola: cambio de costo con regla base reposición → pendiente después del refresco;
+4. Cola: con precio "por margen", sube el costo y se actualiza el precio planificado →
+   pendiente después del refresco;
    imprimir 3x8 regular → no pendiente; imprimir promo → sigue pendiente.
 5. `post_init_hook`: nada pendiente al instalar.
 6. Multi-company: filas independientes por empresa.
-7. Precio sugerido: cálculo con IVA incluido y redondeo; aplicado a `list_price`; aviso
-   cuando una regla de lista impide el cambio.
+7. Actualizar precio planificado: productos "por margen" cambian de precio y quedan en la
+   cola; productos con precio manual se informan.
 
 ## Decisiones a validar (tomadas sin consultar)
 
@@ -175,5 +159,5 @@ El core ya lo cubre en las reglas de lista (`price_round`, `price_surcharge`,
 3. La cola se vacía al **imprimir**, no al confirmar que la etiqueta se colocó.
 4. Solo etiquetas **3x8 regulares** alimentan la cola; otros formatos de Odoo no.
 5. Snapshots en un **modelo propio** por (producto, empresa).
-6. "Aplicar precio sugerido" escribe `list_price` directo (sin vista previa): el usuario
-   elige las filas en la lista antes de aplicar.
+6. "Actualizar precio planificado" escribe `list_price` directo (sin vista previa): el
+   usuario elige las filas en la lista antes de aplicar.

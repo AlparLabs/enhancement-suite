@@ -17,8 +17,11 @@ registra el precio impreso.
 **Tech Stack:** Odoo 19.0.
 
 **Spec:** `docs/superpowers/specs/2026-09-24-price-change-labels-design.md`
-**Requisitos previos:** punto 1 (`alpardata_purchase_replacement_cost`) mergeado;
+**Requisitos previos:** punto 1 (`alpardata_replenishment_cost`, sobre Adhoc) mergeado;
 `product_label_3x8` en el repo (ya existe).
+**Actualizado a Adhoc:** 2026-09-24. El costo es `replenishment_cost` de Adhoc, el recargo
+objetivo es `sale_margin` (margen del precio planificado, con margen por categoría del
+punto 1) y "Aplicar precio sugerido" usa la actualización de precio planificado de Adhoc.
 
 ---
 
@@ -29,6 +32,10 @@ registra el precio impreso.
 - **Odoo 19:** `<list>`, `invisible="expr"`, `<chatter/>`, `<search>` sin
   `<group string>`, `models.Constraint` para restricciones SQL.
 - Fuente de Odoo: `C:\Users\Santiago\Desktop\Odoo\odoo-19.0`.
+- **Addons path:** además de `enhancement-suite`, `AlparLabs/product` rama `19.0` (Adhoc).
+- **Adhoc actualiza `list_price` por SQL** (`product_planned_price`,
+  `_update_prices_from_planned`): después de llamarlo hay que invalidar la caché
+  (`templates.invalidate_recordset(['list_price'])`) antes de leer precios.
 - **Tests:**
 
   ```bash
@@ -43,25 +50,22 @@ registra el precio impreso.
 - `__init__.py` (incluye `post_init_hook`), `__manifest__.py`, `README.md`
 - `models/__init__.py`
 - `models/res_company.py`, `models/res_config_settings.py`
-- `models/product_category.py`, `models/product_template.py` — recargo objetivo
 - `models/product_price_watch.py` — fotos, refresco, cron, impresión
 - `wizard/__init__.py`, `wizard/product_label_layout.py` — registrar impresión y aviso
 - `data/ir_cron.xml`
 - `security/security.xml`, `security/ir.model.access.csv`
-- `views/product_price_watch_views.xml`, `views/product_category_views.xml`,
-  `views/product_template_views.xml`, `views/res_config_settings_views.xml`,
+- `views/product_price_watch_views.xml`, `views/res_config_settings_views.xml`,
   `views/product_label_layout_views.xml`, `views/menus.xml`
 - `tests/__init__.py`, `tests/common.py`, `tests/test_markup.py`,
-  `tests/test_label_queue.py`, `tests/test_suggested_price.py`
+  `tests/test_label_queue.py`, `tests/test_planned_price.py`
 
 ---
 
-### Tarea 1: Esqueleto, empresa, ajustes y recargo objetivo
+### Tarea 1: Esqueleto, empresa y ajustes
 
 **Files:** Create `__init__.py`, `__manifest__.py`, `models/__init__.py`,
-`models/res_company.py`, `models/res_config_settings.py`, `models/product_category.py`,
-`models/product_template.py`, `wizard/__init__.py`, `tests/__init__.py`,
-`tests/common.py`, `tests/test_markup.py` (parcial).
+`models/res_company.py`, `models/res_config_settings.py`, `wizard/__init__.py`,
+`tests/__init__.py`, `tests/common.py`.
 
 - [ ] **Paso 1: `__init__.py`**
 
@@ -90,13 +94,13 @@ def post_init_hook(env):
     'author': 'AlparData',
     'website': 'https://alpardata.com.ar',
     'category': 'Inventory/Purchase',
-    'depends': ['alpardata_purchase_replacement_cost', 'product_label_3x8'],
+    'license': 'AGPL-3',
+    'depends': ['alpardata_replenishment_cost', 'product_label_3x8'],
     'data': [],  # la tarea 4 agrega seguridad, cron y vistas
     'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
     'auto_install': False,
-    'license': 'LGPL-3',
 }
 ```
 
@@ -108,8 +112,6 @@ def post_init_hook(env):
 ```python
 from . import res_company
 from . import res_config_settings
-from . import product_category
-from . import product_template
 # from . import product_price_watch
 ```
 
@@ -122,8 +124,9 @@ from . import product_template
 `tests/__init__.py`:
 
 ```python
-from . import test_markup
+# from . import test_markup
 # from . import test_label_queue
+# from . import test_planned_price
 ```
 
 - [ ] **Paso 4: `models/res_company.py`**
@@ -166,59 +169,7 @@ class ResConfigSettings(models.TransientModel):
     )
 ```
 
-- [ ] **Paso 6: `models/product_category.py`**
-
-```python
-from __future__ import annotations
-
-from odoo import fields, models
-
-
-class ProductCategory(models.Model):
-    _inherit = 'product.category'
-
-    # 'commercial.conditions.access.mixin' ya está en product.category (punto 1):
-    # alcanza con sumar el campo a los protegidos.
-    _commercial_condition_fields = ('internal_tax_pct', 'target_markup_pct')
-
-    target_markup_pct = fields.Float(
-        string='Recargo objetivo (%)',
-        help='Recargo esperado sobre el costo de reposición (precio sin impuestos / reposición − 1).',
-    )
-```
-
-- [ ] **Paso 7: `models/product_template.py`**
-
-```python
-from __future__ import annotations
-
-from odoo import api, fields, models
-
-
-class ProductTemplate(models.Model):
-    _inherit = 'product.template'
-
-    _commercial_condition_fields = ('internal_tax_pct', 'target_markup_pct')
-
-    target_markup_pct = fields.Float(
-        string='Recargo objetivo (%)',
-        compute='_compute_target_markup_pct',
-        store=True,
-        readonly=False,
-        precompute=True,
-        help='Se toma de la categoría; se puede modificar a mano.',
-    )
-
-    @api.depends('categ_id')
-    def _compute_target_markup_pct(self) -> None:
-        for tmpl in self:
-            tmpl.target_markup_pct = tmpl.categ_id.target_markup_pct
-```
-
-> `_commercial_condition_fields` pisa la tupla del punto 1: por eso se repite
-> `internal_tax_pct`. Si el punto 1 agregara campos protegidos nuevos, hay que sumarlos acá.
-
-- [ ] **Paso 8: `tests/common.py`**
+- [ ] **Paso 6: `tests/common.py`**
 
 ```python
 from __future__ import annotations
@@ -233,8 +184,9 @@ class PriceWatchCommon(TransactionCase):
         super().setUpClass()
         cls.company = cls.env.company
         cls.partner = cls.env['res.partner'].create({'name': 'Proveedor Góndola'})
+        # margen por categoría de alpardata_replenishment_cost (sale_margin de Adhoc)
         cls.categ = cls.env['product.category'].create({
-            'name': 'Almacén Test', 'target_markup_pct': 40.0,
+            'name': 'Almacén Test', 'sale_margin': 40.0,
         })
         cls.tax = cls.env['account.tax'].create({
             'name': 'IVA 21 incluido test',
@@ -250,12 +202,12 @@ class PriceWatchCommon(TransactionCase):
             'list_price': 1694.0,  # 1400 sin IVA
             'taxes_id': [(6, 0, cls.tax.ids)],
             'sale_ok': True,
+            'replenishment_cost_type': 'supplier_price',
         })
         cls.seller = cls.env['product.supplierinfo'].create({
             'partner_id': cls.partner.id,
             'product_tmpl_id': cls.template.id,
             'price': 1000.0,
-            'reference_cost': 1000.0,
         })
         cls.watch_model = cls.env['product.price.watch']
 
@@ -268,7 +220,21 @@ class PriceWatchCommon(TransactionCase):
 > es otro, ajustar. El resultado esperado del test depende de que `_get_label_info`
 > calcule el neto dividiendo por 1,21.
 
-- [ ] **Paso 9: `tests/test_markup.py`** (parte de recargo objetivo; lo demás en tarea 2)
+- [ ] **Paso 7:** no correr todavía (falta el modelo del hook). Commit:
+
+```bash
+git add alpardata_price_change_labels
+git commit -m "feat(price_change_labels): esqueleto y lista de góndola"
+```
+
+---
+
+### Tarea 2: Modelo `product.price.watch` y refresco
+
+**Files:** Create `models/product_price_watch.py`, `tests/test_markup.py`.
+
+- [ ] **Paso 1: test que falla** — `tests/test_markup.py` (descomentarlo en
+`tests/__init__.py`):
 
 ```python
 from __future__ import annotations
@@ -278,33 +244,6 @@ from odoo.tests import tagged
 from .common import PriceWatchCommon
 
 
-@tagged('post_install', '-at_install')
-class TestTargetMarkup(PriceWatchCommon):
-
-    def test_target_from_category(self):
-        self.assertEqual(self.template.target_markup_pct, 40.0)
-
-    def test_target_manual_override(self):
-        self.template.target_markup_pct = 30.0
-        self.assertEqual(self.template.target_markup_pct, 30.0)
-```
-
-- [ ] **Paso 10:** no correr todavía (falta el modelo del hook). Commit:
-
-```bash
-git add alpardata_price_change_labels
-git commit -m "feat(price_change_labels): esqueleto, lista de góndola y recargo objetivo"
-```
-
----
-
-### Tarea 2: Modelo `product.price.watch` y refresco
-
-**Files:** Create `models/product_price_watch.py`; Modify `tests/test_markup.py`.
-
-- [ ] **Paso 1: agregar tests** al final de `tests/test_markup.py`:
-
-```python
 @tagged('post_install', '-at_install')
 class TestPriceWatchRefresh(PriceWatchCommon):
 
@@ -323,12 +262,12 @@ class TestPriceWatchRefresh(PriceWatchCommon):
         self.assertEqual(first, second)
 
     def test_markup_below_target(self):
-        self.seller.reference_cost = 1100.0  # recargo 27,27 %
+        self.seller.price = 1100.0  # recargo 27,27 %
         watch = self._watch()
         self.assertEqual(watch.markup_alert, 'below')
 
     def test_tolerance(self):
-        self.seller.reference_cost = 1010.0  # recargo 38,6 %: dentro de 2 puntos
+        self.seller.price = 1010.0  # recargo 38,6 %: dentro de 2 puntos
         self.assertEqual(self._watch().markup_alert, 'ok')
 
     def test_no_cost(self):
@@ -389,7 +328,8 @@ class ProductPriceWatch(models.Model):
     shelf_price_untaxed = fields.Monetary(string='Precio sin impuestos')
     replacement_cost = fields.Monetary(string='Costo de reposición')
     target_markup_pct = fields.Float(
-        related='product_tmpl_id.target_markup_pct', string='Recargo objetivo (%)',
+        related='product_tmpl_id.sale_margin', string='Recargo objetivo (%)',
+        help='Margen del precio planificado (Adhoc), heredado de la categoría.',
     )
     markup_pct = fields.Float(
         string='Recargo actual (%)', compute='_compute_markup', store=True, digits=(16, 2),
@@ -415,7 +355,7 @@ class ProductPriceWatch(models.Model):
 
     # ── Computes ──────────────────────────────────────────────────────────────
     @api.depends('shelf_price_untaxed', 'replacement_cost',
-                 'product_tmpl_id.target_markup_pct', 'company_id.markup_tolerance_pct')
+                 'target_markup_pct', 'company_id.markup_tolerance_pct')
     def _compute_markup(self) -> None:
         for rec in self:
             if not rec.replacement_cost:
@@ -461,7 +401,7 @@ class ProductPriceWatch(models.Model):
             vals = {
                 'shelf_price': price,
                 'shelf_price_untaxed': untaxed,
-                'replacement_cost': template.with_company(company).replacement_cost,
+                'replacement_cost': template.with_company(company).replenishment_cost,
                 'refreshed_at': now,
             }
             rec = by_template.get(template.id)
@@ -626,19 +566,15 @@ class TestLabelQueue(PriceWatchCommon):
         ])
         self.assertFalse(pending)
 
-    def test_cost_change_with_replacement_pricelist(self):
-        """Regla con base reposición: sube el costo → sube el precio → etiqueta pendiente."""
-        pricelist = self.env['product.pricelist'].create({
-            'name': 'Góndola reposición',
-            'item_ids': [(0, 0, {
-                'applied_on': '3_global', 'compute_price': 'formula',
-                'base': 'replacement_cost', 'price_markup': 69.4,
-            })],
-        })
-        self.company.shelf_pricelist_id = pricelist
-        self._print(pricelist=pricelist)
+    def test_cost_change_with_planned_price(self):
+        """Precio por margen: sube el costo, se actualiza el precio planificado →
+        etiqueta pendiente."""
+        self.template.list_price_type = 'by_margin'  # 1000 × 1,40 × 1,21 = 1694
+        self._print()
         self.assertFalse(self._watch().label_pending)
-        self.seller.reference_cost = 1100.0
+        self.seller.price = 1100.0
+        self.template._update_prices_from_planned()
+        self.template.invalidate_recordset(['list_price'])
         self.assertTrue(self._watch().label_pending)
 ```
 
@@ -821,47 +757,7 @@ git commit -m "feat(price_change_labels): cola de etiquetas pendientes al imprim
 </odoo>
 ```
 
-- [ ] **Paso 4: `views/product_category_views.xml`**
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <record id="product_category_form_target_markup" model="ir.ui.view">
-        <field name="name">product.category.form.target.markup</field>
-        <field name="model">product.category</field>
-        <field name="inherit_id" ref="product.product_category_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//group[@name='first']" position="inside">
-                <field name="target_markup_pct" readonly="not can_edit_commercial_conditions"/>
-            </xpath>
-        </field>
-    </record>
-</odoo>
-```
-
-> `can_edit_commercial_conditions` ya está en la vista por el punto 1
-> (`product_category_form_internal_tax`). Si el orden de herencia hace que no esté
-> disponible, agregar `<field name="can_edit_commercial_conditions" invisible="1"/>`.
-
-- [ ] **Paso 5: `views/product_template_views.xml`**
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <record id="view_product_template_form_target_markup" model="ir.ui.view">
-        <field name="name">product.template.form.target.markup</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="alpardata_purchase_replacement_cost.view_product_template_form_replacement_cost"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='internal_tax_pct']" position="after">
-                <field name="target_markup_pct" readonly="not can_edit_commercial_conditions"/>
-            </xpath>
-        </field>
-    </record>
-</odoo>
-```
-
-- [ ] **Paso 6: `views/res_config_settings_views.xml`**
+- [ ] **Paso 4: `views/res_config_settings_views.xml`**
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -869,9 +765,10 @@ git commit -m "feat(price_change_labels): cola de etiquetas pendientes al imprim
     <record id="res_config_settings_view_form_shelf" model="ir.ui.view">
         <field name="name">res.config.settings.form.shelf</field>
         <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="alpardata_purchase_reference_cost.res_config_settings_view_form_reference_cost"/>
+        <field name="inherit_id" ref="purchase.res_config_settings_view_form_purchase"/>
         <field name="arch" type="xml">
-            <xpath expr="//block[@name='reference_cost_settings']" position="inside">
+            <xpath expr="//app[@name='purchase']" position="inside">
+                <block title="Góndola" name="shelf_settings">
                 <setting string="Góndola"
                          help="Lista con la que se imprimen las etiquetas de góndola y tolerancia antes de alertar margen bajo.">
                     <div class="content-group">
@@ -885,13 +782,14 @@ git commit -m "feat(price_change_labels): cola de etiquetas pendientes al imprim
                         </div>
                     </div>
                 </setting>
+                </block>
             </xpath>
         </field>
     </record>
 </odoo>
 ```
 
-- [ ] **Paso 7: `views/product_label_layout_views.xml`** (aviso en el wizard)
+- [ ] **Paso 5: `views/product_label_layout_views.xml`** (aviso en el wizard)
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -913,7 +811,7 @@ git commit -m "feat(price_change_labels): cola de etiquetas pendientes al imprim
 
 > Verificar el id de la vista del wizard en `odoo-19.0/addons/product/wizard/product_label_layout_views.xml`.
 
-- [ ] **Paso 8: `views/menus.xml`**
+- [ ] **Paso 6: `views/menus.xml`**
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -925,13 +823,13 @@ git commit -m "feat(price_change_labels): cola de etiquetas pendientes al imprim
               sequence="90"/>
     <menuitem id="menu_price_watch_markup"
               name="Margen erosionado"
-              parent="alpardata_purchase_reference_cost.menu_reference_cost_root"
+              parent="purchase.menu_purchase_products"
               action="action_price_watch_markup"
-              sequence="40"/>
+              sequence="45"/>
 </odoo>
 ```
 
-- [ ] **Paso 9: manifest `data`** completo:
+- [ ] **Paso 7: manifest `data`** completo:
 
 ```python
     'data': [
@@ -939,26 +837,24 @@ git commit -m "feat(price_change_labels): cola de etiquetas pendientes al imprim
         'security/ir.model.access.csv',
         'data/ir_cron.xml',
         'views/product_price_watch_views.xml',
-        'views/product_category_views.xml',
-        'views/product_template_views.xml',
         'views/res_config_settings_views.xml',
         'views/product_label_layout_views.xml',
         'views/menus.xml',
     ],
 ```
 
-- [ ] **Paso 10: instalar en base limpia** y correr todos los tests:
+- [ ] **Paso 8: instalar en base limpia** y correr todos los tests:
 
 ```bash
 odoo-bin -c odoo.conf -d odoo19_labels_test -i alpardata_price_change_labels --test-enable --test-tags /alpardata_price_change_labels --stop-after-init --log-level=test
 ```
 Esperado: 0 fallas; el `post_init_hook` no rompe.
 
-- [ ] **Paso 11: prueba manual** (anotar en el PR): configurar lista de góndola, cambiar el
+- [ ] **Paso 9: prueba manual** (anotar en el PR): configurar lista de góndola, cambiar el
 precio de un producto, "Actualizar" → aparece en Etiquetas pendientes; "Imprimir
 etiquetas" → sale el PDF 3x8 y la fila desaparece.
 
-- [ ] **Paso 12: commit**
+- [ ] **Paso 10: commit**
 
 ```bash
 git add alpardata_price_change_labels
@@ -967,14 +863,18 @@ git commit -m "feat(price_change_labels): seguridad, cron, vistas y menús"
 
 ---
 
-### Tarea 5: Aplicar precio sugerido (productos con precio fijo)
+### Tarea 5: Actualizar precio planificado desde "Margen erosionado"
 
-**Files:** Modify `models/res_company.py`, `models/res_config_settings.py`,
-`models/product_price_watch.py`, `views/product_price_watch_views.xml`,
-`views/res_config_settings_views.xml`, `tests/__init__.py`; Create
-`tests/test_suggested_price.py`.
+**Files:** Modify `models/product_price_watch.py`, `views/product_price_watch_views.xml`,
+`tests/__init__.py`; Create `tests/test_planned_price.py`.
 
-- [ ] **Paso 1: test que falla** — `tests/test_suggested_price.py`
+El cálculo del precio sugerido (reposición × (1 + margen) + recargo, con impuestos
+incluidos) es el **precio planificado de Adhoc** (`product_planned_price`). Este módulo
+sólo agrega un botón en "Margen erosionado" que lo aplica a las filas seleccionadas y
+refresca la cola de etiquetas.
+
+- [ ] **Paso 1: test que falla** — `tests/test_planned_price.py` (y
+`from . import test_planned_price` en `tests/__init__.py`)
 
 ```python
 from __future__ import annotations
@@ -985,123 +885,56 @@ from .common import PriceWatchCommon
 
 
 @tagged('post_install', '-at_install')
-class TestSuggestedPrice(PriceWatchCommon):
+class TestPlannedPrice(PriceWatchCommon):
 
-    def test_suggested_without_rounding(self):
-        # reposición 1000, recargo 40 → 1400 sin IVA → 1694 con IVA incluido
-        self.assertAlmostEqual(self._watch()._suggested_list_price(), 1694.0, places=2)
+    def test_apply_updates_list_price_and_queue(self):
+        self.template.list_price_type = 'by_margin'
+        self.seller.price = 1100.0  # 1100 × 1,40 × 1,21 = 1863,40
+        watch = self._watch()
+        watch.action_apply_planned_price()
+        self.assertAlmostEqual(self.template.list_price, 1863.4, places=2)
+        refreshed = self._watch()
+        self.assertAlmostEqual(refreshed.shelf_price, 1863.4, places=2)
+        self.assertEqual(refreshed.markup_alert, 'ok')
 
-    def test_suggested_with_rounding_and_surcharge(self):
-        self.company.write({'suggested_price_rounding': 10.0, 'suggested_price_surcharge': -1.0})
-        self.seller.reference_cost = 1100.0  # 1540 sin IVA → 1863,40 → 1870 − 1
-        self.assertAlmostEqual(self._watch()._suggested_list_price(), 1869.0, places=2)
-
-    def test_apply_updates_list_price(self):
-        self.company.write({'suggested_price_rounding': 10.0, 'suggested_price_surcharge': -1.0})
-        self.seller.reference_cost = 1100.0
-        self._watch().action_apply_suggested_price()
-        self.assertEqual(self.template.list_price, 1869.0)
-        self.assertAlmostEqual(self._watch().shelf_price, 1869.0, places=2)
-
-    def test_apply_with_pricelist_rule_warns(self):
-        self.company.shelf_pricelist_id = self.env['product.pricelist'].create({
-            'name': 'Góndola fija',
-            'item_ids': [(0, 0, {
-                'applied_on': '3_global', 'compute_price': 'fixed', 'fixed_price': 2000.0,
-            })],
-        })
-        self.seller.reference_cost = 1100.0
-        result = self._watch().action_apply_suggested_price()
+    def test_manual_price_products_reported(self):
+        self.seller.price = 1100.0  # list_price_type 'manual' (default de Adhoc)
+        result = self._watch().action_apply_planned_price()
         self.assertEqual(result['tag'], 'display_notification')
-
-    def test_no_cost_skipped(self):
-        template = self.env['product.template'].create({
-            'name': 'Sin costo', 'sale_ok': True, 'list_price': 50.0,
-        })
-        self.watch_model._refresh(template, self.company).action_apply_suggested_price()
-        self.assertEqual(template.list_price, 50.0)
+        self.assertEqual(self.template.list_price, 1694.0)
 ```
 
-Agregar `from . import test_suggested_price` a `tests/__init__.py`.
+> Si el tipo de precio por defecto de Adhoc no es `manual` en tu versión, crear el
+> producto del test con `list_price_type='manual'` explícito.
 
 - [ ] **Paso 2: correr** → falla.
 
-- [ ] **Paso 3: `models/res_company.py`** — agregar a la clase:
+- [ ] **Paso 3: agregar a `models/product_price_watch.py`**
 
 ```python
-    suggested_price_rounding = fields.Float(
-        string='Redondear precio sugerido a múltiplos de', default=0.0,
-        help='0: sin redondeo. Ej.: 10 redondea hacia arriba a la decena.',
-    )
-    suggested_price_surcharge = fields.Float(
-        string='Ajuste del precio sugerido', default=0.0,
-        help='Se suma después del redondeo. Ej.: −1 para terminar en 9.',
-    )
-```
-
-y a `models/res_config_settings.py`:
-
-```python
-    suggested_price_rounding = fields.Float(
-        related='company_id.suggested_price_rounding', readonly=False,
-    )
-    suggested_price_surcharge = fields.Float(
-        related='company_id.suggested_price_surcharge', readonly=False,
-    )
-```
-
-- [ ] **Paso 4: `models/product_price_watch.py`** — sumar a los imports:
-
-```python
-import math
-
-from odoo.tools import float_round
-```
-
-(`float_compare` y `_` ya están importados desde la tarea 2) y agregar a la clase:
-
-```python
-    def _suggested_list_price(self) -> float:
-        """Precio de venta sugerido: reposición × (1 + recargo objetivo), con los
-        impuestos incluidos en precio y el redondeo comercial de la empresa.
-        0.0 si no hay costo de reposición."""
-        self.ensure_one()
-        if not self.replacement_cost:
-            return 0.0
-        template = self.product_tmpl_id
-        company = self.company_id
-        price = self.replacement_cost * (1 + template.target_markup_pct / 100)
-        included = template.taxes_id.filtered(
-            lambda t: t.company_id == company and t.amount_type == 'percent' and t.price_include
-        )
-        price *= 1 + sum(included.mapped('amount')) / 100
-        if company.suggested_price_rounding > 0:
-            steps = float_round(price / company.suggested_price_rounding, precision_digits=6)
-            price = math.ceil(steps) * company.suggested_price_rounding
-        return max(price + company.suggested_price_surcharge, 0.0)
-
-    def action_apply_suggested_price(self):
-        not_moved = self.browse()
-        for rec in self:
-            new_price = rec._suggested_list_price()
-            if not new_price:
-                continue
-            before = rec.shelf_price
-            rec.product_tmpl_id.list_price = new_price
-            refreshed = self._refresh(rec.product_tmpl_id, rec.company_id)
-            if (float_compare(refreshed.shelf_price, before, precision_digits=2) == 0
-                    and float_compare(new_price, before, precision_digits=2) != 0):
-                not_moved |= rec
-        if not_moved:
+    def action_apply_planned_price(self):
+        """Pasa el precio planificado de Adhoc al precio de venta de los productos
+        "por margen" seleccionados y refresca sus filas. Los productos con precio
+        manual se informan: su precio se cambia a mano."""
+        templates = self.product_tmpl_id
+        by_margin = templates.filtered(lambda t: t.list_price_type == 'by_margin')
+        by_margin._update_prices_from_planned()
+        # Adhoc escribe list_price por SQL: la caché del ORM queda vieja.
+        by_margin.invalidate_recordset(['list_price'])
+        for company in self.company_id:
+            rows = self.filtered(lambda r: r.company_id == company)
+            self._refresh(rows.product_tmpl_id, company)
+        manual = templates - by_margin
+        if manual:
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': _('Precio sugerido'),
+                    'title': _('Precio planificado'),
                     'message': _(
-                        '%s producto(s) no cambiaron de precio en góndola: su precio sale '
-                        'de una regla de la lista de góndola, no del precio de venta.',
-                        len(not_moved),
+                        '%s producto(s) tienen precio manual: no se actualizaron. '
+                        'Para calcularlos por margen, cambiá su tipo de precio planificado.',
+                        len(manual),
                     ),
                     'type': 'warning',
                     'sticky': True,
@@ -1110,53 +943,35 @@ from odoo.tools import float_round
         return True
 ```
 
-> `price_include` es el campo computado de `account.tax` en 19 (depende de
-> `price_include_override` y de la configuración de la empresa). Verificarlo en
-> `odoo-19.0/addons/account/models/account_tax.py`.
-
-- [ ] **Paso 5: vistas** — en `views/product_price_watch_views.xml`, dentro del
-`<header>` de `product_price_watch_view_list_markup`, antes del botón "Actualizar":
+- [ ] **Paso 4: vista** — en `views/product_price_watch_views.xml`, dentro del `<header>`
+de `product_price_watch_view_list_markup`, antes del botón "Actualizar":
 
 ```xml
-                    <button name="action_apply_suggested_price" type="object"
-                            string="Aplicar precio sugerido" class="btn-primary"
+                    <button name="action_apply_planned_price" type="object"
+                            string="Actualizar precio planificado" class="btn-primary"
                             groups="purchase.group_purchase_manager"
-                            confirm="Se reemplaza el precio de venta de los productos seleccionados por el sugerido. ¿Continuar?"/>
+                            confirm="Se pasa el precio planificado al precio de venta de los productos seleccionados que tienen precio por margen. ¿Continuar?"/>
 ```
 
-En `views/res_config_settings_views.xml`, al final del `content-group` del setting
-"Góndola":
+- [ ] **Paso 5: correr** → `TestPlannedPrice` pasa.
 
-```xml
-                        <div class="row mt4">
-                            <label for="suggested_price_rounding" class="col-lg-5 o_light_label"/>
-                            <field name="suggested_price_rounding" class="col-lg-2"/>
-                        </div>
-                        <div class="row mt4">
-                            <label for="suggested_price_surcharge" class="col-lg-5 o_light_label"/>
-                            <field name="suggested_price_surcharge" class="col-lg-2"/>
-                        </div>
-```
-
-- [ ] **Paso 6: correr** → `TestSuggestedPrice` pasa.
-
-- [ ] **Paso 7: commit**
+- [ ] **Paso 6: commit**
 
 ```bash
 git add alpardata_price_change_labels
-git commit -m "feat(price_change_labels): aplicar precio sugerido a productos con precio fijo"
+git commit -m "feat(price_change_labels): actualizar precio planificado desde margen erosionado"
 ```
 
 ---
 
 ### Tarea 6: README y PR
 
-- [ ] **Paso 1: `README.md`**: qué resuelve, cómo configurar lista de góndola y recargo
-objetivo, cuándo se actualiza (cron diario + botón), qué vacía la cola (sólo 3x8 regular
+- [ ] **Paso 1: `README.md`**: qué resuelve, cómo configurar lista de góndola y margen
+(el recargo objetivo es el margen por categoría del punto 1), cuándo se actualiza (cron diario + botón), qué vacía la cola (sólo 3x8 regular
 con la lista de góndola), y la sección **Redondeo comercial** del spec (terminar en 99:
 redondeo 100 y recargo −1; múltiplos de 50: redondeo 50) usando las reglas de lista
-estándar. Sumar "Aplicar precio sugerido": para qué productos sirve (precio fijo), la
-fórmula, el redondeo, y que `list_price` es el mismo para todas las empresas.
+estándar. Sumar "Actualizar precio planificado": usa el precio planificado de Adhoc
+(sólo productos "por margen"), y que `list_price` es el mismo para todas las empresas.
 - [ ] **Paso 2: commit, push y PR contra `19.0`.**
 
 ```bash
