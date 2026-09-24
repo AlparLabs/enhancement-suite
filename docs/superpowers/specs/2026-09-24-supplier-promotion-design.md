@@ -203,8 +203,10 @@ línea queda para una segunda etapa, si hace falta.
 1. El precio promo va como **regla por variante con fechas** en las listas elegidas. Para
    productos con precio fijo, la caja tiene que usar una de esas listas (en Odoo toda caja
    tiene una).
-2. Las unidades para el reclamo son las vendidas **con una lista de la promo**, dentro de
-   las fechas (POS y ventas). Ventas con otras listas (p. ej. mayoristas) no cuentan.
+2. ~~Las unidades para el reclamo son las vendidas con una lista de la promo~~ —
+   **validada (2026-09-24):** sólo cuentan las ventas hechas con una lista de la promo,
+   dentro de las fechas (POS y ventas). Ventas con otras listas (p. ej. mayoristas) no
+   cuentan.
 3. `difference` usa los precios tal como están cargados (con o sin IVA, según el producto).
 4. El precio de compra especial es **neto**: pisa la cascada del punto 1.
 5. No se modifica el margen del punto 5.
