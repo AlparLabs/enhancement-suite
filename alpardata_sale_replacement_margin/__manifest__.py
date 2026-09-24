@@ -6,7 +6,9 @@
     'website': 'https://alpardata.com.ar',
     'category': 'Sales/Sales',
     'depends': ['sale_margin', 'alpardata_purchase_replacement_cost'],
-    'data': [],  # la tarea 3 agrega las vistas
+    'data': [
+        'views/sale_order_views.xml',
+    ],
     'pre_init_hook': 'pre_init_hook',
     'installable': True,
     'application': False,
