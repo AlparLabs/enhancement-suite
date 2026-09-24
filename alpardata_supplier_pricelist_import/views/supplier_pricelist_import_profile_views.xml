@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="spl_profile_view_list" model="ir.ui.view">
+        <field name="name">supplier.pricelist.import.profile.list</field>
+        <field name="model">supplier.pricelist.import.profile</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="file_type"/>
+                <field name="match_by"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="spl_profile_view_form" model="ir.ui.view">
+        <field name="name">supplier.pricelist.import.profile.form</field>
+        <field name="model">supplier.pricelist.import.profile</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group string="Proveedor">
+                            <field name="name"/>
+                            <field name="partner_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Archivo">
+                            <field name="file_type"/>
+                            <field name="sheet_name" invisible="file_type != 'xlsx'"/>
+                            <field name="header_row"/>
+                            <field name="csv_delimiter" invisible="file_type != 'csv'"/>
+                            <field name="csv_encoding" invisible="file_type != 'csv'"/>
+                            <field name="csv_decimal"/>
+                        </group>
+                        <group string="Columnas">
+                            <field name="match_by"/>
+                            <field name="col_code" placeholder="Código"/>
+                            <field name="col_price" placeholder="Precio"/>
+                            <field name="col_cascade" placeholder="Bonificación"/>
+                        </group>
+                        <group string="Precio">
+                            <field name="price_includes_vat"/>
+                            <field name="vat_pct" invisible="not price_includes_vat"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_spl_profile" model="ir.actions.act_window">
+        <field name="name">Perfiles de listas de proveedores</field>
+        <field name="res_model">supplier.pricelist.import.profile</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
