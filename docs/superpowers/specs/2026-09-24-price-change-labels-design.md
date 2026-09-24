@@ -114,6 +114,30 @@ productos pendientes.
 - Wizard de etiquetas: aviso si la lista elegida difiere de la de góndola.
 - Ajustes: lista de góndola y tolerancia.
 
+## Aplicar precio sugerido (productos con precio fijo)
+
+Para productos cuyo precio sale del **precio de venta del producto** (sin regla en la
+lista), un aumento de costo no mueve el precio: sólo aparece la alerta de margen. Desde la
+vista **Margen erosionado**, el botón **"Aplicar precio sugerido"** (gerentes de compras)
+calcula, para las filas seleccionadas:
+
+```
+sin_impuestos = reposición × (1 + recargo_objetivo / 100)
+precio        = sin_impuestos × (1 + IVA incluido en precio)      # sólo impuestos "incluidos"
+precio        = redondeo hacia arriba al múltiplo de `suggested_price_rounding`
+                + `suggested_price_surcharge`                       # p. ej. 10 y −1 → termina en 9
+```
+
+y lo escribe en `product.template.list_price`; después refresca las filas (quedan en la
+cola de etiquetas). Si el precio de góndola no cambió porque el producto tiene una regla
+en la lista de góndola, avisa cuántos productos no se movieron.
+
+`res.company` suma `suggested_price_rounding` (Float, 0 = sin redondeo) y
+`suggested_price_surcharge` (Float), en Ajustes junto a la lista de góndola.
+
+`list_price` no depende de la empresa: en multi-empresa el precio sugerido de una empresa
+pisa el de todas. Se documenta en el README.
+
 ## Redondeo comercial (sin código)
 
 El core ya lo cubre en las reglas de lista (`price_round`, `price_surcharge`,
@@ -139,6 +163,8 @@ El core ya lo cubre en las reglas de lista (`price_round`, `price_surcharge`,
    imprimir 3x8 regular → no pendiente; imprimir promo → sigue pendiente.
 5. `post_init_hook`: nada pendiente al instalar.
 6. Multi-company: filas independientes por empresa.
+7. Precio sugerido: cálculo con IVA incluido y redondeo; aplicado a `list_price`; aviso
+   cuando una regla de lista impide el cambio.
 
 ## Decisiones a validar (tomadas sin consultar)
 
@@ -149,3 +175,5 @@ El core ya lo cubre en las reglas de lista (`price_round`, `price_surcharge`,
 3. La cola se vacía al **imprimir**, no al confirmar que la etiqueta se colocó.
 4. Solo etiquetas **3x8 regulares** alimentan la cola; otros formatos de Odoo no.
 5. Snapshots en un **modelo propio** por (producto, empresa).
+6. "Aplicar precio sugerido" escribe `list_price` directo (sin vista previa): el usuario
+   elige las filas en la lista antes de aplicar.

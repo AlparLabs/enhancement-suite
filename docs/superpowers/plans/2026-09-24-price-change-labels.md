@@ -52,7 +52,7 @@ registra el precio impreso.
   `views/product_template_views.xml`, `views/res_config_settings_views.xml`,
   `views/product_label_layout_views.xml`, `views/menus.xml`
 - `tests/__init__.py`, `tests/common.py`, `tests/test_markup.py`,
-  `tests/test_label_queue.py`
+  `tests/test_label_queue.py`, `tests/test_suggested_price.py`
 
 ---
 
@@ -967,13 +967,196 @@ git commit -m "feat(price_change_labels): seguridad, cron, vistas y menús"
 
 ---
 
-### Tarea 5: README y PR
+### Tarea 5: Aplicar precio sugerido (productos con precio fijo)
+
+**Files:** Modify `models/res_company.py`, `models/res_config_settings.py`,
+`models/product_price_watch.py`, `views/product_price_watch_views.xml`,
+`views/res_config_settings_views.xml`, `tests/__init__.py`; Create
+`tests/test_suggested_price.py`.
+
+- [ ] **Paso 1: test que falla** — `tests/test_suggested_price.py`
+
+```python
+from __future__ import annotations
+
+from odoo.tests import tagged
+
+from .common import PriceWatchCommon
+
+
+@tagged('post_install', '-at_install')
+class TestSuggestedPrice(PriceWatchCommon):
+
+    def test_suggested_without_rounding(self):
+        # reposición 1000, recargo 40 → 1400 sin IVA → 1694 con IVA incluido
+        self.assertAlmostEqual(self._watch()._suggested_list_price(), 1694.0, places=2)
+
+    def test_suggested_with_rounding_and_surcharge(self):
+        self.company.write({'suggested_price_rounding': 10.0, 'suggested_price_surcharge': -1.0})
+        self.seller.reference_cost = 1100.0  # 1540 sin IVA → 1863,40 → 1870 − 1
+        self.assertAlmostEqual(self._watch()._suggested_list_price(), 1869.0, places=2)
+
+    def test_apply_updates_list_price(self):
+        self.company.write({'suggested_price_rounding': 10.0, 'suggested_price_surcharge': -1.0})
+        self.seller.reference_cost = 1100.0
+        self._watch().action_apply_suggested_price()
+        self.assertEqual(self.template.list_price, 1869.0)
+        self.assertAlmostEqual(self._watch().shelf_price, 1869.0, places=2)
+
+    def test_apply_with_pricelist_rule_warns(self):
+        self.company.shelf_pricelist_id = self.env['product.pricelist'].create({
+            'name': 'Góndola fija',
+            'item_ids': [(0, 0, {
+                'applied_on': '3_global', 'compute_price': 'fixed', 'fixed_price': 2000.0,
+            })],
+        })
+        self.seller.reference_cost = 1100.0
+        result = self._watch().action_apply_suggested_price()
+        self.assertEqual(result['tag'], 'display_notification')
+
+    def test_no_cost_skipped(self):
+        template = self.env['product.template'].create({
+            'name': 'Sin costo', 'sale_ok': True, 'list_price': 50.0,
+        })
+        self.watch_model._refresh(template, self.company).action_apply_suggested_price()
+        self.assertEqual(template.list_price, 50.0)
+```
+
+Agregar `from . import test_suggested_price` a `tests/__init__.py`.
+
+- [ ] **Paso 2: correr** → falla.
+
+- [ ] **Paso 3: `models/res_company.py`** — agregar a la clase:
+
+```python
+    suggested_price_rounding = fields.Float(
+        string='Redondear precio sugerido a múltiplos de', default=0.0,
+        help='0: sin redondeo. Ej.: 10 redondea hacia arriba a la decena.',
+    )
+    suggested_price_surcharge = fields.Float(
+        string='Ajuste del precio sugerido', default=0.0,
+        help='Se suma después del redondeo. Ej.: −1 para terminar en 9.',
+    )
+```
+
+y a `models/res_config_settings.py`:
+
+```python
+    suggested_price_rounding = fields.Float(
+        related='company_id.suggested_price_rounding', readonly=False,
+    )
+    suggested_price_surcharge = fields.Float(
+        related='company_id.suggested_price_surcharge', readonly=False,
+    )
+```
+
+- [ ] **Paso 4: `models/product_price_watch.py`** — sumar a los imports:
+
+```python
+import math
+
+from odoo.tools import float_round
+```
+
+(`float_compare` y `_` ya están importados desde la tarea 2) y agregar a la clase:
+
+```python
+    def _suggested_list_price(self) -> float:
+        """Precio de venta sugerido: reposición × (1 + recargo objetivo), con los
+        impuestos incluidos en precio y el redondeo comercial de la empresa.
+        0.0 si no hay costo de reposición."""
+        self.ensure_one()
+        if not self.replacement_cost:
+            return 0.0
+        template = self.product_tmpl_id
+        company = self.company_id
+        price = self.replacement_cost * (1 + template.target_markup_pct / 100)
+        included = template.taxes_id.filtered(
+            lambda t: t.company_id == company and t.amount_type == 'percent' and t.price_include
+        )
+        price *= 1 + sum(included.mapped('amount')) / 100
+        if company.suggested_price_rounding > 0:
+            steps = float_round(price / company.suggested_price_rounding, precision_digits=6)
+            price = math.ceil(steps) * company.suggested_price_rounding
+        return max(price + company.suggested_price_surcharge, 0.0)
+
+    def action_apply_suggested_price(self):
+        not_moved = self.browse()
+        for rec in self:
+            new_price = rec._suggested_list_price()
+            if not new_price:
+                continue
+            before = rec.shelf_price
+            rec.product_tmpl_id.list_price = new_price
+            refreshed = self._refresh(rec.product_tmpl_id, rec.company_id)
+            if (float_compare(refreshed.shelf_price, before, precision_digits=2) == 0
+                    and float_compare(new_price, before, precision_digits=2) != 0):
+                not_moved |= rec
+        if not_moved:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Precio sugerido'),
+                    'message': _(
+                        '%s producto(s) no cambiaron de precio en góndola: su precio sale '
+                        'de una regla de la lista de góndola, no del precio de venta.',
+                        len(not_moved),
+                    ),
+                    'type': 'warning',
+                    'sticky': True,
+                },
+            }
+        return True
+```
+
+> `price_include` es el campo computado de `account.tax` en 19 (depende de
+> `price_include_override` y de la configuración de la empresa). Verificarlo en
+> `odoo-19.0/addons/account/models/account_tax.py`.
+
+- [ ] **Paso 5: vistas** — en `views/product_price_watch_views.xml`, dentro del
+`<header>` de `product_price_watch_view_list_markup`, antes del botón "Actualizar":
+
+```xml
+                    <button name="action_apply_suggested_price" type="object"
+                            string="Aplicar precio sugerido" class="btn-primary"
+                            groups="purchase.group_purchase_manager"
+                            confirm="Se reemplaza el precio de venta de los productos seleccionados por el sugerido. ¿Continuar?"/>
+```
+
+En `views/res_config_settings_views.xml`, al final del `content-group` del setting
+"Góndola":
+
+```xml
+                        <div class="row mt4">
+                            <label for="suggested_price_rounding" class="col-lg-5 o_light_label"/>
+                            <field name="suggested_price_rounding" class="col-lg-2"/>
+                        </div>
+                        <div class="row mt4">
+                            <label for="suggested_price_surcharge" class="col-lg-5 o_light_label"/>
+                            <field name="suggested_price_surcharge" class="col-lg-2"/>
+                        </div>
+```
+
+- [ ] **Paso 6: correr** → `TestSuggestedPrice` pasa.
+
+- [ ] **Paso 7: commit**
+
+```bash
+git add alpardata_price_change_labels
+git commit -m "feat(price_change_labels): aplicar precio sugerido a productos con precio fijo"
+```
+
+---
+
+### Tarea 6: README y PR
 
 - [ ] **Paso 1: `README.md`**: qué resuelve, cómo configurar lista de góndola y recargo
 objetivo, cuándo se actualiza (cron diario + botón), qué vacía la cola (sólo 3x8 regular
 con la lista de góndola), y la sección **Redondeo comercial** del spec (terminar en 99:
 redondeo 100 y recargo −1; múltiplos de 50: redondeo 50) usando las reglas de lista
-estándar.
+estándar. Sumar "Aplicar precio sugerido": para qué productos sirve (precio fijo), la
+fórmula, el redondeo, y que `list_price` es el mismo para todas las empresas.
 - [ ] **Paso 2: commit, push y PR contra `19.0`.**
 
 ```bash
