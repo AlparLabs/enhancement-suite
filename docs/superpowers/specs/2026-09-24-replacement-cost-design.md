@@ -96,6 +96,15 @@ Campos `company_dependent=True` (cada empresa del grupo negocia sus condiciones)
 - `net_purchase_cost` (Float, no almacenado): `reference_cost × (1 − eq_bonif)`.
   Se usa para el semáforo de divergencia.
 
+### `product.product`
+
+- `_get_replacement_cost_for(company, uom, currency, date) -> tuple[float, bool]`:
+  `product_tmpl_id.with_company(company).replacement_cost` convertido de la UoM del
+  producto a `uom` y de la moneda de la empresa a `currency` (con
+  `_convert_commercial_cost`-equivalente: `company.currency_id._convert(..., date)`).
+  Si la reposición es 0 devuelve `standard_price` convertido y `True` (fallback). Lo
+  consume el punto 5.
+
 ## Parseo de la cascada
 
 Función pura `parse_discount_cascade(text) -> list[float]` en `tools/discount_cascade.py`,
@@ -196,7 +205,8 @@ Strings en castellano, igual que el módulo base. No se genera `i18n/`.
 2. `test_conditions.py` — herencia proveedor → supplierinfo; `use_own_conditions`;
    valores distintos por empresa (`company_dependent`); constraints de porcentajes.
 3. `test_replacement_cost.py` — ejemplo canónico = 854,2305; UoM (pack x24); moneda
-   (USD); internos desde categoría y pisado a mano; sin lista → 0.
+   (USD); internos desde categoría y pisado a mano; sin lista → 0;
+   `_get_replacement_cost_for` con UoM/moneda y fallback.
 4. `test_pricelist.py` — base `replacement_cost`; fallback a `standard_price`.
 5. `test_purchase_order.py` — descuento y `discount_cascade` en alta manual, catálogo y
    reabastecimiento; precio manual respetado; sin cascada → `supplierinfo.discount`.
