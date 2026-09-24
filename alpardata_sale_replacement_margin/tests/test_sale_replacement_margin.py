@@ -86,3 +86,13 @@ class TestSaleReplacementMargin(TransactionCase):
         order.action_confirm()
         self.assertAlmostEqual(order.order_line.replacement_cost_unit, 1080.0, places=2)
         self.assertAlmostEqual(order.replacement_margin, 3000.0 - 2160.0, places=2)
+
+    def test_sale_report(self):
+        order = self._order()
+        order.action_confirm()
+        self.env.flush_all()
+        data = self.env['sale.report']._read_group(
+            [('order_reference', '=', f'sale.order,{order.id}')],
+            [], ['replacement_margin:sum'],
+        )
+        self.assertAlmostEqual(data[0][0], 1200.0, places=2)
