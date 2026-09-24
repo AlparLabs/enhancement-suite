@@ -79,18 +79,23 @@ class ProductPricelistItem(models.Model):
             )
             ref_cost = product.standard_price
 
-        # reference_cost is stored in the company currency and product.uom_id
+        return self._convert_commercial_cost(product, ref_cost, uom, date, currency)
+
+    def _convert_commercial_cost(self, product, cost, uom, date, currency) -> float:
+        """Convierte un costo comercial expresado en la UoM del producto y la
+        moneda de la empresa a la UoM `uom` y la moneda `currency` de la regla.
+
+        Lo usan todas las bases comerciales (referencia, reposición) para que la
+        conversión sea idéntica.
+        """
         if uom and product.uom_id and uom != product.uom_id:
-            ref_cost = product.uom_id._compute_price(ref_cost, uom)
-
+            cost = product.uom_id._compute_price(cost, uom)
         src_currency = self.env.company.currency_id
-
         if src_currency != currency:
-            ref_cost = src_currency._convert(
-                ref_cost, currency, self.env.company, date, round=False
+            cost = src_currency._convert(
+                cost, currency, self.env.company, date, round=False
             )
-
-        return ref_cost
+        return cost
 
     def _get_price_label_base_str(self) -> str:
         """
