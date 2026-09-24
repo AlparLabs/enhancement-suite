@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_spl_import"
+              name="Importar listas de proveedores"
+              parent="purchase.menu_purchase_products"
+              action="action_spl_import"
+              sequence="30"/>
+    <menuitem id="menu_spl_profile"
+              name="Perfiles de listas de proveedores"
+              parent="purchase.menu_purchase_config"
+              action="action_spl_profile"
+              groups="purchase.group_purchase_manager"
+              sequence="40"/>
+</odoo>

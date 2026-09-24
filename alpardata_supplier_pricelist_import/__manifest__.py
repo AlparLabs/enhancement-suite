@@ -1,0 +1,23 @@
+{
+    'name': 'AlparData - Importador de Listas de Proveedores',
+    'version': '19.0.1.0.0',
+    'summary': 'Importa listas de precios de proveedores (Excel/CSV o % de aumento) con vista previa y fecha de vigencia',
+    'author': 'AlparData',
+    'website': 'https://alpardata.com.ar',
+    'category': 'Inventory/Purchase',
+    'depends': ['alpardata_purchase_replacement_cost'],
+    'external_dependencies': {'python': ['openpyxl']},
+    'data': [
+        'security/security.xml',
+        'security/ir.model.access.csv',
+        'data/ir_sequence.xml',
+        'views/supplier_pricelist_import_profile_views.xml',
+        'views/supplier_pricelist_import_views.xml',
+        'views/res_partner_views.xml',
+        'views/menus.xml',
+    ],
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+    'license': 'LGPL-3',
+}

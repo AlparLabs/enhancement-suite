@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="spl_import_view_list" model="ir.ui.view">
+        <field name="name">supplier.pricelist.import.list</field>
+        <field name="model">supplier.pricelist.import</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="mode"/>
+                <field name="effective_date"/>
+                <field name="count_change"/>
+                <field name="applied_by" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'preview'"
+                       decoration-success="state == 'done'"
+                       decoration-muted="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="spl_import_view_form" model="ir.ui.view">
+        <field name="name">supplier.pricelist.import.form</field>
+        <field name="model">supplier.pricelist.import</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_preview" type="object" string="Generar vista previa"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_preview" type="object" string="Regenerar vista previa"
+                            invisible="state != 'preview'"/>
+                    <button name="action_apply" type="object" string="Aplicar"
+                            class="btn-primary" invisible="state != 'preview'"
+                            groups="purchase.group_purchase_manager"
+                            confirm="Se crearán nuevas fichas de proveedor con vigencia desde la fecha indicada. ¿Continuar?"/>
+                    <button name="action_cancel" type="object" string="Cancelar"
+                            invisible="state not in ('draft', 'preview')"/>
+                    <button name="action_reset_draft" type="object" string="Volver a borrador"
+                            invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,preview,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company"
+                                   readonly="state != 'draft'"/>
+                            <field name="mode" widget="radio" readonly="state != 'draft'"/>
+                            <field name="effective_date" readonly="state == 'done'"/>
+                        </group>
+                        <group invisible="mode != 'file'">
+                            <field name="profile_id" required="mode == 'file'"
+                                   readonly="state != 'draft'"/>
+                            <field name="file" filename="file_name" required="mode == 'file'"
+                                   readonly="state != 'draft'"/>
+                            <field name="file_name" invisible="1"/>
+                        </group>
+                        <group invisible="mode != 'percent'">
+                            <field name="percent" readonly="state != 'draft'"/>
+                            <field name="filter_categ_ids" widget="many2many_tags"
+                                   readonly="state != 'draft'"/>
+                            <field name="filter_tag_ids" widget="many2many_tags"
+                                   readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <group invisible="state == 'draft'">
+                        <field name="count_change"/>
+                        <field name="count_unchanged"/>
+                        <field name="count_not_found"/>
+                        <field name="count_error"/>
+                    </group>
+                    <notebook invisible="state == 'draft'">
+                        <page string="Líneas" name="lines">
+                            <field name="line_ids" readonly="state != 'preview'">
+                                <list editable="bottom" create="0" delete="0"
+                                      decoration-muted="status == 'unchanged'"
+                                      decoration-danger="status == 'error'"
+                                      decoration-warning="status == 'not_found'">
+                                    <field name="to_apply" readonly="status != 'change'"/>
+                                    <field name="row_number" optional="show" readonly="1"/>
+                                    <field name="code" readonly="1"/>
+                                    <field name="product_tmpl_id" readonly="1"/>
+                                    <field name="old_list_price" readonly="1"/>
+                                    <field name="new_list_price" readonly="1"/>
+                                    <field name="variation_pct" readonly="1"
+                                           decoration-danger="variation_pct &gt; 0"
+                                           decoration-success="variation_pct &lt; 0"/>
+                                    <field name="old_cascade" optional="hide" readonly="1"/>
+                                    <field name="new_cascade" optional="hide" readonly="1"/>
+                                    <field name="old_replacement_cost" optional="show" readonly="1"/>
+                                    <field name="new_replacement_cost" optional="show" readonly="1"/>
+                                    <field name="status" readonly="1"/>
+                                    <field name="message" optional="show" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="spl_import_view_search" model="ir.ui.view">
+        <field name="name">supplier.pricelist.import.search</field>
+        <field name="model">supplier.pricelist.import</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <filter name="filter_preview" string="En vista previa" domain="[('state', '=', 'preview')]"/>
+                <filter name="filter_done" string="Aplicadas" domain="[('state', '=', 'done')]"/>
+                <group>
+                    <filter name="group_partner" string="Proveedor" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_spl_import" model="ir.actions.act_window">
+        <field name="name">Importar listas de proveedores</field>
+        <field name="res_model">supplier.pricelist.import</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
