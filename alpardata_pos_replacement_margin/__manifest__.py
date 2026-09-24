@@ -6,7 +6,9 @@
     'website': 'https://alpardata.com.ar',
     'category': 'Sales/Point of Sale',
     'depends': ['point_of_sale', 'alpardata_purchase_replacement_cost'],
-    'data': [],  # la tarea 6 agrega las vistas
+    'data': [
+        'views/pos_order_views.xml',
+    ],
     'pre_init_hook': 'pre_init_hook',
     'installable': True,
     'application': False,
