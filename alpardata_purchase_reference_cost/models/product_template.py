@@ -152,12 +152,13 @@ class ProductTemplate(models.Model):
             )
         )
         for rec in self:
-            if not rec.reference_cost:
+            base_cost = rec._get_divergence_base_cost()
+            if not base_cost:
                 rec.cost_divergence_pct = 0.0
                 rec.cost_divergence_alert = 'ok'
                 continue
             divergence = abs(
-                (rec.standard_price - rec.reference_cost) / rec.reference_cost * 100
+                (rec.standard_price - base_cost) / base_cost * 100
             )
             rec.cost_divergence_pct = divergence
             if divergence >= threshold_critical:
@@ -166,6 +167,15 @@ class ProductTemplate(models.Model):
                 rec.cost_divergence_alert = 'warning'
             else:
                 rec.cost_divergence_alert = 'ok'
+
+    def _get_divergence_base_cost(self) -> float:
+        """Costo contra el que se compara el AVCO en el semáforo de divergencia.
+
+        Hook: módulos que desglosan el costo (p. ej. reposición) lo sobreescriben
+        para comparar contra el neto bonificado.
+        """
+        self.ensure_one()
+        return self.reference_cost
 
     @api.depends_context('company')
     def _compute_cost_schedule_count(self) -> None:
