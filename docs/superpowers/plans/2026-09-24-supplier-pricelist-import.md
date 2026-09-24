@@ -10,13 +10,15 @@ aplicarlas con fecha de vigencia creando nuevas fichas `product.supplierinfo`.
 
 **Architecture:** Tres modelos persistentes (perfil de mapeo, importación, línea). La
 lectura de archivos vive en funciones puras (`tools/readers.py`); el cálculo de
-reposición reutiliza `compute_replacement_cost` del punto 1; la aplicación crea
-supplierinfos y deja que el módulo base cierre vigencias y registre historial.
+neto usa la regla de costo de Adhoc de cada ficha (`compute_rule`); la aplicación crea
+fichas nuevas y deja que `alpardata_replenishment_cost` cierre vigencias y registre el
+historial.
 
 **Tech Stack:** Odoo 19.0, `openpyxl` (incluido en los requirements de Odoo), `csv`.
 
 **Spec:** `docs/superpowers/specs/2026-09-24-supplier-pricelist-import-design.md`
-**Requisito previo:** punto 1 (`alpardata_purchase_replacement_cost`) mergeado en `19.0`.
+**Requisito previo:** punto 1 (`alpardata_replenishment_cost`, sobre Adhoc) mergeado en `19.0`.
+**Actualizado a Adhoc:** 2026-09-24. Reemplaza la versión sobre `reference_cost`.
 
 ---
 
@@ -27,6 +29,11 @@ supplierinfos y deja que el módulo base cierre vigencias y registre historial.
 - **Odoo 19:** `<list>`, `invisible="expr"`, `<chatter/>`, `<search>` sin
   `<group string>`, `res.groups` con `group_ids`, `product.supplierinfo.product_uom_id`.
 - Fuente de Odoo: `C:\Users\Santiago\Desktop\Odoo\odoo-19.0`.
+- **Addons path:** además de `enhancement-suite`, `AlparLabs/product` rama `19.0`
+  (Adhoc), igual que en el plan del punto 1.
+- **Modelo de datos del punto 1 (Adhoc):** la lista vive en `product.supplierinfo.price`;
+  el neto es `net_price` (lista con la regla `replenishment_cost_rule_id`, que puede venir
+  del proveedor); el costo del producto es `product.template.replenishment_cost`.
 - **Tests:**
 
   ```bash
@@ -76,13 +83,13 @@ from . import models
     'author': 'AlparData',
     'website': 'https://alpardata.com.ar',
     'category': 'Inventory/Purchase',
-    'depends': ['alpardata_purchase_replacement_cost'],
+    'license': 'AGPL-3',
+    'depends': ['alpardata_replenishment_cost'],
     'external_dependencies': {'python': ['openpyxl']},
     'data': [],  # la tarea 5 agrega seguridad, datos y vistas
     'installable': True,
     'application': False,
     'auto_install': False,
-    'license': 'LGPL-3',
 }
 ```
 
@@ -340,7 +347,6 @@ class SupplierPricelistImportProfile(models.Model):
     )
     col_code = fields.Char(string='Columna código', required=True)
     col_price = fields.Char(string='Columna precio', required=True)
-    col_cascade = fields.Char(string='Columna bonificaciones', help='Opcional.')
     price_includes_vat = fields.Boolean(string='El precio incluye IVA')
     vat_pct = fields.Float(string='IVA (%)', default=21.0)
 
@@ -376,10 +382,8 @@ class SupplierPricelistImportLine(models.Model):
     old_list_price = fields.Float(string='Lista anterior', digits='Product Price')
     new_list_price = fields.Float(string='Lista nueva', digits='Product Price')
     variation_pct = fields.Float(string='Variación (%)', digits=(16, 2))
-    old_cascade = fields.Char(string='Bonif. anterior')
-    new_cascade = fields.Char(string='Bonif. nueva')
-    old_replacement_cost = fields.Float(string='Reposición anterior', digits='Product Price')
-    new_replacement_cost = fields.Float(string='Reposición nueva', digits='Product Price')
+    old_net_price = fields.Float(string='Neto anterior', digits='Product Price')
+    new_net_price = fields.Float(string='Neto nuevo', digits='Product Price')
     status = fields.Selection(
         [
             ('change', 'Cambia'),
@@ -583,9 +587,13 @@ class ImportCommon(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.rule_10 = cls.env['product.replenishment_cost.rule'].create({
+            'name': 'Bonif 10 Test',
+            'item_ids': [(0, 0, {'name': 'b1', 'percentage_amount': -10.0})],
+        })
         cls.partner = cls.env['res.partner'].create({
             'name': 'Distribuidora Test',
-            'purchase_discount_cascade': '10',
+            'replenishment_cost_rule_id': cls.rule_10.id,
         })
         cls.categ = cls.env['product.category'].create({'name': 'Gaseosas Test'})
         cls.categ_child = cls.env['product.category'].create({
@@ -607,7 +615,10 @@ class ImportCommon(TransactionCase):
 
     @classmethod
     def _product(cls, name, categ, **vals):
-        return cls.env['product.product'].create({'name': name, 'categ_id': categ.id, **vals})
+        return cls.env['product.product'].create({
+            'name': name, 'categ_id': categ.id,
+            'replenishment_cost_type': 'supplier_price', **vals,
+        })
 
     @classmethod
     def _seller(cls, product, code, cost):
@@ -616,7 +627,6 @@ class ImportCommon(TransactionCase):
             'product_tmpl_id': product.product_tmpl_id.id,
             'product_code': code,
             'price': cost,
-            'reference_cost': cost,
         })
 
     def _file_import(self, rows, **vals):
@@ -673,9 +683,9 @@ class TestPreview(ImportCommon):
         self.assertEqual(line.old_list_price, 100.0)
         self.assertEqual(line.new_list_price, 110.0)
         self.assertAlmostEqual(line.variation_pct, 10.0)
-        # bonificación del proveedor 10 %
-        self.assertAlmostEqual(line.old_replacement_cost, 90.0)
-        self.assertAlmostEqual(line.new_replacement_cost, 99.0)
+        # regla del proveedor: bonificación 10 %
+        self.assertAlmostEqual(line.old_net_price, 90.0)
+        self.assertAlmostEqual(line.new_net_price, 99.0)
         self.assertTrue(line.to_apply)
 
     def test_match_by_barcode_and_default_code(self):
@@ -695,15 +705,15 @@ class TestPreview(ImportCommon):
         self.assertAlmostEqual(self._line(imp, 'A1').new_list_price, 100.0)
         self.assertEqual(self._line(imp, 'A1').status, 'unchanged')
 
-    def test_cascade_column(self):
-        self.profile.col_cascade = 'Bonif'
-        imp = self._file_import([['Código', 'Precio', 'Bonif'], ['A1', 100, '20']])
+    def test_own_rule_of_seller_used(self):
+        rule_20 = self.env['product.replenishment_cost.rule'].create({
+            'name': 'Bonif 20 Test',
+            'item_ids': [(0, 0, {'name': 'b1', 'percentage_amount': -20.0})],
+        })
+        self.s1.write({'use_own_rule': True, 'replenishment_cost_rule_id': rule_20.id})
+        imp = self._file_import([['Código', 'Precio'], ['A1', 110]])
         imp.action_preview()
-        line = self._line(imp, 'A1')
-        self.assertEqual(line.status, 'change')
-        self.assertEqual(line.old_cascade, '10')
-        self.assertEqual(line.new_cascade, '20')
-        self.assertAlmostEqual(line.new_replacement_cost, 80.0)
+        self.assertAlmostEqual(self._line(imp, 'A1').new_net_price, 88.0)
 
     def test_missing_column(self):
         imp = self._file_import([['Cod', 'Precio'], ['A1', 1]])
@@ -738,12 +748,6 @@ class TestPreview(ImportCommon):
 ```python
 from odoo.tools import float_compare
 
-from odoo.addons.alpardata_purchase_replacement_cost.tools import (
-    cascade_equivalent_pct,
-    compute_replacement_cost,
-    parse_discount_cascade,
-)
-
 from ..tools.readers import normalize_header, parse_number, read_csv, read_xlsx
 ```
 
@@ -764,28 +768,26 @@ y los métodos dentro de la clase:
         self.state = 'preview'
 
     def _seller_for(self, template):
-        return template.with_company(self.company_id)._get_reference_cost_seller(
-            partner=self.partner_id,
+        """Ficha vigente hoy del proveedor para el producto. Usa `_select_seller` del
+        core, que con `alpardata_replenishment_cost` respeta la jerarquía
+        sucursal → matriz → global. `quantity=None` no filtra por cantidad mínima."""
+        product = template.product_variant_ids[:1]
+        if not product:
+            return self.env['product.supplierinfo']
+        return product.with_company(self.company_id)._select_seller(
+            partner_id=self.partner_id,
+            quantity=None,
+            date=fields.Date.context_today(self),
         )
 
-    def _line_vals(self, seller, new_price, new_cascade=None, row_number=0, code=False) -> dict:
-        """Valores de una línea con proveedor encontrado y precio válido."""
-        old_price = seller.reference_cost
-        old_cascade = seller.effective_discount_cascade or False
-        cascade = old_cascade if new_cascade is None else (new_cascade or False)
+    def _line_vals(self, seller, new_price, row_number=0, code=False) -> dict:
+        """Valores de una línea con proveedor encontrado y precio válido. El neto
+        nuevo aplica la regla de costo de la ficha (propia o del proveedor)."""
+        old_price = seller.price
+        rule = seller.replenishment_cost_rule_id
         tmpl = seller.product_tmpl_id
-        _net, new_replacement = compute_replacement_cost(
-            new_price,
-            cascade_equivalent_pct(parse_discount_cascade(cascade)),
-            seller.effective_early_payment_pct,
-            seller.effective_freight_pct,
-            seller.effective_perception_pct,
-            tmpl.internal_tax_pct,
-        )
-        changed = (
-            float_compare(new_price, old_price, precision_digits=4) != 0
-            or (cascade or False) != old_cascade
-        )
+        new_net = rule.compute_rule(new_price, tmpl) if rule else new_price
+        changed = float_compare(new_price, old_price, precision_digits=4) != 0
         return {
             'import_id': self.id,
             'row_number': row_number,
@@ -795,10 +797,8 @@ y los métodos dentro de la clase:
             'old_list_price': old_price,
             'new_list_price': new_price,
             'variation_pct': ((new_price / old_price) - 1) * 100 if old_price else 0.0,
-            'old_cascade': old_cascade,
-            'new_cascade': cascade,
-            'old_replacement_cost': seller.replacement_cost,
-            'new_replacement_cost': new_replacement,
+            'old_net_price': seller.net_price,
+            'new_net_price': new_net,
             'status': 'change' if changed else 'unchanged',
             'to_apply': changed,
         }
@@ -818,7 +818,7 @@ y los métodos dentro de la clase:
             seller = self._seller_for(tmpl)
             if not seller:
                 continue
-            new_price = seller.reference_cost * (1 + self.percent / 100)
+            new_price = seller.price * (1 + self.percent / 100)
             vals_list.append(self._line_vals(seller, new_price, code=seller.product_code))
         return vals_list
 
@@ -856,12 +856,10 @@ y los métodos dentro de la clase:
         rows = self._read_file_rows()
         col_code = normalize_header(profile.col_code)
         col_price = normalize_header(profile.col_price)
-        col_cascade = normalize_header(profile.col_cascade) if profile.col_cascade else False
         headers = set(rows[0][1]) if rows else set()
         missing = [
             original for original, normalized in (
                 (profile.col_code, col_code), (profile.col_price, col_price),
-                (profile.col_cascade, col_cascade),
             ) if normalized and headers and normalized not in headers
         ]
         if missing:
@@ -892,29 +890,15 @@ y los métodos dentro de la clase:
                 continue
             if profile.price_includes_vat:
                 price = price / (1 + profile.vat_pct / 100)
-            new_cascade = None
-            if col_cascade:
-                raw_cascade = data.get(col_cascade)
-                new_cascade = str(raw_cascade).strip() if raw_cascade not in (None, '') else ''
-                if isinstance(raw_cascade, float) and raw_cascade.is_integer():
-                    new_cascade = str(int(raw_cascade))
-                try:
-                    parse_discount_cascade(new_cascade)
-                except ValueError as err:
-                    vals_list.append({**base, 'status': 'error', 'message': str(err)})
-                    continue
             template = self._find_template(code)
             seller = self._seller_for(template) if template else False
             if not seller:
                 vals_list.append({**base, 'status': 'not_found',
                                   'message': _('Producto o ficha del proveedor no encontrados')})
                 continue
-            vals_list.append(self._line_vals(seller, price, new_cascade, row_number, code))
+            vals_list.append(self._line_vals(seller, price, row_number, code))
         return vals_list
 ```
-
-> El test `test_cascade_column` compara `new_cascade == '20'`: la cascada del archivo
-> reemplaza a la vigente. Una celda vacía en esa columna significa "sin bonificación".
 
 - [ ] **Paso 5: correr** → `TestPreview` pasa.
 
@@ -954,10 +938,11 @@ class TestApply(ImportCommon):
         self._line(imp, 'A2').to_apply = False
         imp.action_apply()
         self.assertEqual(imp.state, 'done')
-        self.assertEqual(self.p1.product_tmpl_id.reference_cost, 110.0)
-        self.assertEqual(self.p2.product_tmpl_id.reference_cost, 200.0)
+        # costo de reposición = lista con la regla del proveedor (−10 %)
+        self.assertAlmostEqual(self.p1.product_tmpl_id.replenishment_cost, 99.0)
+        self.assertAlmostEqual(self.p2.product_tmpl_id.replenishment_cost, 180.0)
         self.assertEqual(self.s1.date_end, fields.Date.today() - timedelta(days=1))
-        history = self.env['product.supplierinfo.cost.history'].search([
+        history = self.env['product.supplierinfo.price.history'].search([
             ('product_tmpl_id', '=', self.p1.product_tmpl_id.id),
         ], order='id desc', limit=1)
         self.assertIn(imp.name, history.change_reason)
@@ -967,27 +952,25 @@ class TestApply(ImportCommon):
         imp = self._file_import([['Código', 'Precio'], ['A1', 110]], effective_date=future)
         imp.action_preview()
         imp.action_apply()
-        self.assertEqual(self.p1.product_tmpl_id.reference_cost, 100.0)
+        self.assertAlmostEqual(self.p1.product_tmpl_id.replenishment_cost, 90.0)
         new_seller = self.p1.product_tmpl_id.seller_ids.filtered(lambda s: s.date_start == future)
-        self.assertEqual(new_seller.reference_cost, 110.0)
+        self.assertEqual(new_seller.price, 110.0)
 
-    def test_apply_cascade_from_file(self):
-        self.profile.col_cascade = 'Bonif'
-        imp = self._file_import([['Código', 'Precio', 'Bonif'], ['A1', 100, '20']])
-        imp.action_preview()
-        imp.action_apply()
-        tmpl = self.p1.product_tmpl_id
-        seller = tmpl._get_reference_cost_seller()
-        self.assertTrue(seller.use_own_conditions)
-        self.assertEqual(seller.own_discount_cascade, '20')
-        self.assertAlmostEqual(tmpl.replacement_cost, 80.0)
-
-    def test_new_seller_keeps_code(self):
+    def test_new_seller_keeps_code_and_own_rule(self):
+        rule_20 = self.env['product.replenishment_cost.rule'].create({
+            'name': 'Bonif 20 Test',
+            'item_ids': [(0, 0, {'name': 'b1', 'percentage_amount': -20.0})],
+        })
+        self.s1.write({'use_own_rule': True, 'replenishment_cost_rule_id': rule_20.id})
         imp = self._file_import([['Código', 'Precio'], ['A1', 110]])
         imp.action_preview()
         imp.action_apply()
-        seller = self.p1.product_tmpl_id._get_reference_cost_seller()
+        seller = imp._seller_for(self.p1.product_tmpl_id)
+        self.assertNotEqual(seller, self.s1)
         self.assertEqual(seller.product_code, 'A1')
+        self.assertTrue(seller.use_own_rule)
+        self.assertEqual(seller.replenishment_cost_rule_id, rule_20)
+        self.assertAlmostEqual(self.p1.product_tmpl_id.replenishment_cost, 88.0)
 
     def test_buyer_cannot_apply(self):
         buyer = new_test_user(self.env, login='buyer_spl', groups='purchase.group_purchase_user')
@@ -1016,8 +999,7 @@ class TestApply(ImportCommon):
     _COPIED_SELLER_FIELDS = (
         'partner_id', 'product_tmpl_id', 'product_id', 'company_id', 'product_code',
         'product_name', 'product_uom_id', 'currency_id', 'min_qty', 'sequence', 'delay',
-        'price', 'discount', 'use_own_conditions', 'own_discount_cascade',
-        'own_early_payment_pct', 'own_freight_pct', 'own_perception_pct',
+        'discount', 'use_own_rule', 'replenishment_cost_rule_id',
     )
 
     def _new_seller_vals(self, line) -> dict:
@@ -1027,22 +1009,10 @@ class TestApply(ImportCommon):
             value = seller[name]
             vals[name] = value.id if isinstance(value, models.BaseModel) else value
         vals.update({
-            'reference_cost': line.new_list_price,
+            'price': line.new_list_price,
             'date_start': self.effective_date,
             'date_end': False,
         })
-        if line.new_cascade != line.old_cascade:
-            vals.update({
-                'use_own_conditions': True,
-                'own_discount_cascade': line.new_cascade or False,
-            })
-            if not seller.use_own_conditions:
-                # Al pasar a condiciones propias se conservan las del proveedor
-                vals.update({
-                    'own_early_payment_pct': seller.effective_early_payment_pct,
-                    'own_freight_pct': seller.effective_freight_pct,
-                    'own_perception_pct': seller.effective_perception_pct,
-                })
         return vals
 
     def action_apply(self) -> None:
@@ -1079,8 +1049,10 @@ class TestApply(ImportCommon):
         self.filtered(lambda r: r.state == 'cancelled').write({'state': 'draft'})
 ```
 
-> `create` en lote dispara el `create` del módulo base, que por cada registro registra el
-> historial y cierra la vigencia anterior (`_close_previous_records`). No reimplementarlo.
+> `create` en lote dispara el `create` de `alpardata_replenishment_cost`, que por cada
+> ficha registra el historial (con el motivo de `_change_reason`) y cierra la vigencia
+> anterior (`_close_previous_records`). No reimplementarlo. `use_own_rule` se copia antes
+> que `replenishment_cost_rule_id` para que el computado respete la regla propia.
 > El supplierinfo se crea sin `sudo`: el manager tiene permisos; así las reglas de acceso
 > se respetan.
 
@@ -1182,7 +1154,6 @@ Descomentar `res_partner` en `models/__init__.py`.
                             <field name="match_by"/>
                             <field name="col_code" placeholder="Código"/>
                             <field name="col_price" placeholder="Precio"/>
-                            <field name="col_cascade" placeholder="Bonificación"/>
                         </group>
                         <group string="Precio">
                             <field name="price_includes_vat"/>
@@ -1295,10 +1266,8 @@ Descomentar `res_partner` en `models/__init__.py`.
                                     <field name="variation_pct" readonly="1"
                                            decoration-danger="variation_pct &gt; 0"
                                            decoration-success="variation_pct &lt; 0"/>
-                                    <field name="old_cascade" optional="hide" readonly="1"/>
-                                    <field name="new_cascade" optional="hide" readonly="1"/>
-                                    <field name="old_replacement_cost" optional="show" readonly="1"/>
-                                    <field name="new_replacement_cost" optional="show" readonly="1"/>
+                                    <field name="old_net_price" optional="show" readonly="1"/>
+                                    <field name="new_net_price" optional="show" readonly="1"/>
                                     <field name="status" readonly="1"/>
                                     <field name="message" optional="show" readonly="1"/>
                                 </list>

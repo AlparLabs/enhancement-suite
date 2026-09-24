@@ -2,30 +2,30 @@
 
 **Fecha:** 2026-09-24
 **Módulo nuevo:** `alpardata_supplier_pricelist_import`
-**Depende de:** `alpardata_purchase_replacement_cost` (punto 1)
+**Depende de:** `alpardata_replenishment_cost` (punto 1, sobre Adhoc)
+**Actualizado a Adhoc:** 2026-09-24 — la lista vive en `product.supplierinfo.price` y el
+neto sale de la regla de costo de Adhoc; se quitó la columna de bonificaciones por línea.
 **Rama objetivo:** `19.0`
-**Roadmap:** punto 2 de 5 (ver `2026-09-24-commercial-cost-roadmap.md`)
+**Roadmap:** punto 2 (ver `2026-09-24-commercial-cost-roadmap.md`)
 
 ## Problema
 
-El costo de referencia solo sirve si está al día. Hoy se carga a mano, supplierinfo por
-supplierinfo, o con `product.cost.schedule` producto por producto. En la práctica los
-proveedores mandan:
+El costo de reposición sólo sirve si las listas de proveedores están al día. Hoy se cargan
+a mano, ficha por ficha. En la práctica los proveedores mandan:
 
 - Un **Excel/CSV** con la lista completa (código, descripción, precio), con formato
   propio de cada proveedor.
 - Un **aviso de aumento porcentual** ("+8% en toda la línea X desde el 1/10").
 
-El wizard de actualización masiva (`product.reference.cost.mass.update`) se eliminó en
-`56816c9` para alinear 19 con 18. Este módulo lo reemplaza con un flujo **auditable**
-(queda registro de cada importación) y con **vista previa** antes de aplicar.
+Este módulo lo resuelve con un flujo **auditable** (queda registro de cada importación)
+y con **vista previa** antes de aplicar.
 
 ## Objetivo
 
-Importar una lista de proveedor (archivo o porcentaje), ver el impacto (costo viejo,
-nuevo, variación, reposición resultante) y aplicarla con fecha de vigencia, creando los
-`product.supplierinfo` nuevos que el módulo base ya sabe manejar (cierre de vigencias,
-historial).
+Importar una lista de proveedor (archivo o porcentaje), ver el impacto (lista vieja y
+nueva, variación, neto con la regla de costo) y aplicarla con fecha de vigencia, creando
+fichas `product.supplierinfo` nuevas; `alpardata_replenishment_cost` cierra la vigencia
+anterior y registra el historial.
 
 ## Modelo de datos
 
@@ -45,7 +45,6 @@ historial).
 | `match_by` | Selection `supplier_code`/`barcode`/`default_code` | default `supplier_code` |
 | `col_code` | Char | nombre de columna del código |
 | `col_price` | Char | nombre de columna del precio de lista |
-| `col_cascade` | Char | opcional: columna con bonificaciones por línea |
 | `price_includes_vat` | Boolean | la lista viene con IVA |
 | `vat_pct` | Float | default 21; se usa si `price_includes_vat` |
 
@@ -81,8 +80,7 @@ Los encabezados se comparan normalizados (minúsculas, sin acentos, espacios col
 | `product_tmpl_id` | M2O |
 | `old_list_price`, `new_list_price` | Float (UoM y moneda del supplierinfo) |
 | `variation_pct` | Float |
-| `old_cascade`, `new_cascade` | Char |
-| `old_replacement_cost`, `new_replacement_cost` | Float |
+| `old_net_price`, `new_net_price` | Float (lista con la regla de costo de la ficha) |
 | `status` | Selection `change`/`unchanged`/`not_found`/`error` |
 | `message` | Char |
 | `to_apply` | Boolean (default True si `change`) |
@@ -93,36 +91,35 @@ Los encabezados se comparan normalizados (minúsculas, sin acentos, espacios col
    fecha de vigencia.
 2. **Generar vista previa** (`action_preview`): borra líneas previas y las regenera.
    - Modo archivo: lee con `openpyxl` (xlsx) o `csv` (stdlib). Por cada fila con código:
-     busca el supplierinfo vigente del proveedor para el producto con
-     `product_tmpl._get_reference_cost_seller(partner=partner)` bajo
-     `with_company(import.company_id)`. El producto se encuentra por:
+     busca la ficha vigente hoy del proveedor para el producto con
+     `product._select_seller(partner_id=partner, quantity=None, date=hoy)` bajo
+     `with_company(import.company_id)` (respeta la jerarquía de empresas del punto 1).
+     El producto se encuentra por:
      - `supplier_code`: `product.supplierinfo.product_code` del proveedor;
      - `barcode` / `default_code`: en `product.product`.
      Precio: si `price_includes_vat`, se divide por `(1 + vat_pct/100)`.
    - Modo porcentaje: todos los supplierinfo vigentes del proveedor (mismo resolver) cuyos
      productos cumplan los filtros; `new = old × (1 + percent/100)`.
-   - `new_replacement_cost` se calcula con la misma fórmula del punto 1 (función pública
-     del módulo 1, sin duplicar lógica), con la cascada nueva si viene en el archivo.
+   - `new_net_price` = `rule.compute_rule(nuevo precio)` con la regla de la ficha (propia
+     o del proveedor); sin regla, igual al precio.
    - Filas sin código se ignoran; código sin producto → `not_found`; precio no numérico
-     o ≤ 0 → `error`; mismo precio y misma cascada → `unchanged`.
+     o ≤ 0 → `error`; mismo precio → `unchanged`.
    - Estado → `preview`.
 3. **Revisar**: lista de líneas con filtros por estado y variación; el usuario puede
    destildar `to_apply`.
 4. **Aplicar** (`action_apply`): por cada línea `change` con `to_apply`:
    crea un `product.supplierinfo` copiando el vigente (`partner_id`, `product_tmpl_id`,
    `product_id`, `company_id`, `product_code`, `product_name`, `product_uom_id`,
-   `currency_id`, `min_qty`, `sequence`, `delay`, `price`, `use_own_conditions` y
-   `own_*`) con `reference_cost = new_list_price`, `date_start = effective_date` y, si
-   hay cascada nueva, `use_own_conditions = True` + `own_discount_cascade`. Contexto
-   `_change_reason = 'Importación <name>'`. El `create` del base cierra la vigencia
-   anterior y registra el historial.
+   `currency_id`, `min_qty`, `sequence`, `delay`, `discount`, `use_own_rule`,
+   `replenishment_cost_rule_id`) con `price = new_list_price` y
+   `date_start = effective_date`. Contexto `_change_reason = 'Importación <name>'`. El
+   `create` de `alpardata_replenishment_cost` cierra la vigencia anterior y registra el
+   historial.
    Estado → `done`, `message_post` con el resumen.
 5. **Cancelar**: desde `draft`/`preview`.
 
-Fecha de vigencia futura: funciona igual (el base ya maneja supplierinfos con
-`date_start` futuro sin romper el vigente). **No** se usa `product.cost.schedule`,
-porque ese modelo aplica siempre al proveedor principal y la importación es de un
-proveedor puntual.
+Fecha de vigencia futura: funciona igual (el costo del producto sólo toma fichas vigentes
+hoy, y el cierre de vigencias no toca fichas futuras).
 
 ## Errores y límites
 
@@ -155,8 +152,9 @@ proveedor puntual.
 4. Precio con IVA.
 5. Modo porcentaje con filtro por categoría (incluye hijas) y etiqueta.
 6. Aplicar: nuevo supplierinfo con `date_start`, vigencia anterior cerrada, historial
-   con motivo, `to_apply = False` respetado, cascada del archivo → `own_*`.
-7. Fecha futura: el vigente de hoy no cambia; al llegar la fecha cambia `reference_cost`.
+   con motivo, `to_apply = False` respetado, regla propia de la ficha conservada.
+7. Fecha futura: el costo de reposición de hoy no cambia; la ficha nueva queda con esa
+   fecha de inicio.
 8. Usuario no manager no puede aplicar.
 
 Los archivos de prueba se generan en el test con `openpyxl` / `io.StringIO`, no se
@@ -170,3 +168,5 @@ versionan binarios.
 3. La importación es **persistente** (auditoría), no un wizard transitorio.
 4. Aplicar requiere **manager de compras**.
 5. Filtros del modo porcentaje: categoría y etiqueta (Odoo core no tiene "marca").
+6. Sin columna de bonificaciones por línea: las bonificaciones viven en la regla de
+   costo del proveedor (punto 1).
