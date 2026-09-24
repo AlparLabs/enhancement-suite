@@ -12,8 +12,9 @@ al proveedor (sell-out).
 **Architecture:** Un modelo `supplier.promotion` con líneas por producto. Al confirmar,
 crea reglas de lista de precios con fechas (una por producto y lista), marcadas con
 `supplier_promotion_line_id`; con el contexto `skip_supplier_promotions` esas reglas se
-ignoran para obtener el precio regular. Las órdenes de compra aplican el precio especial en
-los mismos tres caminos que la cascada del punto 1. El control de góndola del punto 3
+ignoran para obtener el precio regular. Las órdenes de compra aplican el precio especial
+después del precio neto de Adhoc, en los tres caminos (alta manual, catálogo,
+reabastecimiento). El control de góndola del punto 3
 suma el tipo de etiqueta (regular/promo) y la etiqueta 3x8 reutiliza su descuento manual
 para mostrar "antes / ahora". La liquidación suma unidades vendidas en POS y ventas con
 las listas de la promo.
@@ -22,7 +23,10 @@ las listas de la promo.
 
 **Spec:** `docs/superpowers/specs/2026-09-24-supplier-promotion-design.md`
 **Requisitos previos:** puntos 1 y 3 mergeados en `19.0`
-(`alpardata_purchase_replacement_cost`, `alpardata_price_change_labels`).
+(`alpardata_replenishment_cost` sobre Adhoc, `alpardata_price_change_labels`).
+**Actualizado a Adhoc:** 2026-09-24. En la OC, Adhoc pone `price_unit = net_price` (lista
+con la regla del proveedor, sin descuento de línea); el precio especial de la promo pisa
+ese neto.
 
 ---
 
@@ -33,6 +37,7 @@ las listas de la promo.
 - **Odoo 19:** `<list>`, `invisible="expr"`, `<chatter/>`, `<search>` sin
   `<group string>`, `models.Constraint`, `_read_group(domain, groupby, aggregates)`
   devuelve tuplas.
+- **Addons path:** además de `enhancement-suite`, `AlparLabs/product` rama `19.0` (Adhoc).
 - Línea de OC: fijar precio sólo con `line._reset_price_unit(price)`; precio manual =
   `technical_price_unit != price_unit`.
 - Fuente de Odoo: `C:\Users\Santiago\Desktop\Odoo\odoo-19.0`. Métodos que se extienden:
@@ -150,8 +155,12 @@ class PromotionCommon(TransactionCase):
         super().setUpClass()
         cls.company = cls.env.company
         cls.today = fields.Date.today()
+        cls.rule_10 = cls.env['product.replenishment_cost.rule'].create({
+            'name': 'Bonif 10 Test',
+            'item_ids': [(0, 0, {'name': 'b1', 'percentage_amount': -10.0})],
+        })
         cls.vendor = cls.env['res.partner'].create({
-            'name': 'Coca-Cola Test', 'purchase_discount_cascade': '10',
+            'name': 'Coca-Cola Test', 'replenishment_cost_rule_id': cls.rule_10.id,
         })
         cls.pricelist = cls.env['product.pricelist'].create({
             'name': 'Góndola Test', 'currency_id': cls.company.currency_id.id,
@@ -163,13 +172,14 @@ class PromotionCommon(TransactionCase):
             'standard_price': 1000.0,
             'taxes_id': [(5, 0, 0)],
             'sale_ok': True,
+            'replenishment_cost_type': 'supplier_price',
         })
         cls.template = cls.product.product_tmpl_id
+        # lista 1200, neto con la regla del proveedor (−10 %) = 1080
         cls.seller = cls.env['product.supplierinfo'].create({
             'partner_id': cls.vendor.id,
             'product_tmpl_id': cls.template.id,
             'price': 1200.0,
-            'reference_cost': 1200.0,
         })
 
     def _promotion(self, start_offset=0, days=7, lines=None, **vals):
@@ -232,10 +242,10 @@ class TestPromotionPricing(PromotionCommon):
         self.assertEqual(self._price(inside, regular), 2399.0)
         self.assertEqual(promo.line_ids.regular_price, 2399.0)
 
-    def test_beats_replacement_formula(self):
+    def test_beats_global_formula(self):
         self.pricelist.write({'item_ids': [(0, 0, {
             'applied_on': '3_global', 'compute_price': 'formula',
-            'base': 'replacement_cost', 'price_markup': 50.0,
+            'base': 'standard_price', 'price_markup': 50.0,
         })]})
         promo = self._promotion()
         promo.action_confirm()
@@ -777,20 +787,18 @@ class TestSellIn(PromotionCommon):
         _po, line = self._po_line()
         self.assertEqual(line.price_unit, 900.0)
         self.assertEqual(line.discount, 0.0)
-        self.assertFalse(line.discount_cascade)
         self.assertTrue(line.supplier_promotion_line_id)
 
-    def test_outside_dates_keeps_list_and_cascade(self):
+    def test_outside_dates_keeps_adhoc_net_price(self):
         self._promotion(start_offset=10, sell_in=True).action_confirm()
         _po, line = self._po_line()
-        self.assertEqual(line.price_unit, 1200.0)
-        self.assertAlmostEqual(line.discount, 10.0, places=2)
+        self.assertAlmostEqual(line.price_unit, 1080.0, places=2)
         self.assertFalse(line.supplier_promotion_line_id)
 
     def test_without_sell_in_ignored(self):
         self._promotion(sell_in=False).action_confirm()
         _po, line = self._po_line()
-        self.assertEqual(line.price_unit, 1200.0)
+        self.assertAlmostEqual(line.price_unit, 1080.0, places=2)
 
     def test_manual_price_respected(self):
         self._promotion(sell_in=True).action_confirm()
@@ -807,7 +815,6 @@ class TestSellIn(PromotionCommon):
         )
         self.assertEqual(vals['price_unit'], 900.0)
         self.assertEqual(vals['discount'], 0.0)
-        self.assertFalse(vals['discount_cascade'])
 
     def test_catalog(self):
         self._promotion(sell_in=True).action_confirm()
@@ -815,9 +822,9 @@ class TestSellIn(PromotionCommon):
         self.assertEqual(po._get_product_price_and_data(self.product)['price'], 900.0)
         self.assertEqual(po._update_order_line_info(self.product.id, 1.0), 900.0)
 
-    def test_replacement_cost_untouched(self):
+    def test_replenishment_cost_untouched(self):
         self._promotion(sell_in=True).action_confirm()
-        self.assertAlmostEqual(self.template.replacement_cost, 1080.0, places=2)
+        self.assertAlmostEqual(self.template.replenishment_cost, 1080.0, places=2)
 ```
 
 - [ ] **Paso 2: correr** → falla. Descomentar `test_purchase`.
@@ -839,7 +846,7 @@ class PurchaseOrderLine(models.Model):
 
     def _apply_supplier_promotion(self) -> None:
         """Precio de compra especial de una promo sell-in vigente a la fecha de la
-        orden. Pisa la cascada del punto 1 (el precio especial ya es neto). No
+        orden. Pisa el neto que pone Adhoc (el precio especial ya es neto). No
         toca precios puestos a mano ni líneas facturadas."""
         Promotion = self.env['supplier.promotion.line']
         for line in self:
@@ -859,7 +866,6 @@ class PurchaseOrderLine(models.Model):
                 line.product_uom_id, order.currency_id, line.company_id, when,
             ))
             line.discount = 0.0
-            line.discount_cascade = False
             line.supplier_promotion_line_id = promo_line
 
     def _compute_price_unit_and_date_planned_and_name(self):
@@ -881,7 +887,6 @@ class PurchaseOrderLine(models.Model):
             vals.update({
                 'price_unit': promo_line._purchase_price_in(uom, po.currency_id, company_id, when),
                 'discount': 0.0,
-                'discount_cascade': False,
                 'supplier_promotion_line_id': promo_line.id,
             })
         return vals
@@ -928,7 +933,7 @@ class PurchaseOrder(models.Model):
 - [ ] **Paso 5: descomentar** `purchase_order_line` y `purchase_order` en `models/__init__.py`.
 
 - [ ] **Paso 6: correr** → `TestSellIn` pasa. Correr también los tests de
-`alpardata_purchase_replacement_cost` (no deben cambiar).
+`alpardata_replenishment_cost` y `product_replenishment_cost` (no deben cambiar).
 
 - [ ] **Paso 7: commit**
 
@@ -1202,7 +1207,7 @@ class ProductPriceWatch(models.Model):
                 rec.label_pending = True
 
     @api.depends('shelf_price_untaxed', 'replacement_cost',
-                 'product_tmpl_id.target_markup_pct', 'company_id.markup_tolerance_pct',
+                 'target_markup_pct', 'company_id.markup_tolerance_pct',
                  'promotion_line_id')
     def _compute_markup(self) -> None:
         super()._compute_markup()
@@ -1502,8 +1507,8 @@ git commit -m "feat(supplier_promotion): etiquetas de promoción y cola de gónd
 ```
 
 > `force_save="1"` es obligatorio: el campo es readonly y lo pone el onchange. Sin eso el
-> cliente web no lo envía al guardar (mismo problema que tuvo `discount_cascade` en el
-> punto 1).
+> cliente web no lo envía al guardar (mismo problema que tuvo un campo readonly de la
+> OC en la primera versión del punto 1).
 
 - [ ] **Paso 3: `views/product_price_watch_views.xml`**
 

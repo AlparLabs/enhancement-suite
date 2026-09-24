@@ -6,6 +6,7 @@
 `product_label_3x8`), `sale`, `point_of_sale`
 **Rama objetivo:** `19.0`
 **Roadmap:** punto 6 (ver `2026-09-24-commercial-cost-roadmap.md`)
+**Actualizado a Adhoc:** 2026-09-24 — en la OC el precio base es el neto de Adhoc.
 
 ## Problema
 
@@ -123,8 +124,8 @@ En las órdenes de compra del proveedor de la promo (`commercial_partner_id`), c
 `date_order` dentro de las fechas y promo confirmada con `sell_in`:
 
 - `price_unit` = `purchase_price` convertido a la UoM de la línea y a la moneda de la
-  orden; `discount = 0`; `discount_cascade = False` (el precio especial ya es neto).
-- Se aplica en los mismos tres caminos que la cascada del punto 1: alta manual (compute),
+  orden; `discount = 0` (el precio especial ya es neto y pisa el neto de Adhoc).
+- Se aplica después del cálculo de Adhoc, en los tres caminos: alta manual (compute),
   catálogo (`_update_order_line_info`) y reabastecimiento (`_prepare_purchase_order_line`).
 - Precio puesto a mano → no se toca.
 
@@ -190,7 +191,8 @@ línea queda para una segunda etapa, si hace falta.
 3. `skip_supplier_promotions` devuelve el precio regular; `regular_price` guardado.
 4. Validaciones de confirmación (sin líneas, sell-in sin precio, superposición).
 5. Sell-in: línea de OC dentro de las fechas toma el precio especial sin descuento; fuera
-   de las fechas, lista + cascada; precio manual respetado; reabastecimiento.
+   de las fechas, neto de Adhoc (lista con la regla del proveedor); precio manual
+   respetado; reabastecimiento.
 6. Liquidación: ventas (pedido confirmado con la lista de la promo cuenta; con otra lista
    no); POS con venta y devolución.
 7. Reintegro `fixed` y `difference`.
@@ -208,6 +210,7 @@ línea queda para una segunda etapa, si hace falta.
    dentro de las fechas (POS y ventas). Ventas con otras listas (p. ej. mayoristas) no
    cuentan.
 3. `difference` usa los precios tal como están cargados (con o sin IVA, según el producto).
-4. El precio de compra especial es **neto**: pisa la cascada del punto 1.
+4. El precio de compra especial es **neto**: pisa el neto de Adhoc (lista con la regla
+   del proveedor).
 5. No se modifica el margen del punto 5.
 6. Fechas completas (día entero) en la zona horaria de la empresa; sin horarios.
