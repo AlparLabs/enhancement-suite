@@ -73,3 +73,14 @@ class ProductTemplate(models.Model):
             )
             tmpl.net_purchase_cost = net
             tmpl.replacement_cost = replacement
+
+    def _get_divergence_base_cost(self) -> float:
+        """El AVCO sale de facturas ya bonificadas: se compara contra el neto
+        bonificado, no contra la lista."""
+        self.ensure_one()
+        return self.net_purchase_cost or super()._get_divergence_base_cost()
+
+    @api.depends('standard_price', 'reference_cost', 'net_purchase_cost')
+    def _compute_cost_divergence(self) -> None:
+        return super()._compute_cost_divergence()
+
