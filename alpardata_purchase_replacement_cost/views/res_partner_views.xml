@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_commercial_conditions" model="ir.ui.view">
+        <field name="name">res.partner.form.commercial.conditions</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="purchase.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='purchase']" position="after">
+                <group name="commercial_conditions" string="Condiciones comerciales"
+                       groups="purchase.group_purchase_user">
+                    <field name="can_edit_commercial_conditions" invisible="1"/>
+                    <field name="purchase_discount_cascade" placeholder="10+5+3"
+                           readonly="not can_edit_commercial_conditions"/>
+                    <field name="purchase_early_payment_pct"
+                           readonly="not can_edit_commercial_conditions"/>
+                    <field name="purchase_freight_pct"
+                           readonly="not can_edit_commercial_conditions"/>
+                    <field name="purchase_perception_pct"
+                           readonly="not can_edit_commercial_conditions"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

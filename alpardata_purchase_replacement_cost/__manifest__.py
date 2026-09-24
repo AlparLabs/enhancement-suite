@@ -19,7 +19,13 @@
     'website': 'https://alpardata.com.ar',
     'category': 'Inventory/Purchase',
     'depends': ['alpardata_purchase_reference_cost'],
-    'data': [],  # la tarea 11 agrega las vistas
+    'data': [
+        'views/res_partner_views.xml',
+        'views/product_category_views.xml',
+        'views/product_supplierinfo_views.xml',
+        'views/product_template_views.xml',
+        'views/purchase_order_views.xml',
+    ],
     'installable': True,
     'application': False,
     'auto_install': False,

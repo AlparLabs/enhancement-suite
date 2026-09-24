@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_category_form_internal_tax" model="ir.ui.view">
+        <field name="name">product.category.form.internal.tax</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='first']" position="inside">
+                <field name="can_edit_commercial_conditions" invisible="1"/>
+                <field name="internal_tax_pct"
+                       readonly="not can_edit_commercial_conditions"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

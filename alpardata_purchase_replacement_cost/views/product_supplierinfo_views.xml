@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_supplierinfo_form_replacement_cost" model="ir.ui.view">
+        <field name="name">product.supplierinfo.form.replacement.cost</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="product.product_supplierinfo_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="after">
+                <group name="replacement_cost" string="Costo de reposición"
+                       groups="purchase.group_purchase_user">
+                    <group>
+                        <field name="can_edit_commercial_conditions" invisible="1"/>
+                        <field name="use_own_conditions"
+                               readonly="not can_edit_commercial_conditions"/>
+                        <field name="own_discount_cascade" placeholder="10+5+3"
+                               invisible="not use_own_conditions"
+                               readonly="not can_edit_commercial_conditions"/>
+                        <field name="own_early_payment_pct" invisible="not use_own_conditions"
+                               readonly="not can_edit_commercial_conditions"/>
+                        <field name="own_freight_pct" invisible="not use_own_conditions"
+                               readonly="not can_edit_commercial_conditions"/>
+                        <field name="own_perception_pct" invisible="not use_own_conditions"
+                               readonly="not can_edit_commercial_conditions"/>
+                        <field name="effective_discount_cascade" invisible="use_own_conditions"/>
+                        <field name="effective_early_payment_pct" invisible="use_own_conditions"/>
+                        <field name="effective_freight_pct" invisible="use_own_conditions"/>
+                        <field name="effective_perception_pct" invisible="use_own_conditions"/>
+                    </group>
+                    <group>
+                        <field name="discount_equivalent_pct"/>
+                        <field name="replacement_cost"/>
+                        <field name="replacement_cost_breakdown" colspan="2" nolabel="1"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_supplierinfo_list_replacement_cost" model="ir.ui.view">
+        <field name="name">product.supplierinfo.list.replacement.cost</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="purchase.product_supplierinfo_tree_view2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='price']" position="after">
+                <field name="effective_discount_cascade" string="Bonif." optional="show"/>
+                <field name="discount_equivalent_pct" string="Bonif. eq. %" optional="hide"/>
+                <field name="replacement_cost" string="Reposición" optional="show"
+                       groups="purchase.group_purchase_manager"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
