@@ -7,7 +7,11 @@
     'category': 'Inventory/Purchase',
     'depends': ['alpardata_purchase_replacement_cost'],
     'external_dependencies': {'python': ['openpyxl']},
-    'data': [],  # la tarea 5 agrega seguridad, datos y vistas
+    'data': [
+        'security/security.xml',
+        'security/ir.model.access.csv',
+        'data/ir_sequence.xml',
+    ],
     'installable': True,
     'application': False,
     'auto_install': False,

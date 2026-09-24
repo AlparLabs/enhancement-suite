@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_spl_profile_company" model="ir.rule">
+        <field name="name">Perfil de lista de proveedor: multi-empresa</field>
+        <field name="model_id" ref="model_supplier_pricelist_import_profile"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_spl_import_company" model="ir.rule">
+        <field name="name">Importación de lista de proveedor: multi-empresa</field>
+        <field name="model_id" ref="model_supplier_pricelist_import"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_spl_line_company" model="ir.rule">
+        <field name="name">Línea de importación: multi-empresa</field>
+        <field name="model_id" ref="model_supplier_pricelist_import_line"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

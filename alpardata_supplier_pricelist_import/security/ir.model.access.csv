@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_spl_profile_user,supplier.pricelist.import.profile.user,model_supplier_pricelist_import_profile,purchase.group_purchase_user,1,0,0,0
+access_spl_profile_manager,supplier.pricelist.import.profile.manager,model_supplier_pricelist_import_profile,purchase.group_purchase_manager,1,1,1,1
+access_spl_import_user,supplier.pricelist.import.user,model_supplier_pricelist_import,purchase.group_purchase_user,1,1,1,0
+access_spl_import_manager,supplier.pricelist.import.manager,model_supplier_pricelist_import,purchase.group_purchase_manager,1,1,1,1
+access_spl_line_user,supplier.pricelist.import.line.user,model_supplier_pricelist_import_line,purchase.group_purchase_user,1,1,1,1
