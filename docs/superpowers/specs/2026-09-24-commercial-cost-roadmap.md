@@ -9,7 +9,7 @@ extendido por `alpardata_replenishment_cost`. Reemplaza al módulo propio
 
 | # | Tema | Módulo | Spec | Plan | Depende de |
 |---|---|---|---|---|---|
-| 1 | Costo de reposición sobre Adhoc + migración de Broda | `alpardata_replenishment_cost`, `alpardata_reference_cost_migration` | `2026-09-24-adhoc-replenishment-cost-design.md` | pendiente | Adhoc |
+| 1 | Costo de reposición sobre Adhoc + migración de Broda | `alpardata_replenishment_cost`, `alpardata_reference_cost_migration` | `2026-09-24-adhoc-replenishment-cost-design.md` | `plans/2026-09-24-adhoc-replenishment-cost.md` | Adhoc |
 | 2 | Importador de listas de proveedores | `alpardata_supplier_pricelist_import` | `2026-09-24-supplier-pricelist-import-design.md` ⚠ | `plans/2026-09-24-supplier-pricelist-import.md` ⚠ | 1 |
 | 3 | Margen erosionado y etiquetas pendientes | `alpardata_price_change_labels` | `2026-09-24-price-change-labels-design.md` ⚠ | `plans/2026-09-24-price-change-labels.md` ⚠ | 1, `product_label_3x8` |
 | 4 | Cotización comercial (USD) — **opcional** | `alpardata_commercial_currency_rate` | `2026-09-24-commercial-currency-rate-design.md` ⚠ | `plans/2026-09-24-commercial-currency-rate.md` ⚠ | 1 |

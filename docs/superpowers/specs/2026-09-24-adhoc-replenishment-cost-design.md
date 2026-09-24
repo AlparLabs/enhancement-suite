@@ -76,8 +76,9 @@ Se abandonan: programación de costos, semáforo de divergencia AVCO, base de li
 - Candidatas: `seller_ids._get_filtered_supplier(self.env.company, False)` con
   `date_start <= hoy <= date_end` (fechas vacías = sin límite) y `net_price > 0`.
 - Orden según `replenishment_cost_type`:
-  - `supplier_price`: `sequence` asc, luego `date_start` desc (sin fecha al final),
-    luego `id` desc.
+  - `supplier_price`: empresa más específica primero (sucursal, matriz, global — igual
+    que el módulo actual, para que la verificación de la migración dé 0 diferencias),
+    luego `sequence` asc, luego `date_start` desc (sin fecha al final), luego `id` asc.
   - `last_supplier_price`: `last_date_price_updated` desc.
 - `supplier_price` = `net_price` de la elegida **convertido de `product_uom_id` de la
   ficha a `uom_id` del producto**; `supplier_currency_id` = moneda de la ficha.
