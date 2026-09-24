@@ -44,7 +44,7 @@ class AccountJournal(models.Model):
     # el aviso se arma como texto ya resuelto en sudo, que no vuelve a pasar
     # por la regla de acceso al mostrarse.
     checkbook_shared_journal_names = fields.Char(
-        string='Otros Diarios de la Chequera',
+        string='Nombres de Otros Diarios de la Chequera',
         compute='_compute_checkbook_shared_journal_names',
         compute_sudo=True,
     )
