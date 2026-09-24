@@ -78,8 +78,8 @@ Si `company.commercial_rate_source == 'manual'`:
 - En la ficha de producto, junto a `reference_cost`, un texto de ayuda cuando el
   proveedor vigente está en otra moneda: "Convertido a USD 1 = $1.450 (comercial,
   24/09/2026)". Campo computado no almacenado `reference_cost_rate_info` (Char).
-- Aviso (banner en la lista de cotizaciones) si alguna moneda usada por proveedores
-  vigentes no tiene cotización más nueva que `commercial_rate_max_age_days`.
+- En la lista de cotizaciones, la más nueva de cada moneda se marca en rojo
+  (`is_stale`) si es más vieja que `commercial_rate_max_age_days`.
 
 ## Relación con el punto 3
 

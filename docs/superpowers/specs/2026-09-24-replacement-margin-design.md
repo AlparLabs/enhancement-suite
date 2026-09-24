@@ -100,8 +100,9 @@ No se modifica el frontend del POS (JS): el cálculo es 100 % backend.
 ## Migración de datos
 
 No se recalculan pedidos/órdenes históricos al instalar: quedarían con el costo de
-**hoy**, que es justamente el dato engañoso. `post_init_hook` deja los campos en 0 para
-históricos y las vistas muestran vacío. (Documentarlo en el README.)
+**hoy**, que es justamente el dato engañoso. Un `pre_init_hook` crea las columnas con
+valor 0 antes de instalar, así el ORM no las recalcula para los históricos. (Documentarlo
+en el README.)
 
 ## Tests
 
