@@ -10,15 +10,16 @@ extendido por `alpardata_replenishment_cost`. Reemplaza al módulo propio
 | # | Tema | Módulo | Spec | Plan | Depende de |
 |---|---|---|---|---|---|
 | 1 | Costo de reposición sobre Adhoc + migración de Broda | `alpardata_replenishment_cost`, `alpardata_reference_cost_migration` | `2026-09-24-adhoc-replenishment-cost-design.md` | `plans/2026-09-24-adhoc-replenishment-cost.md` | Adhoc |
-| 2 | Importador de listas de proveedores | `alpardata_supplier_pricelist_import` | `2026-09-24-supplier-pricelist-import-design.md` ⚠ | `plans/2026-09-24-supplier-pricelist-import.md` ⚠ | 1 |
-| 3 | Margen erosionado y etiquetas pendientes | `alpardata_price_change_labels` | `2026-09-24-price-change-labels-design.md` ⚠ | `plans/2026-09-24-price-change-labels.md` ⚠ | 1, `product_label_3x8` |
+| 2 | Importador de listas de proveedores | `alpardata_supplier_pricelist_import` | `2026-09-24-supplier-pricelist-import-design.md` | `plans/2026-09-24-supplier-pricelist-import.md` | 1 |
+| 3 | Margen erosionado y etiquetas pendientes | `alpardata_price_change_labels` | `2026-09-24-price-change-labels-design.md` | `plans/2026-09-24-price-change-labels.md` | 1, `product_label_3x8` |
 | 4 | Cotización comercial (USD) — **opcional** | `alpardata_commercial_currency_rate` | `2026-09-24-commercial-currency-rate-design.md` ⚠ | `plans/2026-09-24-commercial-currency-rate.md` ⚠ | 1 |
-| 5 | Margen de reposición en POS (ventas: Adhoc) | `alpardata_pos_replacement_margin` | `2026-09-24-replacement-margin-design.md` ⚠ | `plans/2026-09-24-replacement-margin.md` ⚠ | 1 |
-| 6 | Promociones de proveedor (sell-in / sell-out) | `alpardata_supplier_promotion` | `2026-09-24-supplier-promotion-design.md` ⚠ | `plans/2026-09-24-supplier-promotion.md` ⚠ | 3, `sale`, `point_of_sale` |
+| 5 | Margen de reposición en POS (ventas: Adhoc) | `alpardata_pos_replacement_margin` | `2026-09-24-replacement-margin-design.md` | `plans/2026-09-24-replacement-margin.md` | 1 |
+| 6 | Promociones de proveedor (sell-in / sell-out) | `alpardata_supplier_promotion` | `2026-09-24-supplier-promotion-design.md` | `plans/2026-09-24-supplier-promotion.md` | 3, `sale`, `point_of_sale` |
 
-⚠ Escritos sobre el stack propio (`reference_cost` / `replacement_cost`). Hay que
-actualizarlos a Adhoc antes de implementarlos; los cambios por punto están en la sección
-"Impacto en el resto del roadmap" del spec del punto 1.
+Los puntos 2, 3, 5 y 6 están actualizados a la base de Adhoc (2026-09-24).
+
+⚠ El punto 4 (opcional) sigue escrito sobre el stack propio: si se decide hacerlo, hay que
+actualizarlo antes (engancharse a la conversión de moneda de Adhoc).
 
 **Obsoletos** (se conservan como referencia): `2026-09-24-replacement-cost-design.md` y
 `plans/2026-09-24-replacement-cost.md` — el punto 1 original, implementado como
@@ -28,8 +29,7 @@ actualizarlos a Adhoc antes de implementarlos; los cambios por punto están en l
 ## Orden de implementación
 
 1 primero: prueba de concepto y migración en `grupobroda-test`, después en producción.
-Después 2 → 3 → 6 → 5 (POS), cada uno actualizado a Adhoc antes de pasarlo a
-implementar. 6 extiende el control de góndola del 3, así que va después.
+Después 2 → 3 → 6 → 5 (POS). 6 extiende el control de góndola del 3, así que va después.
 
 **4 es opcional**: sólo hace falta si el cliente tiene proveedores que cotizan en dólares y
 quiere fijar precios con un dólar distinto del contable.

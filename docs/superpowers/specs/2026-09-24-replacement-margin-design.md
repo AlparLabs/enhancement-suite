@@ -1,87 +1,46 @@
-# Margen de reposición en ventas y punto de venta
+# Margen de reposición en el punto de venta
 
 **Fecha:** 2026-09-24
-**Módulos nuevos:**
-- `alpardata_sale_replacement_margin` — depende de `sale_margin`,
-  `alpardata_purchase_replacement_cost`
-- `alpardata_pos_replacement_margin` — depende de `point_of_sale`,
-  `alpardata_purchase_replacement_cost`
-
+**Actualizado a Adhoc:** 2026-09-24 — la parte de ventas la cubre Adhoc; este spec queda
+sólo para POS.
+**Módulo nuevo:** `alpardata_pos_replacement_margin` — depende de `point_of_sale` y
+`alpardata_replenishment_cost` (punto 1, sobre Adhoc).
 **Rama objetivo:** `19.0`
-**Roadmap:** punto 5 de 5 (ver `2026-09-24-commercial-cost-roadmap.md`)
+**Roadmap:** punto 5 (ver `2026-09-24-commercial-cost-roadmap.md`)
 
 ## Problema
 
-`sale_margin` y el POS calculan el margen con `standard_price` (AVCO). Con inflación,
-vender a un precio que supera el AVCO no garantiza poder **reponer** la mercadería: el
-margen contable da una falsa sensación de ganancia. El comercio necesita ver ambos:
-margen contable (lo que dice el balance) y **margen de reposición** (lo que realmente
-queda para volver a comprar).
+El margen del POS se calcula con el costo contable (AVCO). Con inflación, vender por
+encima del AVCO no garantiza poder **reponer** la mercadería: el margen contable da una
+falsa sensación de ganancia. Hace falta ver también el **margen de reposición**.
 
-## Objetivo
+## Ventas: se usa Adhoc
 
-Guardar en cada línea de venta y de POS el costo de reposición unitario **al momento de
-la venta** y calcular el margen de reposición, disponible en los análisis de ventas y de
-POS junto al margen estándar.
+`product_replenishment_cost_sale_margin` (Adhoc, dependencia del punto 1) ya hace que el
+costo de las líneas de pedido de venta sea el costo de reposición, y con eso el margen de
+`sale_margin` pasa a ser de reposición en pedidos y en el análisis de ventas. No se
+desarrolla nada propio para ventas.
 
-Dos módulos separados para no obligar a instalar POS a quien solo usa ventas.
+Diferencia con el diseño original: en ventas se ve **un** margen (de reposición), no el
+contable y el de reposición juntos.
 
-## Costo unitario de reposición
+## POS: `alpardata_pos_replacement_margin`
 
-Se usa el helper del punto 1
-`product.product._get_replacement_cost_for(company, uom, currency, date)`, que devuelve
-`(costo, is_fallback)`: reposición convertida a `uom` y `currency`, o `standard_price`
-convertido si la reposición es 0 (mismo fallback que las listas de precios).
+### Costo unitario
 
-## Ventas (`alpardata_sale_replacement_margin`)
-
-### `sale.order.line`
-
-| Campo | Tipo | Notas |
-|---|---|---|
-| `replacement_cost_unit` | Float | `store`, `precompute`, `readonly=True`, `copy=False`, `depends('product_id', 'company_id', 'currency_id', 'product_uom_id')` — mismo patrón que `purchase_price` pero no editable |
-| `replacement_cost_fallback` | Boolean | `store`; True si se usó AVCO |
-| `replacement_margin` | Float | `store`, `price_subtotal − replacement_cost_unit × product_uom_qty` |
-| `replacement_margin_percent` | Float | `store`, `replacement_margin / price_subtotal` (0 si subtotal 0) |
-
-`groups="base.group_user"` como los campos de `sale_margin`.
-
-**Recalcular al confirmar**: en `sale.order.action_confirm`, antes de `super()`, se
-recalcula `replacement_cost_unit` de todas las líneas con producto. Motivo: un
-presupuesto puede quedar semanas abierto y con inflación el costo de la cotización ya
-no es el de la venta. El campo no es editable, así que no hay ediciones manuales que
-preservar.
-
-### `sale.order`
-
-- `replacement_margin` (Monetary, `store`, suma de líneas).
-- `replacement_margin_percent` (Float, `store`).
-
-### `sale.report`
-
-- `replacement_margin` (Float) vía `_select_additional_fields`, dividido por
-  `currency_rate` igual que `margin` en `sale_margin/report/sale_report.py`.
-
-### Vistas
-
-- Línea de pedido: columna opcional `replacement_cost_unit` y
-  `replacement_margin_percent` (junto a `purchase_price`/`margin` de `sale_margin`).
-- Pedido: `replacement_margin` junto a `margin` en el pie.
-- Análisis de ventas: medida `replacement_margin`.
-
-## POS (`alpardata_pos_replacement_margin`)
+`product.product._pos_replenishment_cost(company, currency, date)`:
+`replenishment_cost` del producto en `company` (Adhoc, con las reglas y la jerarquía del
+punto 1); si es 0, `standard_price` (fallback); convertido de la moneda de la empresa a
+`currency`. El costo se toma en la UoM del producto (las líneas de POS usan esa UoM).
 
 ### `pos.order.line`
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `replacement_cost_unit` | Float | `store`; se calcula en `create` (las líneas llegan sincronizadas desde el frontend) con la fecha de la orden |
-| `replacement_margin` | Monetary | `store`, `price_subtotal − replacement_cost_unit × qty` (con devoluciones el `qty` negativo da margen negativo) |
+| `replacement_cost_unit` | Float | computado almacenado, `depends('product_id', 'order_id.company_id', 'order_id.currency_id')`: se fija al sincronizar la orden |
+| `replacement_margin` | Monetary | computado almacenado, `price_subtotal − replacement_cost_unit × qty` (en devoluciones `qty` negativo → margen negativo) |
 
-La moneda de la línea es la de la orden (`order_id.currency_id`); se convierte desde la
-moneda de la empresa con la fecha de la orden.
-
-No se modifica el frontend del POS (JS): el cálculo es 100 % backend.
+Productos combo → costo 0 (igual que el margen estándar del POS).
 
 ### `pos.order`
 
@@ -89,39 +48,34 @@ No se modifica el frontend del POS (JS): el cálculo es 100 % backend.
 
 ### `report.pos.order`
 
-- `replacement_margin` en `_select`, siguiendo la expresión de `margin` en
-  `point_of_sale/report/pos_order_report.py` (signo y `currency_rate`).
+- `replacement_margin` en `_select`, con la misma conversión de moneda que `margin` en
+  `point_of_sale/report/pos_order_report.py`.
 
 ### Vistas
 
-- Orden POS: `replacement_margin` junto al margen.
-- Análisis de POS: medida `replacement_margin`.
+- Orden POS: `replacement_margin` junto al margen; columnas opcionales en las líneas.
+- Análisis de POS: medida "Margen de reposición" (los campos numéricos almacenados del
+  reporte aparecen solos como medida).
+
+No se modifica el frontend del POS (JS): el cálculo es 100 % backend.
 
 ## Migración de datos
 
-No se recalculan pedidos/órdenes históricos al instalar: quedarían con el costo de
-**hoy**, que es justamente el dato engañoso. Un `pre_init_hook` crea las columnas con
-valor 0 antes de instalar, así el ORM no las recalcula para los históricos. (Documentarlo
-en el README.)
+Las órdenes anteriores a la instalación **no** se recalculan: quedarían con el costo de
+hoy, que es justamente el dato engañoso. Un `pre_init_hook` crea las columnas con valor 0
+antes de instalar, así el ORM no las recalcula. Se documenta en el README.
 
 ## Tests
 
-Ventas:
-1. Línea nueva toma `replacement_cost_unit` del producto; margen y %.
-2. UoM de la línea distinta (docena) y pedido en USD.
-3. Sin costo de reposición → fallback AVCO + flag.
-4. Cambio de costo entre presupuesto y confirmación → al confirmar se actualiza.
-5. `sale.report` expone `replacement_margin`.
+1. Orden creada vía `sync_from_ui` → líneas con costo de reposición (lista con la regla
+   del proveedor) y margen.
+2. Devolución → margen negativo.
+3. Producto sin costo de reposición → fallback AVCO.
+4. `report.pos.order` expone `replacement_margin`.
 
-POS:
-6. Orden creada vía `sync_from_ui` → líneas con costo y margen.
-7. Devolución → margen negativo.
-8. `report.pos.order` expone `replacement_margin`.
+## Decisiones
 
-## Decisiones a validar (tomadas sin consultar)
-
-1. **Dos módulos** (ventas y POS) en vez de uno.
-2. El costo se **recalcula al confirmar** el pedido de venta y **no es editable**.
-3. Fallback a **AVCO** cuando no hay costo de reposición.
-4. **No** se recalculan datos históricos al instalar.
-5. Sin cambios en el frontend del POS.
+1. Ventas con el margen de Adhoc (reemplaza al contable en el pedido).
+2. POS: módulo propio, costo fijado al sincronizar la orden, fallback a AVCO.
+3. No se recalculan datos históricos al instalar.
+4. Sin cambios en el frontend del POS.
