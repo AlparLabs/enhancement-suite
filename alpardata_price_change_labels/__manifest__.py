@@ -6,7 +6,9 @@
     'website': 'https://alpardata.com.ar',
     'category': 'Inventory/Purchase',
     'depends': ['alpardata_purchase_replacement_cost', 'product_label_3x8'],
-    'data': [],  # la tarea 4 agrega seguridad, cron y vistas
+    'data': [
+        'security/ir.model.access.csv',
+    ],
     'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
