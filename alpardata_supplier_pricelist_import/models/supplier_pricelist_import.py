@@ -247,3 +247,69 @@ class SupplierPricelistImport(models.Model):
                 continue
             vals_list.append(self._line_vals(seller, price, new_cascade, row_number, code))
         return vals_list
+
+    # ── Aplicar ───────────────────────────────────────────────────────────────
+    _COPIED_SELLER_FIELDS = (
+        'partner_id', 'product_tmpl_id', 'product_id', 'company_id', 'product_code',
+        'product_name', 'product_uom_id', 'currency_id', 'min_qty', 'sequence', 'delay',
+        'price', 'discount', 'use_own_conditions', 'own_discount_cascade',
+        'own_early_payment_pct', 'own_freight_pct', 'own_perception_pct',
+    )
+
+    def _new_seller_vals(self, line) -> dict:
+        seller = line.supplierinfo_id
+        vals = {}
+        for name in self._COPIED_SELLER_FIELDS:
+            value = seller[name]
+            vals[name] = value.id if isinstance(value, models.BaseModel) else value
+        vals.update({
+            'reference_cost': line.new_list_price,
+            'date_start': self.effective_date,
+            'date_end': False,
+        })
+        if line.new_cascade != line.old_cascade:
+            vals.update({
+                'use_own_conditions': True,
+                'own_discount_cascade': line.new_cascade or False,
+            })
+            if not seller.use_own_conditions:
+                # Al pasar a condiciones propias se conservan las del proveedor
+                vals.update({
+                    'own_early_payment_pct': seller.effective_early_payment_pct,
+                    'own_freight_pct': seller.effective_freight_pct,
+                    'own_perception_pct': seller.effective_perception_pct,
+                })
+        return vals
+
+    def action_apply(self) -> None:
+        self.ensure_one()
+        if not self.env.user.has_group('purchase.group_purchase_manager'):
+            raise AccessError(_('Sólo los gerentes de compras pueden aplicar listas de proveedores.'))
+        if self.state != 'preview':
+            raise UserError(_('Generá la vista previa antes de aplicar.'))
+        lines = self.line_ids.filtered(lambda l: l.status == 'change' and l.to_apply)
+        vals_list = [self._new_seller_vals(line) for line in lines]
+        self.env['product.supplierinfo'].with_context(
+            _change_reason=_('Importación %s', self.name),
+        ).create(vals_list)
+        self.write({
+            'state': 'done',
+            'applied_date': fields.Datetime.now(),
+            'applied_by': self.env.uid,
+        })
+        self.message_post(body=_(
+            'Lista aplicada: %(applied)s fichas actualizadas desde %(date)s '
+            '(%(skipped)s cambios no aplicados, %(nf)s no encontrados, %(err)s errores).',
+            applied=len(lines), date=self.effective_date,
+            skipped=self.count_change - len(lines),
+            nf=self.count_not_found, err=self.count_error,
+        ))
+
+    def action_cancel(self) -> None:
+        for rec in self:
+            if rec.state == 'done':
+                raise UserError(_('No se puede cancelar una importación aplicada.'))
+        self.write({'state': 'cancelled'})
+
+    def action_reset_draft(self) -> None:
+        self.filtered(lambda r: r.state == 'cancelled').write({'state': 'draft'})
