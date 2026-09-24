@@ -31,13 +31,15 @@ class AccountCheckSequenceMixin(models.AbstractModel):
         self.ensure_one()
         return self.payment_method_line_id.code == 'own_checks'
 
-    def _check_sequence_journal(self):
-        """Diario habilitado para autonumerar, o un recordset vacío."""
+    def _check_sequence_checkbook(self):
+        """Chequera activa del diario si el registro emite cheques propios; si no, vacío."""
         self.ensure_one()
-        journal = self.journal_id
-        if journal and journal.check_sequence_enabled and self._is_own_check_payment():
-            return journal
-        return self.env['account.journal']
+        if not self._is_own_check_payment():
+            return self.env['account.checkbook']
+        checkbook = self.journal_id.checkbook_id
+        if checkbook.active:
+            return checkbook
+        return self.env['account.checkbook']
 
     def _get_check_numbers_used(self):
         """Números de cheque efectivamente cargados en el registro."""
@@ -45,21 +47,21 @@ class AccountCheckSequenceMixin(models.AbstractModel):
         return [check.name for check in self.l10n_latam_new_check_ids if check.name]
 
     @api.depends(
-        'journal_id.check_sequence_enabled', 'journal_id.next_check_number',
+        'journal_id.checkbook_id.active', 'journal_id.checkbook_id.next_number',
         'payment_method_line_id', 'l10n_latam_new_check_ids.name',
     )
     def _compute_check_sequence_next_number(self):
         for rec in self:
-            journal = rec._check_sequence_journal()
-            if not journal:
+            checkbook = rec._check_sequence_checkbook()
+            if not checkbook:
                 rec.check_sequence_next_number = False
                 continue
             used_numbers = rec._get_check_numbers_used()
-            start_from = journal._get_highest_check_number(used_numbers) if used_numbers else False
-            rec.check_sequence_next_number = journal._peek_check_numbers(1, start_from=start_from)[0]
+            start_from = checkbook._get_highest_check_number(used_numbers) if used_numbers else False
+            rec.check_sequence_next_number = checkbook._peek_check_numbers(1, start_from=start_from)[0]
 
     def _apply_check_sequence_suggestion(self):
-        """Completa los números de cheque faltantes con el correlativo del diario.
+        """Completa los números de cheque faltantes con el correlativo de la chequera.
 
         Las líneas tipeadas por el usuario son anclas fijas: se respetan tal
         cual y el resto encadena a partir de ellas. Una línea es del usuario
@@ -73,8 +75,8 @@ class AccountCheckSequenceMixin(models.AbstractModel):
         se corrige sola si quedó repitiendo el número de otra.
         """
         for rec in self:
-            journal = rec._check_sequence_journal()
-            if not journal:
+            checkbook = rec._check_sequence_checkbook()
+            if not checkbook:
                 continue
             used_numbers = []
             for check in rec.l10n_latam_new_check_ids:
@@ -82,7 +84,7 @@ class AccountCheckSequenceMixin(models.AbstractModel):
                 if check.name and not is_autofilled:
                     used_numbers.append(check.name)
                     continue
-                start_from = journal._get_highest_check_number(used_numbers) if used_numbers else False
-                check.name = journal._peek_check_numbers(1, start_from=start_from)[0]
+                start_from = checkbook._get_highest_check_number(used_numbers) if used_numbers else False
+                check.name = checkbook._peek_check_numbers(1, start_from=start_from)[0]
                 check.autofilled_check_number = check.name
                 used_numbers.append(check.name)

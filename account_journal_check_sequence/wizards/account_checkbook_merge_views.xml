@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_checkbook_merge_form" model="ir.ui.view">
+        <field name="name">account.checkbook.merge.form</field>
+        <field name="model">account.checkbook.merge</field>
+        <field name="arch" type="xml">
+            <form string="Unificar chequeras">
+                <div class="alert alert-warning" role="alert" invisible="not duplicate_warning">
+                    <field name="duplicate_warning" nolabel="1"/>
+                </div>
+                <p class="text-muted">
+                    Los diarios y los cheques ya emitidos de las chequeras seleccionadas pasan a
+                    la chequera destino. Las demás quedan archivadas.
+                </p>
+                <group>
+                    <field name="checkbook_ids" widget="many2many_tags"/>
+                    <field name="target_checkbook_id" options="{'no_create': True}"/>
+                    <field name="next_number"/>
+                    <field name="company_id" groups="base.group_multi_company"
+                           placeholder="Compartida entre compañías"/>
+                    <field name="journal_ids" widget="many2many_tags"/>
+                </group>
+                <footer>
+                    <button name="action_merge" type="object" string="Unificar" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_account_checkbook_merge" model="ir.actions.act_window">
+        <field name="name">Unificar chequeras</field>
+        <field name="res_model">account.checkbook.merge</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_account_checkbook_merge_form"/>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_account_checkbook"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(6, 0, [ref('account.group_account_manager')])]"/>
+    </record>
+</odoo>

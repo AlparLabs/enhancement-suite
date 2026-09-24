@@ -1,4 +1,4 @@
-from odoo import api, models
+from odoo import api, fields, models
 
 
 class L10nLatamCheck(models.Model):
@@ -6,6 +6,17 @@ class L10nLatamCheck(models.Model):
     _inherit = ['l10n_latam.check', 'account.check.sequence.line.mixin']
 
     _check_sequence_parent_field = 'payment_id'
+
+    checkbook_id = fields.Many2one(
+        'account.checkbook',
+        string='Chequera',
+        readonly=True,
+        copy=False,
+        index=True,
+        ondelete='restrict',
+        help='Chequera de la que se emitió el cheque. Se completa al publicar el pago y '
+             'se usa para detectar números repetidos entre diarios que comparten chequera.',
+    )
 
     @api.onchange('payment_id')
     def _onchange_payment_id_suggest_check_sequence(self):

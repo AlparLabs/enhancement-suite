@@ -48,12 +48,12 @@ class AccountCheckSequenceLineMixin(models.AbstractModel):
     @api.model
     def _get_next_check_number_for_line(self, parent, extra_used=None):
         """Próximo número libre considerando las líneas ya cargadas en el padre."""
-        journal = parent._check_sequence_journal()
-        if not journal:
+        checkbook = parent._check_sequence_checkbook()
+        if not checkbook:
             return False
         used_numbers = parent._get_check_numbers_used() + list(extra_used or [])
-        start_from = journal._get_highest_check_number(used_numbers) if used_numbers else False
-        return journal._peek_check_numbers(1, start_from=start_from)[0]
+        start_from = checkbook._get_highest_check_number(used_numbers) if used_numbers else False
+        return checkbook._peek_check_numbers(1, start_from=start_from)[0]
 
     @api.model
     def default_get(self, fields_list):
@@ -62,7 +62,7 @@ class AccountCheckSequenceLineMixin(models.AbstractModel):
         El camino principal es el contexto de la One2many: el padre publica ahí
         el próximo número libre (``check_sequence_next_number``), que ya tiene
         en cuenta las líneas cargadas en el cliente y todavía no guardadas.
-        El contador del diario no sirve por sí solo porque no avanza hasta
+        El contador de la chequera no sirve por sí solo porque no avanza hasta
         postear el pago, así que todas las líneas nuevas nacerían iguales.
         """
         res = super().default_get(fields_list)
