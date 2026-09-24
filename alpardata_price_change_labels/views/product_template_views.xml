@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_target_markup" model="ir.ui.view">
+        <field name="name">product.template.form.target.markup</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="alpardata_purchase_replacement_cost.view_product_template_form_replacement_cost"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='internal_tax_pct']" position="after">
+                <field name="target_markup_pct" readonly="not can_edit_commercial_conditions"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

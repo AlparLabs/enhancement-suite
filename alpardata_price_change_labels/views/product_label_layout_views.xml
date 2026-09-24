@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_label_layout_form_shelf_warning" model="ir.ui.view">
+        <field name="name">product.label.layout.form.shelf.warning</field>
+        <field name="model">product.label.layout</field>
+        <field name="inherit_id" ref="product.product_label_layout_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/*[1]" position="before">
+                <div class="alert alert-warning" role="alert" invisible="not shelf_pricelist_warning">
+                    <field name="shelf_pricelist_warning" nolabel="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

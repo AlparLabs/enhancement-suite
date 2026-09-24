@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_price_watch_labels"
+              name="Etiquetas pendientes"
+              parent="stock.menu_stock_inventory_control"
+              action="action_price_watch_labels"
+              sequence="90"/>
+    <menuitem id="menu_price_watch_markup"
+              name="Margen erosionado"
+              parent="alpardata_purchase_reference_cost.menu_reference_cost_root"
+              action="action_price_watch_markup"
+              sequence="40"/>
+</odoo>

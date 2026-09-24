@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_price_watch_company" model="ir.rule">
+        <field name="name">Control de precio de góndola: multi-empresa</field>
+        <field name="model_id" ref="model_product_price_watch"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>
